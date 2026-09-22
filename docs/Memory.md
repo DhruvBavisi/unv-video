@@ -25,7 +25,7 @@ Scroll sync: one weighted non-linear curve (`cinematicTimeline.js` `CHARACTER_SE
 
 The landing page uses one cinematic ScrollTrigger. MP4 is fallback only. No autoplay, timers, Lenis, wheel hijacking, or scroll interception.
 
-## Existing Completed Landing Work
+## Existing Completed Landing & Responsive UI Work
 - Phase 0: React + Vite scaffold, dependencies, structure, build/dev verification.
 - Phase 1: assets verified.
 - Phase 2: visual foundation.
@@ -33,6 +33,12 @@ The landing page uses one cinematic ScrollTrigger. MP4 is fallback only. No auto
 - Phase 3H: 480-frame JPEG primary renderer, exact video-time mapping, fallback architecture, responsive base.
 - Phase 4: character reveals driven by the same cinematic progress.
 - Investigation presentation/evidence section exists as a non-gameplay presentation layer.
+- Responsive Lobby UI Polish:
+  - Fixed mobile player card clipping (`.online-player`) so "READY" status and badges remain fully visible on small screens.
+  - Reduced player slider thumb size on smaller viewports (`max-width: 760px`/`480px`/`380px`) for sleek mobile handling.
+  - Styled Word Category `<select>` input as a sharp rectangle (`border-radius: 0; appearance: none;`) on smaller screens to match Noir theme.
+  - Replaced text button with custom responsive, accessible `Reveal Roles` toggle switch with gold accent track and smooth sliding knob.
+  - Full-Screen Mobile Viewport & Top Extension: Added `viewport-fit=cover` to `index.html` and updated `html, body, #root`, `.online-game`, `.online-topbar`, and `.nav` with `min-height: 100dvh` and safe-area-inset top padding so the UI covers the mobile screen 100% from top edge without changing any font styles or placements.
 
 ## New Game Design — Authoritative Rules
 
@@ -132,6 +138,9 @@ Players choosing Play Again return to the lobby.
 Previous game state resets.
 New roles and words are assigned.
 No new Room ID is required.
+
+## CSS Constraints
+- Never set input/select/textarea/button font-size below 16px (iOS auto-zoom on tap)
 
 ## Development Phases — Gameplay
 - Phase 11: Core rules, role distribution, word-pair data, authoritative state model.

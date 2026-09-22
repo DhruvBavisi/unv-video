@@ -287,21 +287,28 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
         />
       </div>
 
-      <label>
-        Reveal Roles
-        <Button
-          variant="primary"
+      <div className="config-field config-field--toggle">
+        <span className="config-field__label">Reveal Roles</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!!revealRoles}
           disabled={!host}
           onClick={handleToggleRevealRoles}
-          aria-label={`Reveal Roles is ${revealRoles ? 'ON' : 'OFF'}. Toggle to ${!revealRoles ? 'ON' : 'OFF'}`}
+          className={`toggle-switch ${revealRoles ? 'toggle-switch--active' : ''}`}
+          aria-label={`Reveal Roles is ${revealRoles ? 'ON' : 'OFF'}. Click to toggle.`}
         >
-          {revealRoles ? 'ON' : 'OFF'}
-        </Button>
-      </label>
+          <span className="toggle-switch__track">
+            <span className="toggle-switch__knob" />
+          </span>
+          <span className="toggle-switch__text">{revealRoles ? 'ON' : 'OFF'}</span>
+        </button>
+      </div>
 
-      <label>
-        Word category
+      <label className="config-field">
+        <span className="config-field__label">Word category</span>
         <select
+          className="word-category-select"
           disabled={!host}
           value={category}
           onChange={(e) => onChangeCategory(e.target.value)}

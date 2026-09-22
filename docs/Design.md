@@ -51,13 +51,15 @@ The game should communicate a clear investigation loop:
 
 The UI should always tell the player what phase they are in and what action is expected from them.
 
-## Online Lobby
+## Online Lobby & Configuration Controls
 Visual language:
 - classified case header
 - Room ID displayed clearly
-- player roster as investigation participants
+- player roster as investigation participants with responsive status badges ("READY", "JOINED", "HOST")
 - host controls presented as a case configuration panel
-- word category / word-pair configuration
+- word category dropdown formatted with a sharp rectangular geometry (`border-radius: 0; appearance: none;`) on smaller devices matching Noir aesthetics
+- theme-matched responsive toggle switch for `Reveal Roles` (gold accent track, sliding knob, smooth state transitions)
+- player slider with adaptive thumb sizing scaled for touch/mobile screens
 - start investigation action
 
 Avoid generic neon gaming-lobby aesthetics.
@@ -262,6 +264,8 @@ Mobile:
 - hidden role identity must not be exposed through accessible labels, alt text, tooltips, or DOM attributes
 - no color-only game-state communication
 - reduced motion respected
+- never set input/select/textarea/button font-size below 16px (prevents iOS auto-zoom on tap)
+- hidden role identity must not be exposed through CSS-only hiding
 
 ## Visual Restraint
 Avoid:
