@@ -7,7 +7,7 @@ let listenersAttached = false
 export function connectSocket(sessionId) {
   if (socket) return socket
 
-  const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin
+  const socketUrl = import.meta.env.SOCKET_URL || window.location.origin
 
   socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
