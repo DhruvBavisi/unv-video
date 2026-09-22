@@ -563,7 +563,7 @@ export default function OnlineGame({ onExit }) {
         </div>
       </section>
     )
-  } else if (state.phase === GAME_PHASES.CLUE_PHASE || state.phase === GAME_PHASES.VOTE_PREP) {
+  } else if (state.phase === GAME_PHASES.CLUE_PHASE || state.phase === GAME_PHASES.VOTE_PHASE) {
     content = (
       <CluePhase state={state} socketRef={socketRef} />
     )

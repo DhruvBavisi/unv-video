@@ -31,13 +31,11 @@ export function createInitialState() {
     membershipState: MEMBERSHIP.NONE,
     clues: [],
     chat: [],
-    votes: [],
-    eliminations: [],
-    spectators: [],
-    currentTurnPlayerId: null,
-    turnOrder: [],
     submittedCluePlayerIds: [],
     gamePhase: null,
+    votes: {},
+    lockedVotes: [],
+    voteResult: null,
   }
 }
 
@@ -58,10 +56,10 @@ function phaseFromRoom(room, { prevPhase, sessionId, becomingActive }) {
   const meInRoom = room.players.some((p) => p.id === sessionId)
   const isLobby = room.status === 'LOBBY' || room.status === undefined
   const isCluePhase = room.phase === 'ACTIVE' && room.gamePhase === 'CLUE'
-  const isVotePrep = room.phase === 'ACTIVE' && room.gamePhase === 'VOTE_PREP'
+  const isVotePhase = room.phase === 'ACTIVE' && room.gamePhase === 'VOTE'
 
   if (isCluePhase) return GAME_PHASES.CLUE_PHASE
-  if (isVotePrep) return GAME_PHASES.VOTE_PREP
+  if (isVotePhase) return GAME_PHASES.VOTE_PHASE
   if (becomingActive && meInRoom) return GAME_PHASES.CLUE_PHASE
   if (meInRoom && isLobby) return GAME_PHASES.ROOM_LOBBY
   if (prevPhase === GAME_PHASES.ROOM_LOBBY && meInRoom) return GAME_PHASES.ROOM_LOBBY
@@ -126,6 +124,9 @@ export function gameReducer(state, action) {
         turnOrder: room.turnOrder || [],
         submittedCluePlayerIds: room.submittedCluePlayerIds || [],
         gamePhase: room.gamePhase || state.gamePhase,
+        votes: room.votes || {},
+        lockedVotes: room.lockedVotes || [],
+        voteResult: room.voteResult || null,
         error: '',
       }
     }
@@ -163,10 +164,12 @@ export function gameReducer(state, action) {
         error: '',
         clues: [],
         chat: [],
-        currentTurnPlayerId: null,
         turnOrder: [],
         submittedCluePlayerIds: [],
         gamePhase: null,
+        votes: {},
+        lockedVotes: [],
+        voteResult: null,
       }
     }
     case 'SESSION_RECONNECTED': {
@@ -196,6 +199,9 @@ export function gameReducer(state, action) {
         turnOrder: room.turnOrder || [],
         submittedCluePlayerIds: room.submittedCluePlayerIds || [],
         gamePhase: room.gamePhase || null,
+        votes: room.votes || {},
+        lockedVotes: room.lockedVotes || [],
+        voteResult: room.voteResult || null,
         error: '',
       }
     }
@@ -387,6 +393,22 @@ export function emitSendChat(socket, roomId, text) {
 
 export function emitStartCluePhase(socket) {
   socket.emit('start-clue-phase')
+}
+
+export function emitSelectVote(socket, targetId) {
+  return new Promise((resolve) => {
+    socket.emit('select-vote', { targetId }, (response) => {
+      resolve(response)
+    })
+  })
+}
+
+export function emitLockVote(socket) {
+  return new Promise((resolve) => {
+    socket.emit('lock-vote', (response) => {
+      resolve(response)
+    })
+  })
 }
 
 export { canStart, localPlayer, MEMBERSHIP }

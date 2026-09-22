@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Button from '../components/Button.jsx'
-import { emitSubmitClue, emitSendChat } from './gameState.js'
+import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
 
@@ -23,7 +23,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   const word = localSecret?.word
   const roleVisible = revealRoles === true && role != null
   const roleLabel = roleVisible ? role.replace('_', ' ') : '???'
-  const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE_PREP'
+  const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE'
 
   return (
     <div className={`clue-panel__identity${roleVisible ? ` clue-panel__identity--${role.toLowerCase()}` : ''}`}>
@@ -53,12 +53,12 @@ function TurnIndicator({ currentTurnPlayerId, myPlayerId, players, gamePhase }) 
   const currentPlayer = players.find((p) => p.id === currentTurnPlayerId)
   const playerName = currentPlayer?.name || 'Unknown'
 
-  if (gamePhase === 'VOTE_PREP') {
+  if (gamePhase === 'VOTE') {
     return (
       <div className="clue-panel__turn clue-panel__turn--vote">
-        <span className="online-kicker">Round complete</span>
-        <h2>All clues submitted</h2>
-        <p>Prepare for the vote.</p>
+        <span className="online-kicker">Voting Phase</span>
+        <h2>Select your suspect</h2>
+        <p>Discuss and cast your vote.</p>
       </div>
     )
   }
@@ -256,7 +256,7 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit }) {
     }
   }, [handleSubmit])
 
-  const isGameActive = gamePhase === 'CLUE' || gamePhase === 'VOTE_PREP'
+  const isGameActive = gamePhase === 'CLUE' || gamePhase === 'VOTE'
   const overLimit = text.length > MAX_CHAT_LENGTH
 
   return (
@@ -396,6 +396,61 @@ function getInitials(name) {
     .join('')
 }
 
+function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting }) {
+  const activePlayers = players.filter(p => !p.eliminated && !p.spectator)
+  const myVote = votes[myPlayerId]
+  const isLocked = lockedVotes.includes(myPlayerId)
+  
+  const voteCounts = {}
+  Object.values(votes).forEach(targetId => {
+    voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
+  })
+  
+  return (
+    <div className="clue-panel__voting">
+      <div className="clue-panel__voting-header">
+        <span className="online-kicker">Elimination</span>
+        <h2>Time to Vote</h2>
+        {voteResult?.tie && <p className="clue-panel__voting-tie">TIE! A revote is required.</p>}
+      </div>
+      <div className="clue-panel__voting-list">
+        {activePlayers.map(p => {
+          const isMe = p.id === myPlayerId
+          const isSelected = p.id === myVote
+          const hasLocked = lockedVotes.includes(p.id)
+          return (
+            <button 
+              key={p.id}
+              className={`voting-card ${isSelected ? 'voting-card--selected' : ''} ${hasLocked ? 'voting-card--locked' : ''}`}
+              disabled={isLocked || isMe}
+              onClick={() => onSelectVote(p.id)}
+            >
+              <span className="voting-card__avatar">{getInitials(p.name)}</span>
+              <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
+              <div className="voting-card__meta">
+                {voteCounts[p.id] > 0 && (
+                  <span className="voting-card__votes">{voteCounts[p.id]} Vote{voteCounts[p.id] > 1 ? 's' : ''}</span>
+                )}
+                {hasLocked && <span className="voting-card__status">✓ Locked</span>}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <div className="clue-panel__voting-actions">
+        <Button 
+          variant="danger" 
+          onClick={onLockVote} 
+          disabled={isLocked || !myVote || submitting}
+          className="voting-card__submit-btn"
+        >
+          {isLocked ? 'Vote Locked' : 'Confirm Vote'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function CluePhase({ state, socketRef }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
@@ -415,6 +470,9 @@ export default function CluePhase({ state, socketRef }) {
     roomId,
     turnOrder,
     submittedCluePlayerIds,
+    votes,
+    lockedVotes,
+    voteResult,
   } = state
 
   const isMyTurn = currentTurnPlayerId === sessionId
@@ -465,24 +523,64 @@ export default function CluePhase({ state, socketRef }) {
     }
   }, [roomId, socketRef])
 
+  const handleSelectVote = useCallback(async (targetId) => {
+    if (submitLockRef.current) return
+    const response = await emitSelectVote(socketRef.current, targetId)
+    if (!response?.success) {
+      const msg = ERROR_MESSAGES[response?.error] || 'Failed to select vote.'
+      setClueError(msg)
+    }
+  }, [socketRef])
+
+  const handleLockVote = useCallback(async () => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    const response = await emitLockVote(socketRef.current)
+    if (!response?.success) {
+      const msg = ERROR_MESSAGES[response?.error] || 'Failed to lock vote.'
+      setClueError(msg)
+      submitLockRef.current = false
+      setSubmitting(false)
+    } else {
+      submitLockRef.current = false
+      setSubmitting(false)
+    }
+  }, [socketRef])
+
   return (
     <section className="clue-phase">
       <div className="clue-phase__grid">
         <aside className="clue-phase__order">
-          <TurnIndicator
-            currentTurnPlayerId={currentTurnPlayerId}
-            myPlayerId={sessionId}
-            players={players}
-            gamePhase={gamePhase}
-          />
-          <ClueOrderDisplay
-            turnOrder={turnOrder}
-            currentTurnPlayerId={currentTurnPlayerId}
-            submittedCluePlayerIds={submittedCluePlayerIds}
-            players={players}
-            myPlayerId={sessionId}
-            currentRound={currentRound}
-          />
+          {gamePhase === 'VOTE' ? (
+            <VotingPanel
+              players={players}
+              myPlayerId={sessionId}
+              votes={votes}
+              lockedVotes={lockedVotes}
+              voteResult={voteResult}
+              onSelectVote={handleSelectVote}
+              onLockVote={handleLockVote}
+              submitting={submitting}
+            />
+          ) : (
+            <>
+              <TurnIndicator
+                currentTurnPlayerId={currentTurnPlayerId}
+                myPlayerId={sessionId}
+                players={players}
+                gamePhase={gamePhase}
+              />
+              <ClueOrderDisplay
+                turnOrder={turnOrder}
+                currentTurnPlayerId={currentTurnPlayerId}
+                submittedCluePlayerIds={submittedCluePlayerIds}
+                players={players}
+                myPlayerId={sessionId}
+                currentRound={currentRound}
+              />
+            </>
+          )}
         </aside>
 
         <main className="clue-phase__identity">

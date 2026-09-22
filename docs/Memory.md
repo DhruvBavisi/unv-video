@@ -37,7 +37,7 @@ The landing page uses one cinematic ScrollTrigger. MP4 is fallback only. No auto
   - Fixed mobile player card clipping (`.online-player`) so "READY" status and badges remain fully visible on small screens.
   - Reduced player slider thumb size on smaller viewports (`max-width: 760px`/`480px`/`380px`) for sleek mobile handling.
   - Styled Word Category `<select>` input as a sharp rectangle (`border-radius: 0; appearance: none;`) on smaller screens to match Noir theme.
-  - Replaced text button with custom responsive, accessible `Reveal Roles` toggle switch with gold accent track and smooth sliding knob.
+  - Replaced text button with enhanced responsive, accessible `Reveal Roles` toggle switch (`56px x 30px` track, `22px` knob) with gold accent metallic gradients, ambient glow shadows, hover scaling, and responsive mobile dimensions.
   - Full-Screen Mobile Viewport & Top Extension: Maintained `viewport-fit=cover` in `index.html` and configured `.hero` with `min-height: 100dvh` so the Hero section seamlessly fills 100% of the mobile viewport height from top edge to bottom edge without shifting hero content/fonts upward or leaving a bottom gap.
   - Navbar & Hero Responsive Polish: Applied `padding-top: max(8px, env(safe-area-inset-top))` to `.nav`, hid text links on narrow mobile viewports (< 760px), and styled full-width stacked action buttons and proportional typography for `.hero` so the home page is 100% responsive and clean.
 

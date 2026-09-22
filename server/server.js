@@ -91,6 +91,9 @@ function getPublicRoomState(room) {
     currentTurnPlayerId: room.currentTurnPlayerId || null,
     turnOrder: room.turnOrder || [],
     submittedCluePlayerIds: room.submittedCluePlayerIds || [],
+    votes: room.votes || {},
+    lockedVotes: room.lockedVotes || [],
+    voteResult: room.voteResult || null,
     clues: (room.clues || []).map((c) => ({
       id: c.id,
       roundNumber: c.roundNumber,
@@ -228,6 +231,15 @@ function startCluePhase(room) {
   broadcastRoom(room)
 }
 
+function startVotePhase(room) {
+  room.currentTurnPlayerId = null
+  room.gamePhase = 'VOTE'
+  room.votes = {}
+  room.lockedVotes = []
+  room.voteResult = null
+  console.log('[VOTE] phase started', { roomId: room.id })
+}
+
 function advanceTurn(room) {
   room.turnIndex++
   if (room.turnIndex < room.turnOrder.length) {
@@ -238,9 +250,7 @@ function advanceTurn(room) {
       currentTurnPlayerId: room.currentTurnPlayerId,
     })
   } else {
-    room.currentTurnPlayerId = null
-    room.gamePhase = 'VOTE_PREP'
-    console.log('[CLUE] all clues submitted, transitioning to vote prep', { roomId: room.id })
+    startVotePhase(room)
   }
   broadcastRoom(room)
 }
@@ -299,8 +309,7 @@ function skipDisconnectedTurn(room) {
   }
 
   // No reachable player left — the round is over.
-  room.currentTurnPlayerId = null
-  room.gamePhase = 'VOTE_PREP'
+  startVotePhase(room)
 }
 
 // Rooms where every player has been disconnected past the grace window,
@@ -407,6 +416,9 @@ io.on('connection', (socket) => {
       submittedCluePlayerIds: [],
       clues: [],
       chat: [],
+      votes: {},
+      lockedVotes: [],
+      voteResult: null,
       wordPair: null,
       players: [{
         id: sessionId,
@@ -585,6 +597,9 @@ io.on('connection', (socket) => {
     room.round = 1
     room.clues = []
     room.chat = []
+    room.votes = {}
+    room.lockedVotes = []
+    room.voteResult = null
 
     assignWords(room)
 
@@ -749,6 +764,97 @@ io.on('connection', (socket) => {
       text: message.text,
       sentAt: message.sentAt,
     })
+  })
+
+  socket.on('select-vote', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
+    
+    const player = room.players.find((p) => p.id === currentSessionId)
+    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    
+    if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
+
+    const target = room.players.find(p => p.id === targetId)
+    if (!target || target.eliminated || target.spectator) return callback?.({ success: false, error: 'INVALID_TARGET' })
+
+    if (currentSessionId === targetId) return callback?.({ success: false, error: 'SELF_VOTING_NOT_ALLOWED' })
+
+    room.votes[currentSessionId] = targetId
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('lock-vote', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
+    
+    const player = room.players.find((p) => p.id === currentSessionId)
+    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    
+    if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
+    if (!room.votes[currentSessionId]) return callback?.({ success: false, error: 'NO_VOTE_SELECTED' })
+
+    room.lockedVotes.push(currentSessionId)
+    
+    const activePlayers = getActivePlayers(room)
+    
+    if (room.lockedVotes.length === activePlayers.length) {
+      // Resolve votes
+      const voteCounts = {}
+      for (const voterId of room.lockedVotes) {
+        const targetId = room.votes[voterId]
+        voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
+      }
+      
+      let maxVotes = 0
+      let mostVoted = []
+      
+      for (const [targetId, count] of Object.entries(voteCounts)) {
+        if (count > maxVotes) {
+          maxVotes = count
+          mostVoted = [targetId]
+        } else if (count === maxVotes) {
+          mostVoted.push(targetId)
+        }
+      }
+      
+      if (mostVoted.length === 1) {
+        // Clear majority
+        const eliminatedId = mostVoted[0]
+        const eliminatedPlayer = room.players.find(p => p.id === eliminatedId)
+        if (eliminatedPlayer) {
+          eliminatedPlayer.eliminated = true
+          room.voteResult = { tie: false, eliminated: eliminatedId }
+          
+          // Next round preparation (Phase 19 handles game over logic)
+          room.round++
+          room.gamePhase = 'CLUE'
+          room.votes = {}
+          room.lockedVotes = []
+          room.voteResult = null
+          
+          // Re-evaluate active players
+          const newActive = getActivePlayers(room)
+          room.turnOrder = shuffle(newActive.map((p) => p.id))
+          room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
+          room.turnIndex = 0
+          room.submittedCluePlayerIds = []
+          skipDisconnectedTurn(room)
+        }
+      } else {
+        // Tie
+        room.voteResult = { tie: true, tiedPlayers: mostVoted }
+        room.votes = {}
+        room.lockedVotes = []
+        // Remain in VOTE phase
+      }
+    }
+    
+    broadcastRoom(room)
+    callback?.({ success: true })
   })
 
   socket.on('disconnect', () => {
