@@ -88,7 +88,8 @@ function PlayerSlider({ value, min, max, onChange, disabled }) {
 
   const syncFromPosition = useCallback((clientX) => {
     if (!trackRef.current) return
-    const rect = trackRef.current.getBoundingClientRect()
+    const trackEl = trackRef.current.querySelector('.player-slider__track') || trackRef.current
+    const rect = trackEl.getBoundingClientRect()
     const raw = (clientX - rect.left) / rect.width
     const clamped = Math.max(0, Math.min(1, raw))
     const stepped = Math.round((clamped * (max - min) + min))
@@ -147,19 +148,19 @@ function PlayerSlider({ value, min, max, onChange, disabled }) {
       >
         <div className="player-slider__track">
           <div className="player-slider__fill" style={{ width: `${percent}%` }} />
+          <div
+            className="player-slider__thumb"
+            style={{ left: `${percent}%` }}
+            role="slider"
+            aria-label="Number of players"
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuenow={shownValue}
+            aria-valuetext={`${shownValue} players`}
+            tabIndex={disabled ? -1 : 0}
+            onKeyDown={handleKeyDown}
+          />
         </div>
-        <div
-          className="player-slider__thumb"
-          style={{ left: `${percent}%` }}
-          role="slider"
-          aria-label="Number of players"
-          aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuenow={shownValue}
-          aria-valuetext={`${shownValue} players`}
-          tabIndex={disabled ? -1 : 0}
-          onKeyDown={handleKeyDown}
-        />
       </div>
       <div className="player-slider__ticks">
         <span>{min}</span>

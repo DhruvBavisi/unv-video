@@ -38,7 +38,7 @@ The landing page uses one cinematic ScrollTrigger. MP4 is fallback only. No auto
   - Reduced player slider thumb size on smaller viewports (`max-width: 760px`/`480px`/`380px`) for sleek mobile handling.
   - Styled Word Category `<select>` input as a sharp rectangle (`border-radius: 0; appearance: none;`) on smaller screens to match Noir theme.
   - Replaced text button with custom responsive, accessible `Reveal Roles` toggle switch with gold accent track and smooth sliding knob.
-  - Full-Screen Mobile Viewport & Top Extension: Added `viewport-fit=cover` to `index.html` and updated `html, body, #root`, `.online-game`, `.online-topbar`, and `.nav` with `min-height: 100dvh` and safe-area-inset top padding so the UI covers the mobile screen 100% from top edge without changing any font styles or placements.
+  - Full-Screen Mobile Viewport & Top Extension: Maintained `viewport-fit=cover` in `index.html` and configured `.hero` with `min-height: 100dvh` so the Hero section seamlessly fills 100% of the mobile viewport height from top edge to bottom edge without shifting hero content/fonts upward or leaving a bottom gap.
 
 ## New Game Design — Authoritative Rules
 
