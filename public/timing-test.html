@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timing Test</title>
+  <style>
+    body { background: #000; color: #fff; font-family: sans-serif; text-align: center; }
+    video { max-width: 90vw; max-height: 70vh; }
+    .controls { margin-top: 20px; }
+    input[type=range] { width: 80vw; }
+    h1 { font-size: 5rem; margin: 10px 0; }
+    button { padding: 10px 20px; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <video id="vid" src="/videos/Undercover_cinematic_30fps.mp4" muted playsinline></video>
+  <div class="controls">
+    <h1 id="time">0.000s</h1>
+    <input type="range" id="scrub" min="0" max="10" step="0.001" value="0">
+    <br><br>
+    <button onclick="document.getElementById('scrub').value = Math.max(0, parseFloat(document.getElementById('scrub').value) - 0.1); update();">-0.1s</button>
+    <button onclick="document.getElementById('scrub').value = Math.max(0, parseFloat(document.getElementById('scrub').value) - 0.05); update();">-0.05s</button>
+    <button onclick="document.getElementById('scrub').value = Math.min(20, parseFloat(document.getElementById('scrub').value) + 0.05); update();">+0.05s</button>
+    <button onclick="document.getElementById('scrub').value = Math.min(20, parseFloat(document.getElementById('scrub').value) + 0.1); update();">+0.1s</button>
+  </div>
+  <script>
+    const vid = document.getElementById('vid');
+    const scrub = document.getElementById('scrub');
+    const time = document.getElementById('time');
+    
+    vid.addEventListener('loadedmetadata', () => {
+      scrub.max = vid.duration;
+    });
+
+    function update() {
+      vid.currentTime = scrub.value;
+      time.innerText = parseFloat(scrub.value).toFixed(3) + 's';
+    }
+
+    scrub.addEventListener('input', update);
+  </script>
+</body>
+</html>
