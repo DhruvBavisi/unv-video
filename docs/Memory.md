@@ -49,7 +49,7 @@ Mr. White receives no word.
 
 ### Role visibility
 - The host has a `Reveal Roles` setting in the lobby.
-- Default is ON to preserve the current role-reveal behavior.
+- Default is OFF to preserve a hidden role state for Civilian and Undercover.
 - When ON, a local Civilian/Undercover may see their own role name, role-specific presentation, and role-specific avatar.
 - When OFF, Civilian and Undercover are still assigned their actual roles but are intentionally not told what their role is.
 - When OFF, hide the local role name, role description, role-specific color, and role-specific avatar; use a neutral presentation.

@@ -18,18 +18,21 @@ const ERROR_MESSAGES = {
   GAME_NOT_ACTIVE: 'Game is not active.',
 }
 
-function LocalRoleSection({ localSecret, gamePhase }) {
-  const role = localSecret?.role || 'CIVILIAN'
+function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
+  const role = localSecret?.role
   const word = localSecret?.word
-  const roleLabel = role.replace('_', ' ')
+  const roleVisible = revealRoles === true && role != null
+  const roleLabel = roleVisible ? role.replace('_', ' ') : '???'
   const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE_PREP'
 
   return (
-    <div className={`clue-panel__identity clue-panel__identity--${role.toLowerCase()}`}>
+    <div className={`clue-panel__identity${roleVisible ? ` clue-panel__identity--${role.toLowerCase()}` : ''}`}>
       <span className="online-kicker">Classified</span>
-      <div className="clue-panel__avatar">
-        <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" />
-      </div>
+      {roleVisible ? (
+        <div className="clue-panel__avatar">
+          <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" />
+        </div>
+      ) : null}
       <h2 className="clue-panel__role-name">{roleLabel}</h2>
       {wordVisible && (
         <div className="clue-panel__secret">
@@ -402,6 +405,7 @@ export default function CluePhase({ state, socketRef }) {
   const {
     sessionId,
     localSecret,
+    configuration,
     clues,
     chat,
     currentTurnPlayerId,
@@ -482,7 +486,7 @@ export default function CluePhase({ state, socketRef }) {
         </aside>
 
         <main className="clue-phase__identity">
-          <LocalRoleSection localSecret={localSecret} gamePhase={gamePhase} />
+          <LocalRoleSection localSecret={localSecret} revealRoles={configuration?.revealRoles} gamePhase={gamePhase} />
         </main>
 
         <div className="clue-phase__input-col">

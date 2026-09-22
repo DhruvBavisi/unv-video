@@ -50,8 +50,10 @@ function makeRoomId() {
   return id
 }
 
-function validateConfig(config) {
-  const { totalPlayers, undercover, mrWhite } = config
+function validateConfig(config, room) {
+  const totalPlayers = config.totalPlayers ?? room.configuration.totalPlayers
+  const undercover = config.undercover ?? room.configuration.undercover
+  const mrWhite = config.mrWhite ?? room.configuration.mrWhite
   if (typeof totalPlayers !== 'number' || totalPlayers < 3 || totalPlayers > 20) return false
   if (typeof undercover !== 'number' || undercover < 1) return false
   if (typeof mrWhite !== 'number' || mrWhite < 0) return false
@@ -546,12 +548,15 @@ io.on('connection', (socket) => {
     if (!room) return
     if (room.hostId !== currentSessionId) return
     if (room.status !== 'LOBBY') return
-    if (!validateConfig(config)) return
+    if (!validateConfig(config, room)) return
     room.configuration = {
-      totalPlayers: config.totalPlayers,
-      undercover: config.undercover,
-      mrWhite: config.mrWhite,
-      civilians: config.totalPlayers - config.undercover - config.mrWhite,
+      ...room.configuration,
+      totalPlayers: config.totalPlayers ?? room.configuration.totalPlayers,
+      undercover: config.undercover ?? room.configuration.undercover,
+      mrWhite: config.mrWhite ?? room.configuration.mrWhite,
+      civilians: config.totalPlayers !== undefined
+        ? config.totalPlayers - (config.undercover ?? room.configuration.undercover) - (config.mrWhite ?? room.configuration.mrWhite)
+        : room.configuration.civilians,
       revealRoles: config.revealRoles ?? room.configuration.revealRoles,
     }
     broadcastRoom(room)

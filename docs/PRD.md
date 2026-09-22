@@ -99,7 +99,7 @@ The host controls:
 - `Reveal Roles` setting
 - starting the investigation
 
-`Reveal Roles` defaults to ON. Only the host can change it, and it becomes locked when the investigation starts. Non-hosts may view the setting but cannot modify it.
+`Reveal Roles` defaults to OFF. Only the host can change it, and it becomes locked when the investigation starts. Non-hosts may view the setting but cannot modify it.
 
 The room ID is reusable.
 

@@ -102,7 +102,7 @@ Requirements:
 - User enters a name when joining.
 - A unique/reusable Room ID identifies the investigation room.
 - Host controls player-count configuration, role distribution, word category, available word-pair settings, and `Reveal Roles`.
-- `Reveal Roles` defaults to ON to preserve the existing behavior.
+- `Reveal Roles` defaults to OFF.
 - Non-hosts can view the current setting but cannot change it.
 - `Reveal Roles` becomes locked when the investigation starts and remains fixed for that investigation.
 - Player count updates automatically.

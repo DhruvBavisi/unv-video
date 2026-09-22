@@ -83,7 +83,7 @@ The authoritative game always assigns every active player one real role:
 The host controls the lobby setting `Reveal Roles`.
 
 ### Default
-`Reveal Roles = ON` by default, preserving the existing role-reveal behavior.
+`Reveal Roles = OFF` by default, preserving a hidden role state where Civilian and Undercover are not told their role.
 
 ### Reveal Roles ON
 - A local Civilian may see their Civilian role identity and role-specific presentation.
