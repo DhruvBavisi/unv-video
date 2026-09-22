@@ -1153,6 +1153,58 @@ video {
 
   .player-slider__thumb { width: 16px; height: 16px; margin-left: -8px; margin-top: -8px; border-width: 2px; }
   .word-category-select { border-radius: 0 !important; border-width: 1px; }
+
+  /* --- Navbar & Hero Mobile Polish --- */
+  .nav {
+    padding-top: max(8px, env(safe-area-inset-top));
+    height: auto;
+    min-height: var(--nav-h);
+  }
+  .nav__inner {
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .nav__brand-name {
+    font-size: 1.15rem;
+  }
+  .nav__brand-sub {
+    font-size: 0.5rem;
+  }
+  .nav__links {
+    display: none;
+  }
+  .nav .btn {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 0.8rem;
+  }
+
+  .hero {
+    padding-bottom: clamp(32px, 6vh, 48px);
+    padding-top: calc(var(--nav-h) + 20px);
+  }
+  .hero__content {
+    padding: 0 20px;
+  }
+  .hero__classified {
+    margin-bottom: 18px;
+  }
+  .hero__title {
+    font-size: clamp(3.2rem, 15vw, 6rem);
+    line-height: 0.88;
+  }
+  .hero__tagline {
+    margin-top: 16px;
+    font-size: clamp(1rem, 4.2vw, 1.4rem);
+  }
+  .hero__actions {
+    margin-top: 28px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .hero__actions .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {

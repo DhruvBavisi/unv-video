@@ -39,6 +39,7 @@ The landing page uses one cinematic ScrollTrigger. MP4 is fallback only. No auto
   - Styled Word Category `<select>` input as a sharp rectangle (`border-radius: 0; appearance: none;`) on smaller screens to match Noir theme.
   - Replaced text button with custom responsive, accessible `Reveal Roles` toggle switch with gold accent track and smooth sliding knob.
   - Full-Screen Mobile Viewport & Top Extension: Maintained `viewport-fit=cover` in `index.html` and configured `.hero` with `min-height: 100dvh` so the Hero section seamlessly fills 100% of the mobile viewport height from top edge to bottom edge without shifting hero content/fonts upward or leaving a bottom gap.
+  - Navbar & Hero Responsive Polish: Applied `padding-top: max(8px, env(safe-area-inset-top))` to `.nav`, hid text links on narrow mobile viewports (< 760px), and styled full-width stacked action buttons and proportional typography for `.hero` so the home page is 100% responsive and clean.
 
 ## New Game Design — Authoritative Rules
 
