@@ -8,7 +8,8 @@
     "dev:server": "node server/server.js",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -23,5 +24,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^10.0.5",
     "vite": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

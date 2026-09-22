@@ -1,0 +1,13 @@
+web:
+  type: web
+  name: undercover-server
+  runtime: node
+  buildCommand: npm install
+  startCommand: node server/server.js
+  envVars:
+    - key: NODE_ENV
+      sync: false
+      value: production
+    - key: PORT
+      sync: false
+      value: 10000
