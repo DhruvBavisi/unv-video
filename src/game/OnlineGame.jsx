@@ -6,6 +6,7 @@ import {
   canStart, createInitialState, gameReducer, localPlayer,
   initSocket, emitCreateRoom, emitJoinRoom, emitLeaveRoom,
   setDispatchRef, MEMBERSHIP,
+  emitAddBots, emitRemoveBots,
 } from './gameState.js'
 import { disconnectSocket } from './socket.js'
 import {
@@ -15,6 +16,8 @@ import {
   MIN_PLAYERS, MAX_PLAYERS,
 } from './roleBalance.js'
 import CluePhase from './CluePhase.jsx'
+import MrWhiteGuessPhase from './MrWhiteGuessPhase.jsx'
+import ResultPhase from './ResultPhase.jsx'
 
 function ErrorState({ children }) {
   return children ? <p className="online-error" role="alert">{children}</p> : null
@@ -464,6 +467,18 @@ export default function OnlineGame({ onExit }) {
     dispatch({ type: 'COPY_ROOM' })
   }, [state.roomId])
 
+  const handleAddBots = useCallback(async () => {
+    if (!socketRef.current) return
+    const result = await emitAddBots(socketRef.current)
+    if (result.error) dispatch({ type: 'SET_ERROR', error: result.error })
+  }, [])
+
+  const handleRemoveBots = useCallback(async () => {
+    if (!socketRef.current) return
+    const result = await emitRemoveBots(socketRef.current)
+    if (result.error) dispatch({ type: 'SET_ERROR', error: result.error })
+  }, [])
+
   let content
 
   if (state.phase === GAME_PHASES.MODE_SELECTION) {
@@ -538,6 +553,15 @@ export default function OnlineGame({ onExit }) {
                 {me?.status === PLAYER_STATUS.READY ? 'Mark not ready' : 'Mark ready'}
               </Button>
             )}
+            {import.meta.env.VITE_DEV_BOTS_ENABLED === 'true' && host && (
+              <div style={{ marginTop: '16px', padding: '16px', border: '1px dashed var(--danger)', borderRadius: '8px' }}>
+                <span className="online-kicker" style={{ color: 'var(--danger)' }}>DEV ONLY</span>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <Button onClick={handleAddBots} style={{ flex: 1, fontSize: '0.8rem' }}>+ ADD 4 BOTS</Button>
+                  <Button onClick={handleRemoveBots} style={{ flex: 1, fontSize: '0.8rem' }}>REMOVE BOTS</Button>
+                </div>
+              </div>
+            )}
           </div>
           <ConfigurationPanel
             configuration={state.configuration}
@@ -563,9 +587,17 @@ export default function OnlineGame({ onExit }) {
         </div>
       </section>
     )
-  } else if (state.phase === GAME_PHASES.CLUE_PHASE || state.phase === GAME_PHASES.VOTE_PHASE) {
+  } else if (state.phase === GAME_PHASES.CLUE_PHASE || state.phase === GAME_PHASES.VOTE_PHASE || state.phase === GAME_PHASES.ELIMINATION_PHASE) {
     content = (
       <CluePhase state={state} socketRef={socketRef} />
+    )
+  } else if (state.phase === GAME_PHASES.MR_WHITE_GUESS_PHASE) {
+    content = (
+      <MrWhiteGuessPhase state={state} socketRef={socketRef} />
+    )
+  } else if (state.phase === GAME_PHASES.RESULT_PHASE) {
+    content = (
+      <ResultPhase state={state} dispatch={dispatch} />
     )
   }
   // Every GAME_PHASES value has an explicit branch above — no fallback needed.

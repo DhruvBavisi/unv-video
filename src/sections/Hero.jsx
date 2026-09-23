@@ -1,4 +1,5 @@
 import Button from '../components/Button.jsx'
+import InstallAppButton from '../components/InstallAppButton.jsx'
 
 const HERO_BACKDROP = '/images/investigation-room/hero-frame.png'
 
@@ -30,6 +31,7 @@ export default function Hero({ onPlay }) {
           <Button as="a" href="#discover" variant="ghost">
             Discover the Game
           </Button>
+          <InstallAppButton />
         </div>
       </div>
     </section>

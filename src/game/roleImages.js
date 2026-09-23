@@ -1,9 +1,9 @@
 const CHARACTER_DIR = '/images/characters'
 
 const ROLE_IMAGES = {
-  CIVILIAN: `${CHARACTER_DIR}/civilian.png`,
-  UNDERCOVER: `${CHARACTER_DIR}/undercover.png`,
-  MR_WHITE: `${CHARACTER_DIR}/mrwhite.png`,
+  CIVILIAN: `${CHARACTER_DIR}/civilian-1.png`,
+  UNDERCOVER: `${CHARACTER_DIR}/undercover-1.png`,
+  MR_WHITE: `${CHARACTER_DIR}/mrwhite-1.png`,
 }
 
 export function getRoleImage(role) {

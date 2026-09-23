@@ -35,7 +35,11 @@ export function createInitialState() {
     gamePhase: null,
     votes: {},
     lockedVotes: [],
+    lockedVotes: [],
     voteResult: null,
+    eliminationResult: null,
+    mrWhiteGuesserId: null,
+    winner: null,
   }
 }
 
@@ -57,9 +61,15 @@ function phaseFromRoom(room, { prevPhase, sessionId, becomingActive }) {
   const isLobby = room.status === 'LOBBY' || room.status === undefined
   const isCluePhase = room.phase === 'ACTIVE' && room.gamePhase === 'CLUE'
   const isVotePhase = room.phase === 'ACTIVE' && room.gamePhase === 'VOTE'
+  const isElimination = room.phase === 'ACTIVE' && room.gamePhase === 'ELIMINATION'
+  const isMrWhiteGuess = room.phase === 'ACTIVE' && room.gamePhase === 'MR_WHITE_GUESS'
+  const isResult = room.phase === 'ACTIVE' && room.gamePhase === 'RESULT'
 
   if (isCluePhase) return GAME_PHASES.CLUE_PHASE
   if (isVotePhase) return GAME_PHASES.VOTE_PHASE
+  if (isElimination) return GAME_PHASES.ELIMINATION_PHASE
+  if (isMrWhiteGuess) return GAME_PHASES.MR_WHITE_GUESS_PHASE
+  if (isResult) return GAME_PHASES.RESULT_PHASE
   if (becomingActive && meInRoom) return GAME_PHASES.CLUE_PHASE
   if (meInRoom && isLobby) return GAME_PHASES.ROOM_LOBBY
   if (prevPhase === GAME_PHASES.ROOM_LOBBY && meInRoom) return GAME_PHASES.ROOM_LOBBY
@@ -99,6 +109,7 @@ export function gameReducer(state, action) {
         sessionId: state.sessionId,
         becomingActive: room.status === 'ACTIVE' && state.gameStatus !== 'ACTIVE',
       })
+      console.log(`[ELIMINATION DEBUG]\nCLIENT PHASE=${newPhase}\nELIMINATION RESULT=`, room.eliminationResult)
 
       const newMembership = !meInRoom
         ? MEMBERSHIP.NONE
@@ -127,6 +138,9 @@ export function gameReducer(state, action) {
         votes: room.votes || {},
         lockedVotes: room.lockedVotes || [],
         voteResult: room.voteResult || null,
+        eliminationResult: room.eliminationResult || null,
+        mrWhiteGuesserId: room.mrWhiteGuesserId || null,
+        winner: room.winner || null,
         error: '',
       }
     }
@@ -170,6 +184,9 @@ export function gameReducer(state, action) {
         votes: {},
         lockedVotes: [],
         voteResult: null,
+        eliminationResult: null,
+        mrWhiteGuesserId: null,
+        winner: null,
       }
     }
     case 'SESSION_RECONNECTED': {
@@ -202,6 +219,9 @@ export function gameReducer(state, action) {
         votes: room.votes || {},
         lockedVotes: room.lockedVotes || [],
         voteResult: room.voteResult || null,
+        eliminationResult: room.eliminationResult || null,
+        mrWhiteGuesserId: room.mrWhiteGuesserId || null,
+        winner: room.winner || null,
         error: '',
       }
     }
@@ -406,6 +426,30 @@ export function emitSelectVote(socket, targetId) {
 export function emitLockVote(socket) {
   return new Promise((resolve) => {
     socket.emit('lock-vote', (response) => {
+      resolve(response)
+    })
+  })
+}
+
+export function emitSubmitMrWhiteGuess(socket, guess) {
+  return new Promise((resolve) => {
+    socket.emit('submit-mr-white-guess', { guess }, (response) => {
+      resolve(response)
+    })
+  })
+}
+
+export function emitAddBots(socket) {
+  return new Promise((resolve) => {
+    socket.emit('add-dev-bots', (response) => {
+      resolve(response)
+    })
+  })
+}
+
+export function emitRemoveBots(socket) {
+  return new Promise((resolve) => {
+    socket.emit('remove-dev-bots', (response) => {
       resolve(response)
     })
   })

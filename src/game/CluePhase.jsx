@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import Button from '../components/Button.jsx'
 import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
+import EliminationOverlay from './EliminationOverlay.jsx'
 
 const ERROR_MESSAGES = {
   NOT_YOUR_TURN: 'It is not your turn.',
@@ -195,42 +196,57 @@ function ClueOrderDisplay({ turnOrder, currentTurnPlayerId, submittedCluePlayerI
   )
 }
 
-function ClueFeed({ clues }) {
+function ClueFeed({ clues, myPlayerId, currentRound }) {
   const containerRef = useRef(null)
-  const endRef = useRef(null)
 
   useEffect(() => {
-    if (endRef.current) {
-      endRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [clues.length])
 
+  // Group clues by roundNumber
+  const cluesByRound = {}
+  clues.forEach((clue) => {
+    const round = clue.roundNumber || currentRound
+    if (!cluesByRound[round]) cluesByRound[round] = []
+    cluesByRound[round].push(clue)
+  })
+
+  const rounds = Object.keys(cluesByRound).sort((a, b) => Number(a) - Number(b))
+
   return (
     <div className="comm-panel__scroll" ref={containerRef}>
-      {clues.length === 0 ? (
-        <p className="comm-panel__empty">No clues yet. The first player will begin shortly.</p>
+      {rounds.length === 0 ? (
+        <>
+          <h2 className="round-heading">Round {String(currentRound).padStart(2, '0')}</h2>
+          <p className="comm-panel__empty">No clues yet. The first player will begin shortly.</p>
+        </>
       ) : (
-        clues.map((clue) => (
-          <div key={clue.id} className="comm-panel__entry">
-            <span className="comm-panel__entry-name">{clue.playerName}</span>
-            <p className="comm-panel__entry-text">&ldquo;{clue.text}&rdquo;</p>
-          </div>
+        rounds.map((roundStr) => (
+          <Fragment key={`round-${roundStr}`}>
+            <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
+            {cluesByRound[roundStr].map((clue) => (
+              <div key={clue.id} className={`comm-panel__entry comm-panel__entry--message ${clue.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}>
+                <span className="comm-panel__entry-name">{clue.playerName}</span>
+                <p className="comm-panel__entry-text">{clue.text.replace(/[“”]/g, '')}</p>
+              </div>
+            ))}
+          </Fragment>
         ))
       )}
-      <div ref={endRef} />
     </div>
   )
 }
 
-function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit }) {
+function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
   const [text, setText] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
   const containerRef = useRef(null)
-  const endRef = useRef(null)
 
   useEffect(() => {
-    if (autoScroll && endRef.current) {
-      endRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (autoScroll && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [chat.length, autoScroll])
 
@@ -259,23 +275,40 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit }) {
   const isGameActive = gamePhase === 'CLUE' || gamePhase === 'VOTE'
   const overLimit = text.length > MAX_CHAT_LENGTH
 
+  // Group chat by roundNumber
+  const chatByRound = {}
+  chat.forEach((msg) => {
+    const round = msg.roundNumber || currentRound
+    if (!chatByRound[round]) chatByRound[round] = []
+    chatByRound[round].push(msg)
+  })
+
+  const rounds = Object.keys(chatByRound).sort((a, b) => Number(a) - Number(b))
+
   return (
     <div className="comm-panel__chat">
       <div className="comm-panel__scroll" ref={containerRef} onScroll={handleScroll}>
-        {chat.length === 0 ? (
-          <p className="comm-panel__empty">No messages yet.</p>
+        {rounds.length === 0 ? (
+          <>
+            <h2 className="round-heading">Round {String(currentRound).padStart(2, '0')}</h2>
+            <p className="comm-panel__empty">No messages yet.</p>
+          </>
         ) : (
-          chat.map((msg) => (
-            <div
-              key={msg.id}
-              className={`comm-panel__entry comm-panel__entry--message ${msg.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}
-            >
-              <span className="comm-panel__entry-name">{msg.playerName}</span>
-              <p className="comm-panel__entry-text">{msg.text}</p>
-            </div>
+          rounds.map((roundStr) => (
+            <Fragment key={`round-${roundStr}`}>
+              <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
+              {chatByRound[roundStr].map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`comm-panel__entry comm-panel__entry--message ${msg.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}
+                >
+                  <span className="comm-panel__entry-name">{msg.playerName}</span>
+                  <p className="comm-panel__entry-text">{msg.text}</p>
+                </div>
+              ))}
+            </Fragment>
           ))
         )}
-        <div ref={endRef} />
       </div>
       <div className="comm-panel__input">
         <input
@@ -347,8 +380,7 @@ function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, 
     }
   }, [chat, clues])
 
-  const roundClues = clues.filter((c) => c.roundNumber === currentRound)
-
+  // We no longer filter by round number so previous round clues remain visible
   return (
     <div className="comm-panel">
       <div className="comm-panel__tabs">
@@ -371,7 +403,7 @@ function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, 
       </div>
       <div className="comm-panel__body">
         <div className={`comm-panel__feed ${activeTab === 'clues' ? 'comm-panel__feed--active' : ''}`}>
-          <ClueFeed clues={roundClues} />
+          <ClueFeed clues={clues} myPlayerId={myPlayerId} currentRound={currentRound} />
         </div>
         <div className={`comm-panel__feed ${activeTab === 'chat' ? 'comm-panel__feed--active' : ''}`}>
           <ChatFeed
@@ -379,6 +411,7 @@ function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, 
             myPlayerId={myPlayerId}
             gamePhase={gamePhase}
             onSubmit={onSendChat}
+            currentRound={currentRound}
           />
         </div>
       </div>
@@ -396,8 +429,14 @@ function getInitials(name) {
     .join('')
 }
 
-function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting }) {
-  const activePlayers = players.filter(p => !p.eliminated && !p.spectator)
+function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting, eliminationResult, onSourceRect }) {
+  const activePlayers = players.filter(p => {
+    // Keep the currently eliminated player in the list so their card can be used as the animation source
+    if (eliminationResult && eliminationResult.playerId === p.id) {
+      return true;
+    }
+    return !p.eliminated && !p.spectator;
+  })
   const myVote = votes[myPlayerId]
   const isLocked = lockedVotes.includes(myPlayerId)
   
@@ -405,6 +444,16 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   Object.values(votes).forEach(targetId => {
     voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
   })
+  
+  const buttonRefs = useRef({})
+  useEffect(() => {
+    if (eliminationResult && eliminationResult.playerId) {
+      const btn = buttonRefs.current[eliminationResult.playerId]
+      if (btn && onSourceRect) {
+        onSourceRect(btn.getBoundingClientRect())
+      }
+    }
+  }, [eliminationResult, onSourceRect])
   
   return (
     <div className="clue-panel__voting">
@@ -414,16 +463,19 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
         {voteResult?.tie && <p className="clue-panel__voting-tie">TIE! A revote is required.</p>}
       </div>
       <div className="clue-panel__voting-list">
-        {activePlayers.map(p => {
+        {activePlayers.map((p, index) => {
           const isMe = p.id === myPlayerId
           const isSelected = p.id === myVote
           const hasLocked = lockedVotes.includes(p.id)
+          const isEliminatedAnim = eliminationResult?.playerId === p.id
           return (
             <button 
               key={p.id}
-              className={`voting-card ${isSelected ? 'voting-card--selected' : ''} ${hasLocked ? 'voting-card--locked' : ''}`}
-              disabled={isLocked || isMe}
+              ref={el => buttonRefs.current[p.id] = el}
+              className={`voting-card ${isSelected ? 'voting-card--selected' : ''} ${hasLocked ? 'voting-card--locked' : ''} ${isEliminatedAnim ? 'voting-card--eliminated-anim' : ''}`}
+              disabled={isLocked || isMe || isEliminatedAnim}
               onClick={() => onSelectVote(p.id)}
+              style={{ animationDelay: `${index * 50}ms` }}
             >
               <span className="voting-card__avatar">{getInitials(p.name)}</span>
               <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
@@ -455,6 +507,7 @@ export default function CluePhase({ state, socketRef }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
   const [chatError, setChatError] = useState('')
+  const [sourceRect, setSourceRect] = useState(null)
   const submitLockRef = useRef(false)
 
   const {
@@ -552,7 +605,7 @@ export default function CluePhase({ state, socketRef }) {
     <section className="clue-phase">
       <div className="clue-phase__grid">
         <aside className="clue-phase__order">
-          {gamePhase === 'VOTE' ? (
+          {gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' ? (
             <VotingPanel
               players={players}
               myPlayerId={sessionId}
@@ -562,6 +615,8 @@ export default function CluePhase({ state, socketRef }) {
               onSelectVote={handleSelectVote}
               onLockVote={handleLockVote}
               submitting={submitting}
+              eliminationResult={state.eliminationResult}
+              onSourceRect={setSourceRect}
             />
           ) : (
             <>
@@ -609,6 +664,13 @@ export default function CluePhase({ state, socketRef }) {
           {chatError && <div className="clue-phase__error" role="alert">{chatError}</div>}
         </aside>
       </div>
+      {gamePhase === 'ELIMINATION' && (
+        <EliminationOverlay 
+          eliminationResult={state.eliminationResult} 
+          configuration={configuration} 
+          sourceRect={sourceRect}
+        />
+      )}
     </section>
   )
 }

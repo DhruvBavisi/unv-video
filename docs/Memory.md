@@ -4,7 +4,7 @@
 > This is not the original requirements document.
 
 ## Current Phase
-**Phase 11 — Core Game Rules, Roles & Word-Pair Data / Online Mode architecture planning**
+**Phase 16B — Elimination Phase / Presentation**
 
 The landing cinematic is treated as complete enough to begin the actual playable game. The existing landing implementation must remain isolated from gameplay state.
 
@@ -148,8 +148,8 @@ No new Room ID is required.
 - Phase 12: Online room/lobby and host controls.
 - Phase 13: private role/word assignment.
 - Phase 14: clues + chat.
-- Phase 15: randomized clue order and round execution.
-- Phase 16: voting, ties, elimination.
+- Phase 15: randomized clue order and round execution. (Completed)
+- Phase 16: voting, ties, elimination. (Completed)
 - Phase 17: Mr. White guess.
 - Phase 18: spectators, mid-game joins, reconnect.
 - Phase 19: win conditions and round loop.
