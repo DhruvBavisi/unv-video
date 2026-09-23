@@ -601,6 +601,21 @@ export default function CluePhase({ state, socketRef }) {
     }
   }, [socketRef])
 
+  const handleContinueElimination = useCallback(async () => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    const { emitContinueElimination } = await import('./gameState.js')
+    const response = await emitContinueElimination(socketRef.current)
+    if (!response?.success) {
+      const msg = ERROR_MESSAGES[response?.error] || 'Failed to continue.'
+      setClueError(msg)
+    }
+    submitLockRef.current = false
+    setSubmitting(false)
+  }, [socketRef])
+
+  // Get current state
   return (
     <section className="clue-phase">
       <div className="clue-phase__grid">
@@ -669,6 +684,8 @@ export default function CluePhase({ state, socketRef }) {
           eliminationResult={state.eliminationResult} 
           configuration={configuration} 
           sourceRect={sourceRect}
+          onContinue={handleContinueElimination}
+          submitting={submitting}
         />
       )}
     </section>

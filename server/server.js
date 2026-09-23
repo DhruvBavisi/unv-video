@@ -907,50 +907,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
             activePlayersRemaining,
           })
 
-          const targetRoomId = room.id
-          setTimeout(() => {
-            const currentRoom = rooms.get(targetRoomId)
-            if (!currentRoom || currentRoom.gamePhase !== 'ELIMINATION') return
-            
-            if (eliminatedPlayer.role === 'MR_WHITE') {
-              console.log('[ELIMINATION → MR_WHITE_GUESS]', { roomId: currentRoom.id, player: eliminatedId })
-              currentRoom.gamePhase = 'MR_WHITE_GUESS'
-              currentRoom.mrWhiteGuesserId = eliminatedId
-              currentRoom.votes = {}
-              currentRoom.lockedVotes = []
-            } else {
-              // Minimal Win Check
-              const active = getActivePlayers(currentRoom)
-              const undercovers = active.filter(p => p.role === 'UNDERCOVER').length
-              const civilians = active.filter(p => p.role === 'CIVILIAN').length
-              const mrWhites = active.filter(p => p.role === 'MR_WHITE').length
-
-              if (undercovers > civilians) {
-                currentRoom.gamePhase = 'RESULT'
-                currentRoom.winner = 'UNDERCOVER'
-              } else if (undercovers === 0 && mrWhites === 0) {
-                currentRoom.gamePhase = 'RESULT'
-                currentRoom.winner = 'CIVILIAN'
-              } else {
-                console.log('[ELIMINATION → NEXT]', { roomId: currentRoom.id, round: currentRoom.round + 1, activePlayers: active.length })
-                // Next round preparation
-                currentRoom.round++
-                currentRoom.gamePhase = 'CLUE'
-                currentRoom.votes = {}
-                currentRoom.lockedVotes = []
-                currentRoom.voteResult = null
-                currentRoom.eliminationResult = null
-                
-                // Re-evaluate active players for new round
-                currentRoom.turnOrder = shuffle(active.map((p) => p.id))
-                currentRoom.currentTurnPlayerId = currentRoom.turnOrder.length > 0 ? currentRoom.turnOrder[0] : null
-                currentRoom.turnIndex = 0
-                currentRoom.submittedCluePlayerIds = []
-                skipDisconnectedTurn(currentRoom)
-              }
-            }
-            broadcastRoom(currentRoom)
-          }, 6000)
+          broadcastRoom(room)
         }
       } else {
         // Tie
@@ -1008,6 +965,62 @@ ELIMINATION RESULT=`, room.eliminationResult)
       }
       room.chat.push(systemMessage)
       io.to(currentRoomId).emit('chat-message', systemMessage)
+    }
+    
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('continue-elimination', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'ELIMINATION') return callback?.({ success: false, error: 'NOT_ELIMINATION_PHASE' })
+
+    // Only allow the host to proceed, or allow anyone to proceed? 
+    // To ensure the game doesn't get stuck if the host disconnects, 
+    // it's safer if anyone can trigger this, but since it's a shared state, 
+    // we just let the first click proceed the game.
+    
+    const eliminatedId = room.eliminationResult?.playerId
+    const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
+    if (!eliminatedPlayer) return callback?.({ success: false, error: 'NO_ELIMINATED_PLAYER' })
+
+    if (eliminatedPlayer.role === 'MR_WHITE') {
+      console.log('[ELIMINATION → MR_WHITE_GUESS]', { roomId: room.id, player: eliminatedId })
+      room.gamePhase = 'MR_WHITE_GUESS'
+      room.mrWhiteGuesserId = eliminatedId
+      room.votes = {}
+      room.lockedVotes = []
+    } else {
+      // Minimal Win Check
+      const active = getActivePlayers(room)
+      const undercovers = active.filter(p => p.role === 'UNDERCOVER').length
+      const civilians = active.filter(p => p.role === 'CIVILIAN').length
+      const mrWhites = active.filter(p => p.role === 'MR_WHITE').length
+
+      if (undercovers > civilians) {
+        room.gamePhase = 'RESULT'
+        room.winner = 'UNDERCOVER'
+      } else if (undercovers === 0 && mrWhites === 0) {
+        room.gamePhase = 'RESULT'
+        room.winner = 'CIVILIAN'
+      } else {
+        console.log('[ELIMINATION → NEXT]', { roomId: room.id, round: room.round + 1, activePlayers: active.length })
+        // Next round preparation
+        room.round++
+        room.gamePhase = 'CLUE'
+        room.votes = {}
+        room.lockedVotes = []
+        room.voteResult = null
+        room.eliminationResult = null
+        
+        // Re-evaluate active players for new round
+        room.turnOrder = shuffle(active.map((p) => p.id))
+        room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
+        room.turnIndex = 0
+        room.submittedCluePlayerIds = []
+        skipDisconnectedTurn(room)
+      }
     }
     
     broadcastRoom(room)

@@ -439,6 +439,14 @@ export function emitSubmitMrWhiteGuess(socket, guess) {
   })
 }
 
+export function emitContinueElimination(socket) {
+  return new Promise((resolve) => {
+    socket.emit('continue-elimination', (response) => {
+      resolve(response)
+    })
+  })
+}
+
 export function emitAddBots(socket) {
   return new Promise((resolve) => {
     socket.emit('add-dev-bots', (response) => {
