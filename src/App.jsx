@@ -7,6 +7,7 @@ import Investigation from './sections/Investigation.jsx'
 import FinalCTA from './sections/FinalCTA.jsx'
 import OnlineGame from './game/OnlineGame.jsx'
 import GameEntryTransition from './game/GameEntryTransition.jsx'
+import { readIdentity } from './game/identity.js'
 
 function Transition({ text }) {
   return (
@@ -22,9 +23,17 @@ function Transition({ text }) {
   )
 }
 
+function getInitialGameView() {
+  const { resumeToken, roomId } = readIdentity()
+  if (resumeToken && roomId) {
+    return 'game'
+  }
+  return 'landing'
+}
+
 export default function App() {
   const [isAssetTest, setIsAssetTest] = useState(false)
-  const [gameView, setGameView] = useState('landing')
+  const [gameView, setGameView] = useState(getInitialGameView())
 
   useEffect(() => {
     const sync = () => setIsAssetTest(window.location.hash === '#asset-test')

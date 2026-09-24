@@ -194,7 +194,6 @@ function disconnectPlayer(sessionId) {
   }
   if (room.players.some((p) => p.isConnected)) {
     reassignHostIfNeeded(room)
-    skipDisconnectedTurn(room)
   }
   broadcastRoom(room)
   return { roomId, room }
@@ -236,6 +235,25 @@ function getActivePlayers(room) {
   return room.players.filter((p) => !p.eliminated && !p.spectator && p.status === 'PLAYING')
 }
 
+function evaluateWinCondition(room) {
+  const active = getActivePlayers(room)
+  const undercovers = active.filter(p => p.role === 'UNDERCOVER').length
+  const civilians = active.filter(p => p.role === 'CIVILIAN').length
+  const mrWhites = active.filter(p => p.role === 'MR_WHITE').length
+
+  if (civilians < undercovers + mrWhites) {
+    room.gamePhase = 'RESULT'
+    room.winner = 'UNDERCOVER'
+    return true
+  } else if (undercovers === 0 && mrWhites === 0) {
+    room.gamePhase = 'RESULT'
+    room.winner = 'CIVILIAN'
+    return true
+  }
+  
+  return false
+}
+
 function shuffle(array) {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
@@ -254,7 +272,6 @@ function startCluePhase(room) {
   room.turnOrder = shuffle(active.map((p) => p.id))
   room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
   room.turnIndex = 0
-  skipDisconnectedTurn(room)
 
   console.log('[CLUE] phase started', {
     roomId: room.id,
@@ -322,31 +339,6 @@ function reassignHostIfNeeded(room) {
   }
 }
 
-// If the CURRENT turn holder is disconnected, skip to the next connected
-// player (respecting same-round single submission) or close the phase.
-function skipDisconnectedTurn(room) {
-  if (room.gamePhase !== 'CLUE') return
-  const holder = room.players.find((p) => p.id === room.currentTurnPlayerId)
-  if (holder && holder.isConnected) return
-
-  const n = room.turnOrder.length
-  if (n === 0) return
-  const startIdx = Math.max(0, room.turnOrder.indexOf(room.currentTurnPlayerId))
-
-  for (let i = 1; i <= n; i++) {
-    const idx = (startIdx + i) % n
-    const pid = room.turnOrder[idx]
-    const p = room.players.find((x) => x.id === pid)
-    if (p && p.isConnected && !p.eliminated && !p.spectator && !room.submittedCluePlayerIds.includes(pid)) {
-      room.currentTurnPlayerId = pid
-      room.turnIndex = idx
-      return
-    }
-  }
-
-  // No reachable player left — the round is over.
-  startVotePhase(room)
-}
 
 // Rooms where every player has been disconnected past the grace window,
 // plus stale session-socket mappings, are removed so abandoned games do
@@ -375,12 +367,18 @@ io.on('connection', (socket) => {
   let currentSessionId = null
   let currentRoomId = null
 
-  socket.on('register', ({ sessionId, resumeToken }) => {
+  socket.on('register', ({ sessionId, resumeToken, roomId: clientRoomId }) => {
     if (!sessionId || typeof sessionId !== 'string') return
     currentSessionId = sessionId
 
     const { roomId, room } = findRoomByPlayer(sessionId)
     if (!room) {
+      socket.emit('session-no-room')
+      return
+    }
+
+    if (clientRoomId && clientRoomId !== roomId) {
+      console.warn('[AUTH] register rejected - room mismatch', { sessionId, clientRoomId, roomId })
       socket.emit('session-no-room')
       return
     }
@@ -406,8 +404,7 @@ io.on('connection', (socket) => {
     player.isConnected = true
     player.disconnectedAt = null
     reassignHostIfNeeded(room)
-    skipDisconnectedTurn(room)
-    socket.emit('session-token', { resumeToken: player.resumeToken })
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId })
     console.log('[ROOM] session reconnected', { sessionId, roomId })
     socket.emit('session-reconnected', getPublicRoomState(room))
 
@@ -505,7 +502,6 @@ io.on('connection', (socket) => {
 
     const room = rooms.get(normalizedId)
     if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
-    if (room.status !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
 
     const existing = room.players.find((p) => p.id === sessionId)
     if (existing) {
@@ -519,13 +515,23 @@ io.on('connection', (socket) => {
       ensureResumeToken(existing)
       const publicState = getPublicRoomState(room)
       console.log('[ROOM] join successful (rejoin)', { roomId: normalizedId, playerId: sessionId })
-      socket.emit('session-token', { resumeToken: existing.resumeToken })
+      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId })
+
+      if (room.wordPair) {
+        const role = existing.role || null
+        const word = wordForRole(role, room.wordPair)
+        const roleToReveal = (room.configuration.revealRoles || role === 'MR_WHITE') ? role : null
+        socket.emit('role-assigned', { role: roleToReveal, word })
+      }
+
       callback?.({ room: publicState, resumeToken: existing.resumeToken })
       broadcastRoom(room)
       return
     }
 
-    if (room.players.length >= room.configuration.totalPlayers) {
+    const isMidGame = room.status !== 'LOBBY'
+
+    if (!isMidGame && room.players.length >= room.configuration.totalPlayers) {
       return callback?.({ error: 'ROOM_FULL' })
     }
     if (room.players.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -537,11 +543,11 @@ io.on('connection', (socket) => {
       name: trimmed,
       isHost: false,
       isConnected: true,
-      status: 'JOINED',
+      status: isMidGame ? 'SPECTATING' : 'JOINED',
       role: null,
       word: null,
       eliminated: false,
-      spectator: false,
+      spectator: isMidGame,
       isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
       resumeToken: crypto.randomUUID(),
     })
@@ -552,7 +558,7 @@ io.on('connection', (socket) => {
     connectPlayer(socket, sessionId)
     const publicState = getPublicRoomState(room)
     console.log('[ROOM] join successful', { roomId: normalizedId, playerId: sessionId })
-    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken })
+    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId })
     callback?.({ room: publicState, resumeToken: room.players[room.players.length - 1].resumeToken })
     broadcastRoom(room)
   })
@@ -941,20 +947,6 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.gamePhase = 'RESULT'
       room.winner = 'MR_WHITE'
     } else {
-      // Incorrect guess: Next round preparation
-      room.round++
-      room.gamePhase = 'CLUE'
-      room.votes = {}
-      room.lockedVotes = []
-      room.voteResult = null
-      
-      const newActive = getActivePlayers(room)
-      room.turnOrder = shuffle(newActive.map((p) => p.id))
-      room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
-      room.turnIndex = 0
-      room.submittedCluePlayerIds = []
-      skipDisconnectedTurn(room)
-
       chatIdCounter++
       const systemMessage = {
         id: `msg-${chatIdCounter}`,
@@ -964,7 +956,23 @@ ELIMINATION RESULT=`, room.eliminationResult)
         sentAt: Date.now()
       }
       room.chat.push(systemMessage)
-      io.to(currentRoomId).emit('chat-message', systemMessage)
+      global.io.to(currentRoomId).emit('chat-message', systemMessage)
+
+      if (!evaluateWinCondition(room)) {
+        // Next round preparation
+        room.round++
+        room.gamePhase = 'CLUE'
+        room.votes = {}
+        room.lockedVotes = []
+        room.voteResult = null
+        room.eliminationResult = null
+        
+        const newActive = getActivePlayers(room)
+        room.turnOrder = shuffle(newActive.map((p) => p.id))
+        room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
+        room.turnIndex = 0
+        room.submittedCluePlayerIds = []
+      }
     }
     
     broadcastRoom(room)
@@ -992,19 +1000,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.votes = {}
       room.lockedVotes = []
     } else {
-      // Minimal Win Check
-      const active = getActivePlayers(room)
-      const undercovers = active.filter(p => p.role === 'UNDERCOVER').length
-      const civilians = active.filter(p => p.role === 'CIVILIAN').length
-      const mrWhites = active.filter(p => p.role === 'MR_WHITE').length
-
-      if (undercovers > civilians) {
-        room.gamePhase = 'RESULT'
-        room.winner = 'UNDERCOVER'
-      } else if (undercovers === 0 && mrWhites === 0) {
-        room.gamePhase = 'RESULT'
-        room.winner = 'CIVILIAN'
-      } else {
+      if (!evaluateWinCondition(room)) {
+        const active = getActivePlayers(room)
         console.log('[ELIMINATION → NEXT]', { roomId: room.id, round: room.round + 1, activePlayers: active.length })
         // Next round preparation
         room.round++
@@ -1019,7 +1016,6 @@ ELIMINATION RESULT=`, room.eliminationResult)
         room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
         room.turnIndex = 0
         room.submittedCluePlayerIds = []
-        skipDisconnectedTurn(room)
       }
     }
     

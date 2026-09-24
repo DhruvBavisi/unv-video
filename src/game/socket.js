@@ -18,8 +18,8 @@ export function connectSocket(sessionId) {
   })
 
   socket.on('connect', () => {
-    const { sessionId: storedId, resumeToken } = readIdentity()
-    socket.emit('register', { sessionId: storedId || sessionId, resumeToken })
+    const { sessionId: storedId, resumeToken, roomId } = readIdentity()
+    socket.emit('register', { sessionId: storedId || sessionId, resumeToken, roomId })
   })
 
   return socket

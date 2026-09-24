@@ -312,8 +312,8 @@ export function initSocket(sid) {
       dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word })
     })
 
-    socket.on('session-token', ({ resumeToken }) => {
-      setResumeToken(resumeToken)
+    socket.on('session-token', ({ resumeToken, roomId }) => {
+      setResumeToken(resumeToken, roomId)
     })
 
     socket.on('chat-message', (message) => {
@@ -342,7 +342,7 @@ export function setDispatchRef(dispatch) {
 export function emitCreateRoom(socket, sessionId, playerName) {
   return new Promise((resolve) => {
     socket.emit('create-room', { sessionId, resumeToken: readIdentity().resumeToken, playerName }, (response) => {
-      if (response.resumeToken) setResumeToken(response.resumeToken)
+      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId)
       if (response.error) {
         const errorMessages = {
           INVALID_NAME: 'IDENTITY REQUIRED — enter a valid investigator name.',
@@ -362,7 +362,7 @@ export function emitJoinRoom(socket, sessionId, roomId, playerName) {
   return new Promise((resolve) => {
     socket.emit('join-room', { sessionId, resumeToken: readIdentity().resumeToken, roomId, playerName }, (response) => {
       console.log('[ROOM] ROOM_JOINED received', response)
-      if (response.resumeToken) setResumeToken(response.resumeToken)
+      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId)
       if (response.error) {
         const errorMessages = {
           ROOM_NOT_FOUND: 'CASE FILE NOT FOUND — check the room ID.',
