@@ -43,3 +43,17 @@ export function clearIdentity() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROOM_KEY)
 }
+
+// Clear room-specific credentials but keep the device session id.
+// Used when a reconnect fails (room destroyed, session expired, etc.)
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(ROOM_KEY)
+}
+
+// Returns true if there is a persisted room session worth attempting to restore.
+export function hasPendingSession() {
+  const resumeToken = localStorage.getItem(TOKEN_KEY)
+  const roomId = localStorage.getItem(ROOM_KEY)
+  return !!(resumeToken && roomId)
+}

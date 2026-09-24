@@ -128,6 +128,7 @@ function getPublicRoomState(room) {
     voteResult: room.voteResult || null,
     eliminationResult: room.eliminationResult || null,
     mrWhiteGuesserId: room.mrWhiteGuesserId || null,
+    mrWhiteLiveGuess: room.mrWhiteLiveGuess || '',
     winner: room.winner || null,
     clues: (room.clues || []).map((c) => ({
       id: c.id,
@@ -153,6 +154,9 @@ function getPublicRoomState(room) {
       status: p.status,
       eliminated: p.eliminated,
       spectator: p.spectator,
+      role: p.eliminated ? p.role : undefined,
+      playAgain: !!p.playAgain,
+      continueAck: !!p.continueAck,
     })),
     configuration: { ...room.configuration },
     category: room.category,
@@ -192,6 +196,21 @@ function disconnectPlayer(sessionId) {
     player.isConnected = false
     player.disconnectedAt = Date.now()
   }
+
+  // Check if the room should be destroyed because only bots remain connected
+  // (all real players have disconnected / left)
+  const realPlayers = room.players.filter(p => !p.isBot)
+  const allRealDisconnected = realPlayers.length > 0 && realPlayers.every(p => !p.isConnected)
+  if (realPlayers.length === 0 || allRealDisconnected) {
+    // If zero real players, destroy immediately
+    if (realPlayers.length === 0) {
+      checkAndDestroyEmptyRoom(roomId, room)
+      return { roomId: null, room: null }
+    }
+    // If real players exist but all disconnected, let reapAbandonedRooms handle
+    // the grace period — just broadcast the updated state for now
+  }
+
   if (room.players.some((p) => p.isConnected)) {
     reassignHostIfNeeded(room)
   }
@@ -218,17 +237,33 @@ function removePlayer(sessionId) {
   room.players.splice(idx, 1)
   sessionSockets.delete(sessionId)
 
-  if (room.players.length === 0) {
-    rooms.delete(roomId)
-    io.to(roomId).emit('room-closed', { message: 'Room closed — all players left.' })
+  // Check if room should be destroyed (no players at all, or only bots remain)
+  if (checkAndDestroyEmptyRoom(roomId, room)) {
     return { roomId: null, room: null }
   }
 
   if (wasHost) {
-    room.players[0].isHost = true
-    room.hostId = room.players[0].id
+    const nextHost = room.players.find(p => p.isConnected && !p.isBot) || room.players[0]
+    if (nextHost) {
+      nextHost.isHost = true
+      room.hostId = nextHost.id
+    }
   }
   return { roomId, room }
+}
+
+// Destroy a room if it has zero real (non-bot) players.
+// Returns true if the room was destroyed.
+function checkAndDestroyEmptyRoom(roomId, room) {
+  if (!room) return false
+  const realPlayers = room.players.filter(p => !p.isBot)
+  if (realPlayers.length === 0) {
+    console.log('[ROOM] destroying empty room (no real players)', { roomId })
+    rooms.delete(roomId)
+    io.to(roomId).emit('room-closed', { message: 'Room closed — all players left.' })
+    return true
+  }
+  return false
 }
 
 function getActivePlayers(room) {
@@ -241,9 +276,17 @@ function evaluateWinCondition(room) {
   const civilians = active.filter(p => p.role === 'CIVILIAN').length
   const mrWhites = active.filter(p => p.role === 'MR_WHITE').length
 
-  if (civilians < undercovers + mrWhites) {
+  const imposters = undercovers + mrWhites
+
+  if ((civilians <= 1 && imposters > 0) || civilians < imposters) {
     room.gamePhase = 'RESULT'
-    room.winner = 'UNDERCOVER'
+    if (undercovers > 0 && mrWhites > 0) {
+      room.winner = 'BOTH_IMPOSTERS'
+    } else if (undercovers > 0) {
+      room.winner = 'UNDERCOVER'
+    } else {
+      room.winner = 'MR_WHITE'
+    }
     return true
   } else if (undercovers === 0 && mrWhites === 0) {
     room.gamePhase = 'RESULT'
@@ -350,9 +393,13 @@ function reapAbandonedRooms() {
       rooms.delete(roomId)
       continue
     }
+    // Destroy rooms with only bots remaining
+    if (checkAndDestroyEmptyRoom(roomId, room)) continue
+    // Destroy rooms where all players have been disconnected past the grace window
     if (room.players.some((p) => p.isConnected)) continue
     const allStale = room.players.every((p) => (p.disconnectedAt || 0) > 0 && now - p.disconnectedAt >= RECONNECT_GRACE_MS)
     if (!allStale) continue
+    console.log('[ROOM] reaping abandoned room', { roomId })
     rooms.delete(roomId)
     io.to(roomId).emit('room-closed', { message: 'Room closed — all players disconnected.' })
   }
@@ -531,7 +578,7 @@ io.on('connection', (socket) => {
 
     const isMidGame = room.status !== 'LOBBY'
 
-    if (!isMidGame && room.players.length >= room.configuration.totalPlayers) {
+    if (!isMidGame && room.players.length >= 20) {
       return callback?.({ error: 'ROOM_FULL' })
     }
     if (room.players.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -560,6 +607,15 @@ io.on('connection', (socket) => {
     console.log('[ROOM] join successful', { roomId: normalizedId, playerId: sessionId })
     socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId })
     callback?.({ room: publicState, resumeToken: room.players[room.players.length - 1].resumeToken })
+    if (room.status === 'LOBBY') {
+      const newTotal = Math.max(3, room.players.length)
+      const defConfig = getDefaultConfig(newTotal)
+      room.configuration.totalPlayers = defConfig.totalPlayers
+      room.configuration.undercover = defConfig.undercover
+      room.configuration.mrWhite = defConfig.mrWhite
+      room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+    }
+
     broadcastRoom(room)
   })
 
@@ -580,11 +636,86 @@ io.on('connection', (socket) => {
     socket.leave(roomId)
 
     if (removed.room) {
+      if (removed.room.status === 'LOBBY') {
+        const newTotal = Math.max(3, removed.room.players.length)
+        const defConfig = getDefaultConfig(newTotal)
+        removed.room.configuration.totalPlayers = defConfig.totalPlayers
+        removed.room.configuration.undercover = defConfig.undercover
+        removed.room.configuration.mrWhite = defConfig.mrWhite
+        removed.room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+      }
       broadcastRoom(removed.room)
     }
 
     callback?.({ success: true })
     socket.emit('leave-confirmed')
+  })
+
+  socket.on('play-again', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.status !== 'ACTIVE' || room.gamePhase !== 'RESULT') return callback?.({ success: false, error: 'GAME_NOT_ENDED' })
+
+    const player = room.players.find(p => p.id === currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    
+    const isFirstToPlayAgain = room.players.filter(p => p.playAgain).length === 0
+
+    player.playAgain = true
+    player.status = player.isHost ? 'READY' : 'JOINED'
+    if (player.spectator) {
+      player.spectator = false
+    }
+
+    if (isFirstToPlayAgain) {
+      const newTotal = Math.max(3, room.players.length)
+      const defConfig = getDefaultConfig(newTotal)
+      room.configuration.totalPlayers = defConfig.totalPlayers
+      room.configuration.undercover = defConfig.undercover
+      room.configuration.mrWhite = defConfig.mrWhite
+      room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+    }
+
+    const requiredPlayers = room.players.filter(p => p.isConnected && !p.isBot)
+    const allOptedIn = requiredPlayers.length > 0 && requiredPlayers.every(p => p.playAgain)
+
+    if (allOptedIn) {
+      room.status = 'LOBBY'
+      room.phase = 'LOBBY'
+      room.gamePhase = 'LOBBY'
+      room.winner = null
+      room.round = 1
+      room.wordPair = null
+      room.clues = []
+      room.votes = {}
+      room.lockedVotes = []
+      room.voteResult = null
+      room.eliminationResult = null
+      room.mrWhiteGuesserId = null
+      room.mrWhiteLiveGuess = ''
+      room.pendingMrWhiteElimination = null
+      room.chat = []
+      room.turnOrder = []
+      room.currentTurnPlayerId = null
+      room.turnIndex = 0
+      room.submittedCluePlayerIds = []
+
+      room.players.forEach(p => {
+        if (!p.playAgain) {
+          p.status = p.isHost ? 'READY' : 'JOINED'
+        }
+        p.eliminated = false
+        p.spectator = false
+        p.role = null
+        p.word = null
+        p.playAgain = false
+        p.continueAck = false
+      })
+    }
+
+    broadcastRoom(room)
+    callback?.({ success: true })
   })
 
   socket.on('toggle-ready', () => {
@@ -891,6 +1022,7 @@ io.on('connection', (socket) => {
             playerName: eliminatedPlayer.name,
             role: eliminatedPlayer.role,
             voteCount: maxVotes,
+            startedAt: Date.now(),
           }
           
           console.log(`[ELIMINATION DEBUG]
@@ -914,6 +1046,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
           })
 
           broadcastRoom(room)
+          
+          const isMrWhite = eliminatedPlayer.role === 'MR_WHITE'
+          const delay = isMrWhite ? 5000 : 6500
+          
+          setTimeout(() => {
+            advanceFromElimination(room.id)
+          }, delay)
         }
       } else {
         // Tie
@@ -929,10 +1068,26 @@ ELIMINATION RESULT=`, room.eliminationResult)
     callback?.({ success: true })
   })
 
+  // Mr White sends live typing updates while guessing
+  socket.on('mr-white-live-guess', ({ text }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'MR_WHITE_GUESS') return callback?.({ success: false, error: 'NOT_MR_WHITE_GUESS_PHASE' })
+    if (currentSessionId !== room.mrWhiteGuesserId) return callback?.({ success: false, error: 'NOT_MR_WHITE' })
+    const player = room.players.find(p => p.id === currentSessionId)
+    if (!player || player.role !== 'MR_WHITE') return callback?.({ success: false, error: 'INVALID_ROLE' })
+    if (room.mrWhiteGuessSubmitted) return callback?.({ success: false, error: 'ALREADY_SUBMITTED' })
+    const sanitized = String(text || '').slice(0, 40)
+    room.mrWhiteLiveGuess = sanitized
+    io.to(currentRoomId).emit('mr-white-live-guess-update', { text: sanitized })
+    callback?.({ success: true })
+  })
+
   socket.on('submit-mr-white-guess', ({ guess }, callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = rooms.get(currentRoomId)
     if (!room || room.gamePhase !== 'MR_WHITE_GUESS') return callback?.({ success: false, error: 'NOT_MR_WHITE_GUESS_PHASE' })
+    if (room.mrWhiteGuessSubmitted) return callback?.({ success: false, error: 'ALREADY_SUBMITTED' })
     
     if (currentSessionId !== room.mrWhiteGuesserId) return callback?.({ success: false, error: 'NOT_MR_WHITE' })
     
@@ -943,9 +1098,17 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!cleanGuess) return callback?.({ success: false, error: 'EMPTY_GUESS' })
     const civilianWord = String(room.wordPair?.civilianWord || '').toLowerCase()
     
+    room.mrWhiteGuessSubmitted = true
+    room.mrWhiteLiveGuess = cleanGuess
+    broadcastRoom(room)
+
     if (cleanGuess === civilianWord) {
       room.gamePhase = 'RESULT'
       room.winner = 'MR_WHITE'
+      room.eliminationResult = null
+      room.mrWhiteGuessSubmitted = false
+      room.mrWhiteLiveGuess = ''
+      broadcastRoom(room)
     } else {
       chatIdCounter++
       const systemMessage = {
@@ -956,54 +1119,85 @@ ELIMINATION RESULT=`, room.eliminationResult)
         sentAt: Date.now()
       }
       room.chat.push(systemMessage)
-      global.io.to(currentRoomId).emit('chat-message', systemMessage)
+      io.to(currentRoomId).emit('chat-message', systemMessage)
 
-      if (!evaluateWinCondition(room)) {
-        // Next round preparation
-        room.round++
-        room.gamePhase = 'CLUE'
-        room.votes = {}
-        room.lockedVotes = []
-        room.voteResult = null
-        room.eliminationResult = null
-        
-        const newActive = getActivePlayers(room)
-        room.turnOrder = shuffle(newActive.map((p) => p.id))
-        room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
-        room.turnIndex = 0
-        room.submittedCluePlayerIds = []
+      // Trigger Mr. White's exit animation on clients after wrong guess
+      const pendingElim = room.pendingMrWhiteElimination || {
+        playerId: player.id,
+        playerName: player.name,
+        role: player.role,
       }
+
+      room.gamePhase = 'ELIMINATION'
+      room.eliminationResult = {
+        ...pendingElim,
+        startedAt: Date.now(),
+        isMrWhiteWrongGuessExit: true,
+        submittedGuess: cleanGuess,
+      }
+      room.mrWhiteGuessSubmitted = false
+      room.mrWhiteLiveGuess = ''
+      
+      broadcastRoom(room)
+
+      setTimeout(() => {
+        advanceAfterMrWhiteWrongGuess(room.id)
+      }, 1800)
     }
     
-    broadcastRoom(room)
     callback?.({ success: true })
   })
 
-  socket.on('continue-elimination', (callback) => {
-    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
-    const room = rooms.get(currentRoomId)
-    if (!room || room.gamePhase !== 'ELIMINATION') return callback?.({ success: false, error: 'NOT_ELIMINATION_PHASE' })
+  function advanceAfterMrWhiteWrongGuess(roomId) {
+    const room = rooms.get(roomId)
+    if (!room) return
+    room.eliminationResult = null
+    room.pendingMrWhiteElimination = null
 
-    // Only allow the host to proceed, or allow anyone to proceed? 
-    // To ensure the game doesn't get stuck if the host disconnects, 
-    // it's safer if anyone can trigger this, but since it's a shared state, 
-    // we just let the first click proceed the game.
+    if (!evaluateWinCondition(room)) {
+      // Next round preparation
+      room.round++
+      room.gamePhase = 'CLUE'
+      room.votes = {}
+      room.lockedVotes = []
+      room.voteResult = null
+      
+      const newActive = getActivePlayers(room)
+      room.turnOrder = shuffle(newActive.map((p) => p.id))
+      room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
+      room.turnIndex = 0
+      room.submittedCluePlayerIds = []
+    }
+    broadcastRoom(room)
+  }
+
+  // Auto-advances from ELIMINATION phase. Called via timeout.
+  function advanceFromElimination(roomId) {
+    const room = rooms.get(roomId)
+    if (!room || room.gamePhase !== 'ELIMINATION') return
     
     const eliminatedId = room.eliminationResult?.playerId
     const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
-    if (!eliminatedPlayer) return callback?.({ success: false, error: 'NO_ELIMINATED_PLAYER' })
-
+    if (!eliminatedPlayer) return
+    
     if (eliminatedPlayer.role === 'MR_WHITE') {
-      console.log('[ELIMINATION → MR_WHITE_GUESS]', { roomId: room.id, player: eliminatedId })
+      console.log('[ELIMINATION MR_WHITE_GUESS]', { roomId: room.id, player: eliminatedId })
+      // Keep eliminationResult so clients render the guess UI inside the overlay
+      room.eliminationResult = {
+        ...room.eliminationResult,
+        isMrWhiteGuessing: true,
+      }
+      room.pendingMrWhiteElimination = room.eliminationResult
       room.gamePhase = 'MR_WHITE_GUESS'
       room.mrWhiteGuesserId = eliminatedId
+      room.mrWhiteLiveGuess = ''
+      room.mrWhiteGuessSubmitted = false
       room.votes = {}
       room.lockedVotes = []
     } else {
       if (!evaluateWinCondition(room)) {
         const active = getActivePlayers(room)
-        console.log('[ELIMINATION → NEXT]', { roomId: room.id, round: room.round + 1, activePlayers: active.length })
-        // Next round preparation
+        console.log('[ELIMINATION NEXT]', { roomId: room.id, round: room.round + 1, activePlayers: active.length })
         room.round++
         room.gamePhase = 'CLUE'
         room.votes = {}
@@ -1011,17 +1205,16 @@ ELIMINATION RESULT=`, room.eliminationResult)
         room.voteResult = null
         room.eliminationResult = null
         
-        // Re-evaluate active players for new round
         room.turnOrder = shuffle(active.map((p) => p.id))
         room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
         room.turnIndex = 0
         room.submittedCluePlayerIds = []
+      } else {
+        room.eliminationResult = null
       }
     }
-    
     broadcastRoom(room)
-    callback?.({ success: true })
-  })
+  }
 
   socket.on('disconnect', () => {
     if (!currentSessionId) return
@@ -1039,7 +1232,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const botCount = room.players.filter(p => p.isBot).length
     if (botCount >= 4) return callback?.({ error: '4 development bots are already in this room.' })
     
-    const availableSlots = room.configuration.totalPlayers - room.players.length
+    const availableSlots = 20 - room.players.length
     if (availableSlots < 4) return callback?.({ error: `Only ${availableSlots} slots available. Cannot add 4 bots.` })
     
     addBots(currentRoomId, 4)
@@ -1055,6 +1248,20 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (room.status !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
 
     removeBots(currentRoomId)
+
+    // Remove bots from the room players array since disconnect only marks them offline
+    room.players = room.players.filter(p => !p.isBot)
+
+    if (room.status === 'LOBBY') {
+      const newTotal = Math.max(3, room.players.length)
+      const defConfig = getDefaultConfig(newTotal)
+      room.configuration.totalPlayers = defConfig.totalPlayers
+      room.configuration.undercover = defConfig.undercover
+      room.configuration.mrWhite = defConfig.mrWhite
+      room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+    }
+
+    broadcastRoom(room)
     callback?.({ success: true })
   })
 })

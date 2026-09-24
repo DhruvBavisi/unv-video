@@ -1329,12 +1329,50 @@ video {
   animation: fadeIn 180ms ease;
 }
 
+/* --- Card Flip Transition for Clue Phase --- */
+.card-flip-wrapper {
+  perspective: 1200px;
+  width: 100%;
+}
+
+.card-flip-inner {
+  display: grid;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 650ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.card-face.card-back {
+  transform: rotateY(180deg);
+}
+
+.card-flip-inner:not(.is-flipped) .card-back {
+  pointer-events: none;
+}
+
+.card-flip-inner.is-flipped .card-front {
+  pointer-events: none;
+}
+
 /* --- Voting Panel --- */
 .clue-panel__voting {
   display: flex;
   flex-direction: column;
   height: 100%;
-  animation: panelIn 300ms ease both;
 }
 
 .clue-panel__voting-header {
@@ -2140,8 +2178,6 @@ video {
 }
 
 .clue-panel__order-item--completed .clue-panel__order-name {
-  text-decoration: line-through;
-  text-decoration-color: rgba(169, 166, 158, 0.4);
   color: var(--text-secondary);
 }
 
@@ -3633,3 +3669,54 @@ input, select, textarea, button { font-size: 16px; }
   opacity: 0 !important;
   pointer-events: none;
 }
+
+/* --- Players Panel --- */
+.players-panel-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(11,12,13,.86); animation: fadeIn 180ms ease; }
+.players-panel { width: min(520px, 92vw); max-height: 85vh; display: flex; flex-direction: column; padding: clamp(24px, 4vw, 36px); border: 1px solid rgba(169,166,158,.22); background: linear-gradient(135deg, rgba(28,29,31,.96), rgba(11,12,13,.98)); box-shadow: inset 0 0 90px rgba(0,0,0,.26), 0 28px 80px rgba(0,0,0,.75); animation: panelIn 240ms ease both; }
+.players-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.players-panel-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; letter-spacing: .06em; text-transform: uppercase; }
+.players-panel-close { background: transparent; border: none; color: var(--text-secondary); font-size: 2.2rem; line-height: 0.8; cursor: pointer; padding: 0; margin: 0; transition: color 0.2s; }
+.players-panel-close:hover { color: var(--text-primary); }
+.players-panel-content { overflow-y: auto; display: flex; flex-direction: column; gap: 24px; padding-right: 8px; }
+.players-panel-content::-webkit-scrollbar { width: 6px; background: transparent; }
+.players-panel-content::-webkit-scrollbar-track { background: transparent; }
+.players-panel-content::-webkit-scrollbar-thumb { background: rgba(169,166,158,.3); border-radius: 4px; }
+.players-panel-content::-webkit-scrollbar-thumb:hover { background: rgba(169,166,158,.5); }
+.players-panel-section { display: flex; flex-direction: column; gap: 12px; }
+
+.players-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; list-style: none; margin: 0; padding: 0; }
+@media (min-width: 480px) {
+  .players-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+}
+.player-card { display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 12px; padding: 8px; position: relative; transition: transform 0.2s, box-shadow 0.2s, filter 0.2s, background-color 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05); animation: cardFadeIn 0.3s ease-out backwards; }
+@keyframes cardFadeIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: none; } }
+.player-card:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); }
+.player-card:active { transform: translateY(0); }
+.player-card__avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
+.player-card__initial { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; margin-bottom: 4px; }
+.player-card__name { font-size: 0.75rem; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-card__role { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; margin-top: 2px; color: var(--text-secondary); }
+
+.player-card--active { background: rgba(85, 107, 47, 0.15); border: 1px solid rgba(85, 107, 47, 0.4); color: #dcedc8; }
+.player-card--eliminated { background: rgba(142, 41, 41, 0.2); border: 1px solid rgba(142, 41, 41, 0.4); color: #ef9a9a; }
+.player-card--spectator { background: rgba(169, 166, 158, 0.05); border: 1px solid rgba(169, 166, 158, 0.15); color: var(--text-secondary); }
+.player-card--disconnected { opacity: 0.5; filter: grayscale(1); }
+.player-card__disconnected-badge { position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; font-size: 0.6rem; padding: 2px 4px; border-radius: 4px; font-weight: bold; }
+
+.players-copy-btn { margin-left: 12px; padding: 4px 12px; font-size: 0.7rem; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: opacity 0.2s; }
+.players-copy-btn:hover { opacity: 0.8; }
+
+/* Restore Session spinner */
+.restore-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent, #c8a96e);
+  border-radius: 50%;
+  animation: restoreSpin 0.8s linear infinite;
+  margin: 24px auto 0;
+}
+@keyframes restoreSpin {
+  to { transform: rotate(360deg); }
+}
+

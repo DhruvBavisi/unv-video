@@ -12,6 +12,7 @@ import {
   cinematicProgressFromScroll,
 } from '../lib/cinematicTimeline.js'
 import { createCinematicScrollTrigger } from '../lib/cinematicScroll.js'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { framesAvailable, getLoadedFrameCount, getTotalFrameCount } from '../lib/frameSequence.js'
 import { useFrameCinematic } from '../hooks/useFrameCinematic.js'
 
@@ -58,31 +59,14 @@ export default function CinematicSequence() {
     mrWhite: mrWhiteDescRef,
   }
 
-  const [reducedMotion, setReducedMotion] = useState(false)
   const [renderer, setRenderer] = useState('video') // 'frames' | 'video' | 'static'
   const [videoPainted, setVideoPainted] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
   const [activeCharacter, setActiveCharacter] = useState(null)
 
-  useEffect(() => {
-    reducedRef.current = reducedMotion
-  }, [reducedMotion])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const onChange = () => setReducedMotion(mq.matches)
-    setReducedMotion(mq.matches)
-    mq.addEventListener?.('change', onChange)
-    return () => mq.removeEventListener?.('change', onChange)
-  }, [])
-
   // Probe for the frame sequence.  Default to video immediately so the
   // cinematic is never black while we check.
   useEffect(() => {
-    if (reducedMotion) {
-      setRenderer('static')
-      return
-    }
 
     let cancelled = false
 
@@ -97,7 +81,7 @@ export default function CinematicSequence() {
     return () => {
       cancelled = true
     }
-  }, [reducedMotion])
+  }, [])
 
   const writeDebug = (lines) => {
     if (DEBUG && debugRef.current) {
@@ -252,23 +236,8 @@ export default function CinematicSequence() {
       id="characters"
       aria-label="Cinematic investigation room — scroll to advance"
     >
-      {/* ---------- REDUCED MOTION (static scene) ---------- */}
-      {reducedMotion && (
-        <div className="cinematic__reduced">
-          <img
-            className="cinematic__fallback"
-            src={END_FRAME}
-            alt="The investigation room fully revealed with all three characters"
-          />
-          <div className="cinematic__reduced-copy">
-            <span className="label cinematic__reduced-label">Case File: Undercover</span>
-            <h2 className="cinematic__reduced-title">Who can you trust?</h2>
-          </div>
-        </div>
-      )}
-
       {/* ---------- FRAME SEQUENCE (primary) ---------- */}
-      {!reducedMotion && renderer === 'frames' && (
+      {renderer === 'frames' && (
         <>
           {/* Static establishing frame sits UNDER the canvas until frame 1 paints */}
           <img
@@ -281,7 +250,7 @@ export default function CinematicSequence() {
       )}
 
       {/* ---------- VIDEO (fallback when frames are missing) ---------- */}
-      {!reducedMotion && renderer === 'video' && (
+      {renderer === 'video' && (
         <>
           <video
             ref={videoRef}
@@ -305,7 +274,7 @@ export default function CinematicSequence() {
       )}
 
       {/* ---------- STATIC (video failed) ---------- */}
-      {!reducedMotion && renderer === 'static' && (
+      {renderer === 'static' && (
         <img
           className="cinematic__fallback"
           src={VIDEO_FALLBACK}
@@ -326,8 +295,7 @@ export default function CinematicSequence() {
       </div>
 
       {/* ---------- CHARACTER TEXT (same progress as the cinematic) ---------- */}
-      {!reducedMotion && (
-        <>
+      <>
           <div
             ref={civilianRef}
             className={`cinematic__role cinematic__role--${characters[0].id} cinematic__role--${characters[0].align}`}
@@ -394,7 +362,6 @@ export default function CinematicSequence() {
             </div>
           </div>
         </>
-      )}
 
       <div className="cinematic__indicator">
         <ScrollIndicator />

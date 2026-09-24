@@ -39,6 +39,7 @@ export function createInitialState() {
     voteResult: null,
     eliminationResult: null,
     mrWhiteGuesserId: null,
+    mrWhiteLiveGuess: '',
     winner: null,
   }
 }
@@ -68,7 +69,8 @@ function phaseFromRoom(room, { prevPhase, sessionId, becomingActive }) {
   if (isCluePhase) return GAME_PHASES.CLUE_PHASE
   if (isVotePhase) return GAME_PHASES.VOTE_PHASE
   if (isElimination) return GAME_PHASES.ELIMINATION_PHASE
-  if (isMrWhiteGuess) return GAME_PHASES.MR_WHITE_GUESS_PHASE
+  // MR_WHITE_GUESS keeps the overlay alive — render as ELIMINATION_PHASE
+  if (isMrWhiteGuess) return GAME_PHASES.ELIMINATION_PHASE
   if (isResult) return GAME_PHASES.RESULT_PHASE
   if (becomingActive && meInRoom) return GAME_PHASES.CLUE_PHASE
   if (meInRoom && isLobby) return GAME_PHASES.ROOM_LOBBY
@@ -140,6 +142,7 @@ export function gameReducer(state, action) {
         voteResult: room.voteResult || null,
         eliminationResult: room.eliminationResult || null,
         mrWhiteGuesserId: room.mrWhiteGuesserId || null,
+        mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
         error: '',
       }
@@ -221,6 +224,7 @@ export function gameReducer(state, action) {
         voteResult: room.voteResult || null,
         eliminationResult: room.eliminationResult || null,
         mrWhiteGuesserId: room.mrWhiteGuesserId || null,
+        mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
         error: '',
       }
@@ -319,6 +323,10 @@ export function initSocket(sid) {
     socket.on('chat-message', (message) => {
       console.log('[CHAT] message received', message)
       dispatchRef?.({ type: 'CHAT_MESSAGE', message })
+    })
+
+    socket.on('mr-white-live-guess-update', ({ text }) => {
+      dispatchRef?.({ type: 'UPDATE_FIELD', field: 'mrWhiteLiveGuess', value: text })
     })
 
     socket.on('connect', () => {
@@ -439,13 +447,14 @@ export function emitSubmitMrWhiteGuess(socket, guess) {
   })
 }
 
-export function emitContinueElimination(socket) {
+export function emitMrWhiteLiveGuess(socket, text) {
   return new Promise((resolve) => {
-    socket.emit('continue-elimination', (response) => {
-      resolve(response)
+    socket.emit('mr-white-live-guess', { text }, (response) => {
+      resolve(response || { success: true })
     })
   })
 }
+
 
 export function emitAddBots(socket) {
   return new Promise((resolve) => {
@@ -463,4 +472,13 @@ export function emitRemoveBots(socket) {
   })
 }
 
+export function emitPlayAgain(socket) {
+  return new Promise((resolve) => {
+    socket.emit('play-again', (response) => {
+      resolve(response)
+    })
+  })
+}
+
 export { canStart, localPlayer, MEMBERSHIP }
+

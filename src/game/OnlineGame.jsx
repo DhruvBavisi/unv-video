@@ -4,7 +4,7 @@ import { WORD_CATEGORIES } from '../data/wordCategories.js'
 import { GAME_PHASES, PLAYER_STATUS } from './gamePhases.js'
 import {
   canStart, createInitialState, gameReducer, localPlayer,
-  initSocket, emitCreateRoom, emitJoinRoom, emitLeaveRoom,
+  initSocket, emitCreateRoom, emitJoinRoom, emitLeaveRoom, emitPlayAgain,
   setDispatchRef, MEMBERSHIP,
   emitAddBots, emitRemoveBots,
 } from './gameState.js'
@@ -16,8 +16,9 @@ import {
   MIN_PLAYERS, MAX_PLAYERS,
 } from './roleBalance.js'
 import CluePhase from './CluePhase.jsx'
-import MrWhiteGuessPhase from './MrWhiteGuessPhase.jsx'
 import ResultPhase from './ResultPhase.jsx'
+import PlayersPanel from './PlayersPanel.jsx'
+import EliminationOverlay from './EliminationOverlay.jsx'
 
 function ErrorState({ children }) {
   return children ? <p className="online-error" role="alert">{children}</p> : null
@@ -367,7 +368,21 @@ export default function OnlineGame({ onExit }) {
   const [loading, setLoading] = useState(false)
   const [joining, setJoining] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showPlayers, setShowPlayers] = useState(false)
+  const [sourceRect, setSourceRect] = useState(null)
+  const [localElimination, setLocalElimination] = useState(null)
   const socketRef = useRef(null)
+
+  useEffect(() => {
+    if (state.eliminationResult) {
+      setLocalElimination(state.eliminationResult)
+    } else if (localElimination) {
+      const t = setTimeout(() => {
+        setLocalElimination(null)
+      }, 2000)
+      return () => clearTimeout(t)
+    }
+  }, [state.eliminationResult, localElimination])
 
   const host = state.hostId === state.sessionId
   const me = localPlayer(state)
@@ -391,6 +406,18 @@ export default function OnlineGame({ onExit }) {
     return () => {
     }
   }, [state.sessionId])
+
+  // Safety timeout: if we're stuck in RESTORING_SESSION for too long,
+  // fall back to the normal flow. The server should respond with either
+  // session-reconnected or session-no-room well before this fires.
+  useEffect(() => {
+    if (state.phase !== GAME_PHASES.RESTORING_SESSION) return
+    const timer = setTimeout(() => {
+      console.warn('[SESSION] restore timeout — falling back to normal flow')
+      dispatch({ type: 'SESSION_NO_ROOM' })
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [state.phase])
 
   useEffect(() => {
     if (state.membershipState === MEMBERSHIP.LEAVING) {
@@ -479,9 +506,29 @@ export default function OnlineGame({ onExit }) {
     if (result.error) dispatch({ type: 'SET_ERROR', error: result.error })
   }, [])
 
+  const handlePlayAgain = useCallback(async () => {
+    if (!socketRef.current) return
+    const result = await emitPlayAgain(socketRef.current)
+    if (result.error) dispatch({ type: 'SET_ERROR', error: result.error })
+  }, [])
+
   let content
 
-  if (state.phase === GAME_PHASES.MODE_SELECTION) {
+  let activePhase = state.phase
+  if (activePhase === GAME_PHASES.RESULT_PHASE && me?.playAgain) {
+    activePhase = GAME_PHASES.ROOM_LOBBY
+  }
+
+  if (activePhase === GAME_PHASES.RESTORING_SESSION) {
+    content = (
+      <section className="online-panel online-panel--mode">
+        <span className="online-kicker">Reconnecting</span>
+        <h1>Restoring session…</h1>
+        <p>Recovering your investigation. Please wait.</p>
+        <div className="restore-spinner" aria-label="Loading" />
+      </section>
+    )
+  } else if (activePhase === GAME_PHASES.MODE_SELECTION) {
     content = (
       <section className="online-panel online-panel--mode">
         <span className="online-kicker">Case File #001</span>
@@ -502,7 +549,7 @@ export default function OnlineGame({ onExit }) {
         <Button onClick={handleExit}>Return to case overview</Button>
       </section>
     )
-  } else if (state.phase === GAME_PHASES.ONLINE_SETUP) {
+  } else if (activePhase === GAME_PHASES.ONLINE_SETUP) {
     content = (
       <section className="online-panel">
         <span className="online-kicker">Online investigation</span>
@@ -515,7 +562,7 @@ export default function OnlineGame({ onExit }) {
         </div>
       </section>
     )
-  } else if (state.phase === GAME_PHASES.CREATE_ROOM) {
+  } else if (activePhase === GAME_PHASES.CREATE_ROOM) {
     content = (
       <RoomForm
         title="Create room"
@@ -524,7 +571,7 @@ export default function OnlineGame({ onExit }) {
         loading={loading}
       />
     )
-  } else if (state.phase === GAME_PHASES.JOIN_ROOM) {
+  } else if (activePhase === GAME_PHASES.JOIN_ROOM) {
     content = (
       <RoomForm
         title="Join room"
@@ -535,7 +582,7 @@ export default function OnlineGame({ onExit }) {
         joining={joining}
       />
     )
-  } else if (state.phase === GAME_PHASES.ROOM_LOBBY) {
+  } else if (activePhase === GAME_PHASES.ROOM_LOBBY) {
     content = (
       <section className="online-panel online-panel--lobby">
         <header className="online-room-head">
@@ -587,17 +634,13 @@ export default function OnlineGame({ onExit }) {
         </div>
       </section>
     )
-  } else if (state.phase === GAME_PHASES.CLUE_PHASE || state.phase === GAME_PHASES.VOTE_PHASE || state.phase === GAME_PHASES.ELIMINATION_PHASE) {
+  } else if (activePhase === GAME_PHASES.CLUE_PHASE || activePhase === GAME_PHASES.VOTE_PHASE || activePhase === GAME_PHASES.ELIMINATION_PHASE) {
     content = (
-      <CluePhase state={state} socketRef={socketRef} />
+      <CluePhase state={state} socketRef={socketRef} onSourceRect={setSourceRect} />
     )
-  } else if (state.phase === GAME_PHASES.MR_WHITE_GUESS_PHASE) {
+  } else if (activePhase === GAME_PHASES.RESULT_PHASE) {
     content = (
-      <MrWhiteGuessPhase state={state} socketRef={socketRef} />
-    )
-  } else if (state.phase === GAME_PHASES.RESULT_PHASE) {
-    content = (
-      <ResultPhase state={state} dispatch={dispatch} />
+      <ResultPhase state={state} dispatch={dispatch} onPlayAgain={handlePlayAgain} />
     )
   }
   // Every GAME_PHASES value has an explicit branch above — no fallback needed.
@@ -607,14 +650,18 @@ export default function OnlineGame({ onExit }) {
       <header className="online-topbar">
         <button onClick={handleExit} aria-label="Return to landing page">Undercover</button>
         <span>Case File #001</span>
-        <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
-          {state.connectionState}
-        </span>
+        <div style={{ justifySelf: 'end', display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <button id="players-navbar-button" style={{ fontSize: '0.62rem', letterSpacing: '0.25em', color: 'var(--text-primary)' }} onClick={() => setShowPlayers(true)}>Players</button>
+          <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
+            {state.connectionState}
+          </span>
+        </div>
       </header>
       <div className="online-game__content">
         {content}
         <ErrorState>{state.error}</ErrorState>
       </div>
+      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} />}
       {showLeaveConfirm && (
         <ConfirmDialog
           title="Leave room?"
@@ -622,6 +669,17 @@ export default function OnlineGame({ onExit }) {
           confirmLabel="Leave room"
           onConfirm={confirmLeave}
           onCancel={() => setShowLeaveConfirm(false)}
+        />
+      )}
+      {localElimination && (
+        <EliminationOverlay 
+          eliminationResult={localElimination} 
+          configuration={state.configuration} 
+          sourceRect={sourceRect}
+          myPlayerId={state.sessionId}
+          mrWhiteGuesserId={state.mrWhiteGuesserId}
+          mrWhiteLiveGuess={state.mrWhiteLiveGuess}
+          socketRef={socketRef}
         />
       )}
     </main>

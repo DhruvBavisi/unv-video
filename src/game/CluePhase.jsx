@@ -3,7 +3,6 @@ import Button from '../components/Button.jsx'
 import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
-import EliminationOverlay from './EliminationOverlay.jsx'
 
 const ERROR_MESSAGES = {
   NOT_YOUR_TURN: 'It is not your turn.',
@@ -503,11 +502,10 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   )
 }
 
-export default function CluePhase({ state, socketRef }) {
+export default function CluePhase({ state, socketRef, onSourceRect }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
   const [chatError, setChatError] = useState('')
-  const [sourceRect, setSourceRect] = useState(null)
   const submitLockRef = useRef(false)
 
   const {
@@ -601,56 +599,50 @@ export default function CluePhase({ state, socketRef }) {
     }
   }, [socketRef])
 
-  const handleContinueElimination = useCallback(async () => {
-    if (submitLockRef.current) return
-    submitLockRef.current = true
-    setSubmitting(true)
-    const { emitContinueElimination } = await import('./gameState.js')
-    const response = await emitContinueElimination(socketRef.current)
-    if (!response?.success) {
-      const msg = ERROR_MESSAGES[response?.error] || 'Failed to continue.'
-      setClueError(msg)
-    }
-    submitLockRef.current = false
-    setSubmitting(false)
-  }, [socketRef])
-
   // Get current state
   return (
     <section className="clue-phase">
       <div className="clue-phase__grid">
         <aside className="clue-phase__order">
-          {gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' ? (
-            <VotingPanel
-              players={players}
-              myPlayerId={sessionId}
-              votes={votes}
-              lockedVotes={lockedVotes}
-              voteResult={voteResult}
-              onSelectVote={handleSelectVote}
-              onLockVote={handleLockVote}
-              submitting={submitting}
-              eliminationResult={state.eliminationResult}
-              onSourceRect={setSourceRect}
-            />
-          ) : (
-            <>
-              <TurnIndicator
-                currentTurnPlayerId={currentTurnPlayerId}
-                myPlayerId={sessionId}
-                players={players}
-                gamePhase={gamePhase}
-              />
-              <ClueOrderDisplay
-                turnOrder={turnOrder}
-                currentTurnPlayerId={currentTurnPlayerId}
-                submittedCluePlayerIds={submittedCluePlayerIds}
-                players={players}
-                myPlayerId={sessionId}
-                currentRound={currentRound}
-              />
-            </>
-          )}
+          <div className="card-flip-wrapper">
+            <div className={`card-flip-inner ${(gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' || gamePhase === 'MR_WHITE_GUESS') ? 'is-flipped' : ''}`}>
+              
+              {/* FRONT FACE: Clue Order & Turn Indicator */}
+              <div className="card-face card-front">
+                <TurnIndicator
+                  currentTurnPlayerId={currentTurnPlayerId}
+                  myPlayerId={sessionId}
+                  players={players}
+                  gamePhase={gamePhase}
+                />
+                <ClueOrderDisplay
+                  turnOrder={turnOrder}
+                  currentTurnPlayerId={currentTurnPlayerId}
+                  submittedCluePlayerIds={submittedCluePlayerIds}
+                  players={players}
+                  myPlayerId={sessionId}
+                  currentRound={currentRound}
+                />
+              </div>
+
+              {/* BACK FACE: Voting Panel */}
+              <div className="card-face card-back">
+                <VotingPanel
+                  players={players}
+                  myPlayerId={sessionId}
+                  votes={votes}
+                  lockedVotes={lockedVotes}
+                  voteResult={voteResult}
+                  onSelectVote={handleSelectVote}
+                  onLockVote={handleLockVote}
+                  submitting={submitting}
+                  eliminationResult={state.eliminationResult}
+                  onSourceRect={onSourceRect}
+                />
+              </div>
+              
+            </div>
+          </div>
         </aside>
 
         <main className="clue-phase__identity">
@@ -679,15 +671,6 @@ export default function CluePhase({ state, socketRef }) {
           {chatError && <div className="clue-phase__error" role="alert">{chatError}</div>}
         </aside>
       </div>
-      {gamePhase === 'ELIMINATION' && (
-        <EliminationOverlay 
-          eliminationResult={state.eliminationResult} 
-          configuration={configuration} 
-          sourceRect={sourceRect}
-          onContinue={handleContinueElimination}
-          submitting={submitting}
-        />
-      )}
     </section>
   )
 }
