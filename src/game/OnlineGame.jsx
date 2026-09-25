@@ -671,17 +671,17 @@ export default function OnlineGame({ onExit }) {
           onCancel={() => setShowLeaveConfirm(false)}
         />
       )}
-      {localElimination && (
-        <EliminationOverlay 
-          eliminationResult={localElimination} 
-          configuration={state.configuration} 
-          sourceRect={sourceRect}
-          myPlayerId={state.sessionId}
-          mrWhiteGuesserId={state.mrWhiteGuesserId}
-          mrWhiteLiveGuess={state.mrWhiteLiveGuess}
-          socketRef={socketRef}
-        />
-      )}
+        {localElimination && (
+          <EliminationOverlay 
+            eliminationResult={localElimination} 
+            configuration={state.configuration} 
+            sourceRect={sourceRect}
+            myPlayerId={state.sessionId}
+            mrWhiteGuesserId={state.mrWhiteGuesserId}
+            mrWhiteLiveGuess={state.mrWhiteLiveGuess}
+            socketRef={socketRef}
+          />
+        )}
     </main>
   )
 }

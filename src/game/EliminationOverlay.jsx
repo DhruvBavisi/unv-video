@@ -216,12 +216,7 @@ export default function EliminationOverlay({
     setGuessSubmitted(false)
   }, [eliminationResult?.playerId])
 
-  // When card is expanded for Mr White guessing, also expand the dimensions
-  useEffect(() => {
-    if (isMrWhiteGuessing && phase >= 5) {
-      setFinalDimensions({ width: 240, height: 380 })
-    }
-  }, [isMrWhiteGuessing, phase])
+  // Removed: card expansion effect. The transition into guessing is a CONTENT transition.
 
   // Global 5s authoritative timer or instant exit for wrong guess
   useEffect(() => {
@@ -329,20 +324,8 @@ export default function EliminationOverlay({
     })
   }, [phase, sourceRect, finalDimensions, isMrWhiteWrongGuessExit])
 
-  // Expand card dimensions when Mr White guessing UI is shown
-  useEffect(() => {
-    if (!isMrWhiteGuessing || isMrWhiteWrongGuessExit || phase < 5 || phase >= 6 || !animatedCardRef.current) return
-    const card = animatedCardRef.current
-    const targetW = 240
-    const targetH = 400
-    const newLeft = window.innerWidth / 2 - targetW / 2
-    const newTop = window.innerHeight / 2 - targetH / 2
-    card.style.transition = 'width 350ms ease, height 350ms ease, top 350ms ease, left 350ms ease'
-    card.style.width = `${targetW}px`
-    card.style.height = `${targetH}px`
-    card.style.left = `${newLeft}px`
-    card.style.top = `${newTop}px`
-  }, [isMrWhiteGuessing, isMrWhiteWrongGuessExit, phase])
+  // The card remains exactly at its phase 5 position/dimensions.
+  // No repositioning or dimension expanding is performed.
 
   // Phase 6: Exit Flight Animation
   useEffect(() => {
@@ -441,6 +424,18 @@ export default function EliminationOverlay({
             </p>
           </div>
         )}
+
+        {/* STATIC LAYER B: Mr White Guess UI completely independent from the animated card */}
+        {showGuessUI && (
+          <div style={{ transform: 'translateY(190px)', width: '90%', maxWidth: '340px', pointerEvents: 'auto' }}>
+            <MrWhiteGuessPanel
+              isMe={isMe}
+              liveGuess={mrWhiteLiveGuess || ''}
+              socketRef={socketRef}
+              onSubmitted={() => setGuessSubmitted(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* The Animated Travelling Card */}
@@ -486,10 +481,10 @@ export default function EliminationOverlay({
             </div>
 
             {/* BACK FACE */}
-            <div className="elimination-card-face elimination-card-face--back" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div className={`elimination-char-card elimination-char-card--${roleKey}`} style={{ height: showGuessUI ? '260px' : '100%', flexShrink: 0, transition: 'height 350ms ease' }}>
-                <div className="elimination-char-img-wrap" style={{ width: '100%', height: '100%' }}>
-                  <img src={characterUrl} alt={displayRole} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div className="elimination-card-face elimination-card-face--back" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease', overflow: 'hidden' }}>
+              <div className={`elimination-char-card elimination-char-card--${roleKey}`}>
+                <div className="elimination-char-img-wrap">
+                  <img src={characterUrl} alt={displayRole} />
                 </div>
                 <div className="elimination-role-banner">
                   <span className={`elimination-role-banner-text elimination-role-banner-text--${roleKey}`}>
@@ -497,18 +492,6 @@ export default function EliminationOverlay({
                   </span>
                 </div>
               </div>
-
-              {/* Mr White guess UI — placed below the character card */}
-              {showGuessUI && (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'linear-gradient(to bottom, #141517, #08090b)' }}>
-                  <MrWhiteGuessPanel
-                    isMe={isMe}
-                    liveGuess={mrWhiteLiveGuess || ''}
-                    socketRef={socketRef}
-                    onSubmitted={() => setGuessSubmitted(true)}
-                  />
-                </div>
-              )}
             </div>
 
           </div>
