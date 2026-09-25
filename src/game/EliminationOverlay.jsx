@@ -199,7 +199,7 @@ export default function EliminationOverlay({
   mrWhiteLiveGuess,
   socketRef,
 }) {
-  // 0: hidden/measure, 1: travel, 2: settle, 3: morph, 4: flip, 5: final details, 6: exit flight
+  // 0: hidden/measure, 1: travel, 2: flip at center, 3: morph, 4: role presentation, 5: final details, 6: exit flight
   const [phase, setPhase] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [finalDimensions, setFinalDimensions] = useState(null)
@@ -218,7 +218,7 @@ export default function EliminationOverlay({
 
   // Removed: card expansion effect. The transition into guessing is a CONTENT transition.
 
-  // Global 5s authoritative timer or instant exit for wrong guess
+  // Global authoritative timer or instant exit for wrong guess
   useEffect(() => {
     if (isMrWhiteWrongGuessExit) {
       setFinalDimensions({ width: 220, height: 280 })
@@ -236,7 +236,7 @@ export default function EliminationOverlay({
     if (eliminationResult?.role === 'MR_WHITE') return
 
     const timeElapsed = Date.now() - eliminationResult.startedAt
-    const remaining = 4000 - timeElapsed
+    const remaining = 4800 - timeElapsed
     
     if (remaining <= 0) {
       setPhase(6)
@@ -289,10 +289,12 @@ export default function EliminationOverlay({
       const deltaX = destX - sourceRect.left
       const deltaY = destY - sourceRect.top
 
+      // STEP 1: Fly to center
       card.style.transition = 'transform 1200ms cubic-bezier(0.4, 0, 0.2, 1)'
       card.style.transform = `translate(${deltaX}px, ${deltaY}px)`
 
       setTimeout(() => {
+        // STEP 2: Card reaches center -> Vertical 3D Y-axis flip
         setPhase((p) => p < 6 ? 2 : p)
         card.style.transition = 'none'
         card.style.transform = 'translate(0, 0)'
@@ -300,7 +302,9 @@ export default function EliminationOverlay({
         card.style.top = `${destY}px`
         card.offsetHeight 
         
+        // Wait for vertical flip step to hide front/name/ELIMINATED
         setTimeout(() => {
+          // STEP 3: Existing dimension morph
           setPhase((p) => p < 6 ? 3 : p)
           const w = finalDimensions.width
           const h = finalDimensions.height
@@ -314,12 +318,14 @@ export default function EliminationOverlay({
           card.style.top = `${newTop}px`
           
           setTimeout(() => {
+            // STEP 4: Character/role presentation
             setPhase((p) => p < 6 ? 4 : p)
             setTimeout(() => {
+              // STEP 5: Details
               setPhase((p) => p < 6 ? 5 : p)
-            }, 600)
-          }, 500)
-        }, 200)
+            }, 400)
+          }, 450)
+        }, 650)
       }, 1200)
     })
   }, [phase, sourceRect, finalDimensions, isMrWhiteWrongGuessExit])
@@ -385,7 +391,7 @@ export default function EliminationOverlay({
   const roleKey = (role || 'civilian').toLowerCase()
 
   const isMorphingOrLater = phase >= 3
-  const isFlipped = phase >= 4
+  const isFlipped = phase >= 2
   const showDetails = phase >= 5
   const isExiting = phase >= 6
 
@@ -481,12 +487,12 @@ export default function EliminationOverlay({
             </div>
 
             {/* BACK FACE */}
-            <div className="elimination-card-face elimination-card-face--back" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease', overflow: 'hidden' }}>
+            <div className="elimination-card-face elimination-card-face--back" style={{ opacity: isFlipped ? 1 : 0, transition: 'opacity 300ms ease', overflow: 'hidden' }}>
               <div className={`elimination-char-card elimination-char-card--${roleKey}`}>
-                <div className="elimination-char-img-wrap">
+                <div className="elimination-char-img-wrap" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease' }}>
                   <img src={characterUrl} alt={displayRole} />
                 </div>
-                <div className="elimination-role-banner">
+                <div className="elimination-role-banner" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease' }}>
                   <span className={`elimination-role-banner-text elimination-role-banner-text--${roleKey}`}>
                     {displayRole}
                   </span>
