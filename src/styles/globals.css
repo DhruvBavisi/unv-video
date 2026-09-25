@@ -1517,7 +1517,7 @@ video {
   --role-accent: #b0ab9e;
   display: flex;
   flex-direction: column;
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .clue-panel__identity-toggle {
@@ -1526,7 +1526,7 @@ video {
   gap: 12px;
   width: 100%;
   padding: 16px 20px;
-  background: rgba(28, 29, 31, 0.96);
+  background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
   border: 1px solid rgba(169, 166, 158, 0.22);
   border-radius: 4px;
   color: var(--text-primary);
@@ -1542,7 +1542,7 @@ video {
 }
 
 .clue-panel__identity-toggle:hover {
-  background: rgba(40, 42, 45, 0.96);
+  background: linear-gradient(135deg, rgba(40, 42, 45, 0.96), rgba(20, 22, 23, 0.98));
   border-color: rgba(169, 166, 158, 0.35);
 }
 
@@ -1575,7 +1575,7 @@ video {
   overflow: hidden;
   max-height: 800px;
   opacity: 1;
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .clue-panel__identity.is-collapsed .clue-panel__identity-content {
@@ -3744,8 +3744,85 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 /* --- Players Panel --- */
-.players-panel-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(11,12,13,.86); animation: fadeIn 180ms ease; }
-.players-panel { width: min(520px, 92vw); max-height: 85vh; display: flex; flex-direction: column; padding: clamp(24px, 4vw, 36px); border: 1px solid rgba(169,166,158,.22); background: linear-gradient(135deg, rgba(28,29,31,.96), rgba(11,12,13,.98)); box-shadow: inset 0 0 90px rgba(0,0,0,.26), 0 28px 80px rgba(0,0,0,.75); animation: panelIn 240ms ease both; }
+.players-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(11,12,13,0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: background 400ms ease, backdrop-filter 400ms ease, -webkit-backdrop-filter 400ms ease;
+}
+
+.players-panel-overlay--entering,
+.players-panel-overlay:not(.players-panel-overlay--exiting):not(.players-panel-overlay--entering) {
+  background: rgba(11,12,13,.86);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.players-panel-overlay--exiting {
+  background: rgba(11,12,13,0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: background 420ms ease, backdrop-filter 420ms ease, -webkit-backdrop-filter 420ms ease;
+}
+
+.players-panel {
+  --fly-tx: 0px;
+  --fly-ty: -40px;
+  width: min(520px, 92vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 4vw, 36px);
+  border: 1px solid rgba(169,166,158,.22);
+  background: linear-gradient(135deg, rgba(28,29,31,.96), rgba(11,12,13,.98));
+  box-shadow: inset 0 0 90px rgba(0,0,0,.26), 0 28px 80px rgba(0,0,0,.75);
+  transform: none;
+  opacity: 1;
+  transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 80ms ease 420ms;
+  will-change: transform, opacity;
+}
+
+.players-panel--entering {
+  transform: translate(var(--fly-tx), var(--fly-ty)) scale(0.05);
+  opacity: 1;
+  animation: panelFlyIn 500ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.players-panel--exiting {
+  animation: panelFlyOut 480ms cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+}
+
+@keyframes panelFlyIn {
+  0% {
+    transform: translate(var(--fly-tx), var(--fly-ty)) scale(0.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes panelFlyOut {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fly-tx), var(--fly-ty)) scale(0.05);
+    opacity: 0;
+  }
+}
 .players-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .players-panel-header h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; letter-spacing: .06em; text-transform: uppercase; }
 .players-panel-close { background: transparent; border: none; color: var(--text-secondary); font-size: 2.2rem; line-height: 0.8; cursor: pointer; padding: 0; margin: 0; transition: color 0.2s; }

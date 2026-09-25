@@ -394,9 +394,11 @@ export default function OnlineGame({ onExit }) {
   const [joining, setJoining] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showPlayers, setShowPlayers] = useState(false)
+  const [playersBtnRect, setPlayersBtnRect] = useState(null)
   const [sourceRect, setSourceRect] = useState(null)
   const [localElimination, setLocalElimination] = useState(null)
   const socketRef = useRef(null)
+  const playersBtnRef = useRef(null)
 
   useEffect(() => {
     if (state.eliminationResult) {
@@ -705,7 +707,16 @@ export default function OnlineGame({ onExit }) {
         <button onClick={handleExit} aria-label="Return to landing page">Undercover</button>
         <span>Case File #001</span>
         <div style={{ justifySelf: 'end', display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <button id="players-navbar-button" style={{ fontSize: '0.62rem', letterSpacing: '0.25em', color: 'var(--text-primary)' }} onClick={() => setShowPlayers(true)}>Players</button>
+          <button 
+            id="players-navbar-button" 
+            ref={playersBtnRef}
+            style={{ fontSize: '0.62rem', letterSpacing: '0.25em', color: 'var(--text-primary)' }} 
+            onClick={() => {
+              const rect = playersBtnRef.current?.getBoundingClientRect()
+              if (rect) setPlayersBtnRect(rect)
+              setShowPlayers(true)
+            }}
+          >Players</button>
           <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
             {state.connectionState}
           </span>
@@ -715,7 +726,7 @@ export default function OnlineGame({ onExit }) {
         {content}
         <ErrorState>{state.error}</ErrorState>
       </div>
-      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} />}
+      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} />}
       {showLeaveConfirm && (
         <ConfirmDialog
           title="Leave room?"
