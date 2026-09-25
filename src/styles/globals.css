@@ -968,6 +968,24 @@ video {
 .online-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .online-error { margin: 18px 0 0; padding: 13px 16px; border-left: 2px solid var(--danger); background: rgba(142,41,41,.13); color: var(--text-primary); font-size: .76rem; letter-spacing: .08em; }
 
+.online-ready-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  background: rgba(181, 138, 82, 0.1) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 0 15px rgba(181, 138, 82, 0.2);
+}
+.online-ready-btn:hover {
+  background: rgba(181, 138, 82, 0.15) !important;
+  box-shadow: 0 0 20px rgba(181, 138, 82, 0.1);
+}
+@media (max-width: 760px) {
+  .online-ready-btn { margin-top: 24px; }
+}
+
 /* --- Mode Cards --- */
 .mode-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .mode-card { display: grid; gap: 8px; min-height: 220px; padding: 26px; border: 1px solid rgba(169,166,158,.24); background: rgba(11,12,13,.5); color: var(--text-secondary); text-align: left; cursor: not-allowed; transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease; }
@@ -1041,7 +1059,24 @@ video {
 
 /* --- Config Panel Fields & Toggle Switch --- */
 .config-field { display: flex; flex-direction: column; gap: 8px; color: var(--text-secondary); font-size: .68rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
-.config-field--toggle { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 16px 0; }
+.config-field--toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 24px 0 16px 0;
+  padding: 16px 20px;
+  border: 1px solid rgba(181, 138, 82, 0.3);
+  background: rgba(181, 138, 82, 0.05);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.config-field--toggle .config-field__label {
+  color: var(--accent);
+  font-size: 0.75rem;
+}
 
 .toggle-switch { display: inline-flex; align-items: center; gap: 12px; background: transparent; border: none; padding: 4px 0; cursor: pointer; user-select: none; transition: transform 160ms ease; }
 .toggle-switch:disabled { opacity: .5; cursor: not-allowed; }
@@ -1218,13 +1253,13 @@ video {
   .online-config { padding: 18px 14px; gap: 16px; }
   .role-counts { gap: 10px; }
   .role-count-row { grid-template-columns: 38px minmax(0, auto) 38px; column-gap: 8px; }
-  .role-count-capsule { height: 52px; padding: 0 14px; }
-  .role-count-capsule--civilian { width: 180px; }
-  .role-count-capsule--undercover { width: 205px; }
-  .role-count-capsule--mrwhite { width: 185px; }
+  .role-count-capsule { height: 42px; padding: 0 14px; }
+  .role-count-capsule--civilian { width: 165px; }
+  .role-count-capsule--undercover { width: 190px; }
+  .role-count-capsule--mrwhite { width: 170px; }
   .role-count-capsule__count,
-  .role-count-capsule__label { font-size: 22px; }
-  .role-adjust-button { width: 38px; height: 38px; min-width: 38px; min-height: 38px; font-size: 22px; }
+  .role-count-capsule__label { font-size: 20px; }
+  .role-adjust-button { width: 32px; height: 32px; min-width: 32px; min-height: 32px; font-size: 20px; }
   .player-slider__track-wrapper { height: 44px; }
   .player-slider__thumb { width: 15px; height: 15px; margin-left: -7px; margin-top: -7px; border-width: 2px; box-shadow: 0 0 0 2px rgba(181,138,82,.3), 0 2px 6px rgba(0,0,0,.4); }
   .player-slider__value { font-size: 1.9rem; }
@@ -1526,9 +1561,9 @@ video {
   gap: 12px;
   width: 100%;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
-  border: 1px solid rgba(169, 166, 158, 0.22);
-  border-radius: 4px;
+  background: rgba(18, 19, 20, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
   color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 600;
@@ -1542,8 +1577,8 @@ video {
 }
 
 .clue-panel__identity-toggle:hover {
-  background: linear-gradient(135deg, rgba(40, 42, 45, 0.96), rgba(20, 22, 23, 0.98));
-  border-color: rgba(169, 166, 158, 0.35);
+  background: rgba(30, 32, 34, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .clue-panel__identity-toggle .chevron {
@@ -1568,10 +1603,10 @@ video {
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: 22px 20px;
-  border: 1px solid rgba(169, 166, 158, 0.22);
-  background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
-  border-radius: 4px;
+  padding: 24px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 16, 17, 0.95);
+  border-radius: 6px;
   overflow: hidden;
   max-height: 800px;
   opacity: 1;
@@ -1597,9 +1632,9 @@ video {
   width: 100%;
 }
 
-.clue-panel__identity--civilian { --role-accent: #57b06f; }
-.clue-panel__identity--undercover { --role-accent: #d15555; }
-.clue-panel__identity--mr_white { --role-accent: #b0ab9e; }
+.clue-panel__identity--civilian { --role-accent: #4ade80; }
+.clue-panel__identity--undercover { --role-accent: #9E3A3A; }
+.clue-panel__identity--mr_white { --role-accent: #b5b0a1; }
 
 .clue-panel__avatar {
   width: 108px;
@@ -1646,15 +1681,17 @@ video {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 26px;
-  border-radius: 4px;
-  background: linear-gradient(160deg, #efe8da, #dcd2bf);
-  color: #24211b;
+  padding: 12px 32px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid color-mix(in srgb, var(--role-accent) 40%, transparent);
+  color: #ffffff;
   font-family: var(--font-display);
   font-size: clamp(1.2rem, 2.4vw, 1.55rem);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  box-shadow: 0 0 0 1px rgba(232, 224, 208, 0.22), 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 0 20px color-mix(in srgb, var(--role-accent) 15%, transparent);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
 .clue-panel__no-word {
@@ -3741,6 +3778,28 @@ input, select, textarea, button { font-size: 16px; }
 .voting-card--eliminated-anim {
   opacity: 0 !important;
   pointer-events: none;
+  overflow: hidden;
+  animation: collapse-voting-card 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 50ms;
+}
+
+@keyframes collapse-voting-card {
+  0% {
+    opacity: 0;
+    max-height: 100px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    border-width: 1px;
+    margin-bottom: 0;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+    margin-bottom: -7px;
+  }
 }
 
 /* --- Players Panel --- */
@@ -3843,7 +3902,7 @@ input, select, textarea, button { font-size: 16px; }
 .player-card:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); }
 .player-card:active { transform: translateY(0); }
 .player-card__avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
-.player-card__initial { font-family: var(--font-display); font-size: 1.6rem; margin-bottom: 4px; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.player-card__initial { font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 4px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 .player-card__name { font-size: 0.75rem; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-card__role { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; margin-top: 2px; color: var(--text-secondary); }
 
@@ -3870,3 +3929,247 @@ input, select, textarea, button { font-size: 16px; }
   to { transform: rotate(360deg); }
 }
 
+/* Result Phase CSS */
+.result-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.result-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.result-title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.result-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+.result-section-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  text-align: center;
+  width: 100%;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 8px;
+}
+
+.result-words {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.result-word-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 15px;
+  padding: 16px 24px;
+  text-align: center;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.result-word-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.result-word-value {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+}
+
+.result-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.result-role-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.result-role-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-bottom: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  filter: grayscale(1) sepia(0.3);
+  border: 2px solid rgba(255,255,255,0.1);
+  transition: filter 0.8s ease, border-color 0.8s ease;
+}
+
+.result-role-card.is-revealed .result-role-avatar {
+  filter: none;
+}
+
+.result-role-card.is-revealed.role-civilian .result-role-avatar {
+  border-color: var(--accent);
+}
+
+.result-role-card.is-revealed.role-undercover .result-role-avatar,
+.result-role-card.is-revealed.role-mr_white .result-role-avatar {
+  border-color: var(--danger);
+}
+
+.result-role-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.result-role-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+}
+
+.result-role-card.is-revealed.role-civilian .result-role-label {
+  color: var(--accent);
+}
+
+.result-role-card.is-revealed.role-undercover .result-role-label,
+.result-role-card.is-revealed.role-mr_white .result-role-label {
+  color: var(--danger);
+}
+
+.result-timeline {
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.result-timeline-item {
+  display: flex;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.result-timeline-item:last-child {
+  border-bottom: none;
+}
+
+.result-timeline-round {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 60px;
+  padding-top: 2px;
+}
+
+.result-timeline-content {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.result-timeline-content strong {
+  color: var(--danger);
+}
+
+.result-actions {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .result-words {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+  .result-word-card {
+    min-width: 0;
+    flex: 1;
+    padding: 12px 8px;
+  }
+  .result-word-value {
+    font-size: 1.2rem;
+  }
+  .result-actions {
+    flex-direction: column;
+  }
+}
+
+.result-card-scene {
+  perspective: 1200px;
+  width: 100%;
+  height: 100%;
+}
+
+.result-card-flipper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.result-card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.result-card-face--front {
+  transform: rotateY(0deg);
+}
+
+.result-card-face--back {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #1c1d1f, #151617);
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-card-back-logo {
+  opacity: 0.1;
+  font-size: 2rem;
+}

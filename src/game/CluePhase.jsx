@@ -222,6 +222,9 @@ function ClueFeed({ clues, myPlayerId, currentRound }) {
 
   // Group clues by roundNumber
   const cluesByRound = {}
+  for (let i = 1; i <= currentRound; i++) {
+    cluesByRound[i] = []
+  }
   clues.forEach((clue) => {
     const round = clue.roundNumber || currentRound
     if (!cluesByRound[round]) cluesByRound[round] = []
@@ -232,24 +235,20 @@ function ClueFeed({ clues, myPlayerId, currentRound }) {
 
   return (
     <div className="comm-panel__scroll" ref={containerRef}>
-      {rounds.length === 0 ? (
-        <>
-          <h2 className="round-heading">Round {String(currentRound).padStart(2, '0')}</h2>
-          <p className="comm-panel__empty">No clues yet. The first player will begin shortly.</p>
-        </>
-      ) : (
-        rounds.map((roundStr) => (
-          <Fragment key={`round-${roundStr}`}>
-            <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
-            {cluesByRound[roundStr].map((clue) => (
-              <div key={clue.id} className={`comm-panel__entry comm-panel__entry--message ${clue.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}>
-                <span className="comm-panel__entry-name">{clue.playerName}</span>
-                <p className="comm-panel__entry-text">{clue.text.replace(/[“”]/g, '')}</p>
-              </div>
-            ))}
-          </Fragment>
-        ))
-      )}
+      {rounds.map((roundStr) => (
+        <Fragment key={`round-${roundStr}`}>
+          <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
+          {cluesByRound[roundStr].length === 0 && Number(roundStr) === currentRound && (
+            <p className="comm-panel__empty">No clues yet. The first player will begin shortly.</p>
+          )}
+          {cluesByRound[roundStr].map((clue) => (
+            <div key={clue.id} className={`comm-panel__entry comm-panel__entry--message ${clue.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}>
+              <span className="comm-panel__entry-name">{clue.playerName}</span>
+              <p className="comm-panel__entry-text">{clue.text.replace(/[“”]/g, '')}</p>
+            </div>
+          ))}
+        </Fragment>
+      ))}
     </div>
   )
 }
@@ -292,6 +291,9 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
 
   // Group chat by roundNumber
   const chatByRound = {}
+  for (let i = 1; i <= currentRound; i++) {
+    chatByRound[i] = []
+  }
   chat.forEach((msg) => {
     const round = msg.roundNumber || currentRound
     if (!chatByRound[round]) chatByRound[round] = []
@@ -303,27 +305,23 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
   return (
     <div className="comm-panel__chat">
       <div className="comm-panel__scroll" ref={containerRef} onScroll={handleScroll}>
-        {rounds.length === 0 ? (
-          <>
-            <h2 className="round-heading">Round {String(currentRound).padStart(2, '0')}</h2>
-            <p className="comm-panel__empty">No messages yet.</p>
-          </>
-        ) : (
-          rounds.map((roundStr) => (
-            <Fragment key={`round-${roundStr}`}>
-              <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
-              {chatByRound[roundStr].map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`comm-panel__entry comm-panel__entry--message ${msg.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}
-                >
-                  <span className="comm-panel__entry-name">{msg.playerName}</span>
-                  <p className="comm-panel__entry-text">{msg.text}</p>
-                </div>
-              ))}
-            </Fragment>
-          ))
-        )}
+        {rounds.map((roundStr) => (
+          <Fragment key={`round-${roundStr}`}>
+            <h2 className="round-heading">Round {String(roundStr).padStart(2, '0')}</h2>
+            {chatByRound[roundStr].length === 0 && Number(roundStr) === currentRound && (
+              <p className="comm-panel__empty">No messages yet.</p>
+            )}
+            {chatByRound[roundStr].map((msg) => (
+              <div
+                key={msg.id}
+                className={`comm-panel__entry comm-panel__entry--message ${msg.playerId === myPlayerId ? 'comm-panel__entry--self' : ''}`}
+              >
+                <span className="comm-panel__entry-name">{msg.playerName}</span>
+                <p className="comm-panel__entry-text">{msg.text}</p>
+              </div>
+            ))}
+          </Fragment>
+        ))}
       </div>
       <div className="comm-panel__input">
         <input

@@ -191,10 +191,6 @@ function PlayerSlider({ value, min, max, onChange, disabled }) {
           />
         </div>
       </div>
-      <div className="player-slider__ticks">
-        <span>{min}</span>
-        <span>{max}</span>
-      </div>
     </div>
   )
 }
@@ -233,7 +229,7 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
   const maxMW = getMaximumMrWhite(totalPlayers, undercover)
   const ucAtMax = undercover >= maxUC
   const mwAtMax = mrWhite >= maxMW
-  const ucAtMin = undercover <= 1
+  const ucAtMin = undercover <= 0
   const mwAtMin = mrWhite <= 0
   const maxNon = getMaximumNonCivilians(totalPlayers)
 
@@ -247,29 +243,41 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
   }
 
   const handleUCIncrease = () => {
-    if (ucAtMax) return
     const next = undercover + 1
     if (next + mrWhite <= maxNon) {
       onChangeConfig({ totalPlayers, undercover: next, mrWhite })
+    } else if (undercover === 0 && mrWhite > 0) {
+      onChangeConfig({ totalPlayers, undercover: 1, mrWhite: mrWhite - 1 })
     }
   }
 
   const handleUCDecrease = () => {
     if (ucAtMin) return
-    onChangeConfig({ totalPlayers, undercover: undercover - 1, mrWhite })
+    const nextUC = undercover - 1
+    let nextMW = mrWhite
+    if (nextUC === 0 && nextMW === 0) {
+      nextMW = 1
+    }
+    onChangeConfig({ totalPlayers, undercover: nextUC, mrWhite: nextMW })
   }
 
   const handleMWIncrease = () => {
-    if (mwAtMax) return
     const next = mrWhite + 1
     if (undercover + next <= maxNon) {
       onChangeConfig({ totalPlayers, undercover, mrWhite: next })
+    } else if (mrWhite === 0 && undercover > 0) {
+      onChangeConfig({ totalPlayers, undercover: undercover - 1, mrWhite: 1 })
     }
   }
 
   const handleMWDecrease = () => {
     if (mwAtMin) return
-    onChangeConfig({ totalPlayers, undercover, mrWhite: mrWhite - 1 })
+    const nextMW = mrWhite - 1
+    let nextUC = undercover
+    if (nextUC === 0 && nextMW === 0) {
+      nextUC = 1
+    }
+    onChangeConfig({ totalPlayers, undercover: nextUC, mrWhite: nextMW })
   }
 
   const handleToggleRevealRoles = () => {
@@ -303,7 +311,7 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
           onDecrease={handleUCDecrease}
           onIncrease={handleUCIncrease}
           showMinus={host && !ucAtMin}
-          showPlus={host && !ucAtMax}
+          showPlus={host && (!ucAtMax || (undercover === 0 && mrWhite > 0))}
         />
 
         <RoleCapsule
@@ -313,7 +321,7 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
           onDecrease={handleMWDecrease}
           onIncrease={handleMWIncrease}
           showMinus={host && !mwAtMin}
-          showPlus={host && !mwAtMax}
+          showPlus={host && (!mwAtMax || (mrWhite === 0 && undercover > 0))}
         />
       </div>
 
@@ -652,7 +660,7 @@ export default function OnlineGame({ onExit }) {
           <div className="online-lobby__players">
             <PlayerList players={state.players} settings={state.configuration} />
             {!host && (
-              <Button onClick={handleToggleReady}>
+              <Button variant="primary" className="online-ready-btn" onClick={handleToggleReady}>
                 {me?.status === PLAYER_STATUS.READY ? 'Mark not ready' : 'Mark ready'}
               </Button>
             )}

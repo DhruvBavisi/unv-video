@@ -18,3 +18,13 @@ export function getRoleImageAlt(role) {
   }
   return alts[role] || alts.CIVILIAN
 }
+
+const BADGE_IMAGES = {
+  CIVILIAN: `${CHARACTER_DIR}/civilian.png`,
+  UNDERCOVER: `${CHARACTER_DIR}/undercover.png`,
+  MR_WHITE: `${CHARACTER_DIR}/mrwhite.png`,
+}
+
+export function getRoleBadgeImage(role) {
+  return BADGE_IMAGES[role] || BADGE_IMAGES.CIVILIAN
+}

@@ -23,8 +23,8 @@ export function createInitialState() {
     copied: false,
     gameStatus: 'SETUP',
     round: 1,
-    configuration: { totalPlayers: 5, undercover: 1, mrWhite: 1, civilians: 3 },
-    category: 'open-file',
+    configuration: { totalPlayers: 3, undercover: 1, mrWhite: 0, civilians: 2 },
+    category: import.meta.env.PROD ? 'food' : 'open-file',
     players: [],
     localSecret: null,
     connectionState: 'DISCONNECTED',
@@ -144,6 +144,7 @@ export function gameReducer(state, action) {
         mrWhiteGuesserId: room.mrWhiteGuesserId || null,
         mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
+        wordPair: room.wordPair || state.wordPair || null,
         error: '',
       }
     }
@@ -176,8 +177,8 @@ export function gameReducer(state, action) {
         phase: GAME_PHASES.ONLINE_SETUP,
         membershipState: MEMBERSHIP.NONE,
         gameStatus: 'SETUP',
-        configuration: { totalPlayers: 5, undercover: 1, mrWhite: 1, civilians: 3 },
-        category: 'open-file',
+        configuration: { totalPlayers: 3, undercover: 1, mrWhite: 0, civilians: 2 },
+        category: import.meta.env.PROD ? 'food' : 'open-file',
         error: '',
         clues: [],
         chat: [],
@@ -226,6 +227,7 @@ export function gameReducer(state, action) {
         mrWhiteGuesserId: room.mrWhiteGuesserId || null,
         mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
+        wordPair: room.wordPair || state.wordPair || null,
         error: '',
       }
     }

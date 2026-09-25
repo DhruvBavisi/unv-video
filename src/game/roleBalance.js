@@ -1,6 +1,6 @@
 export const MIN_PLAYERS = 3
 export const MAX_PLAYERS = 20
-export const MIN_UNDERCOVER = 1
+export const MIN_UNDERCOVER = 0
 export const MIN_MR_WHITE = 0
 
 export const DEFAULT_DISTRIBUTIONS = {
@@ -54,6 +54,9 @@ export function validateRoleConfiguration({ totalPlayers, undercover, mrWhite })
   if (typeof mrWhite !== 'number' || mrWhite < MIN_MR_WHITE) {
     return { valid: false, reason: `Mr. White must be at least ${MIN_MR_WHITE}.` }
   }
+  if (undercover + mrWhite < 1) {
+    return { valid: false, reason: 'Must have at least one Undercover or Mr. White.' }
+  }
   if (undercover + mrWhite > Math.floor(totalPlayers / 2)) {
     return { valid: false, reason: 'Non-civilian roles exceed the maximum allowed (50% rule).' }
   }
@@ -80,9 +83,14 @@ export function clampConfig(totalPlayers, undercover, mrWhite) {
   if (clampedUC + clampedMW > maxNon) {
     clampedMW = maxNon - clampedUC
   }
-  if (clampedUC < MIN_UNDERCOVER) {
-    clampedUC = MIN_UNDERCOVER
-    clampedMW = Math.min(clampedMW, maxNon - clampedUC)
+  if (clampedUC + clampedMW < 1) {
+    if (undercover === 0 && mrWhite === 0) {
+      clampedUC = 1
+    } else if (undercover === 0) {
+      clampedMW = 1
+    } else {
+      clampedUC = 1
+    }
   }
   return { totalPlayers, undercover: clampedUC, mrWhite: clampedMW }
 }

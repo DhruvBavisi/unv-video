@@ -2,12 +2,20 @@ import React, { useLayoutEffect, useState, useRef, useEffect, useCallback } from
 import { getRoleImage } from './roleImages.js'
 import { emitSubmitMrWhiteGuess, emitMrWhiteLiveGuess } from './gameState.js'
 
-function getRoleSentence(playerName, role) {
-  if (role === 'UNDERCOVER') return `${playerName} was an Undercover.`
-  if (role === 'CIVILIAN') return `${playerName} was a Civilian.`
-  if (role === 'MR_WHITE') return `${playerName} was Mr. White.`
-  return `${playerName} has been eliminated.`
+function getRoleColor(role) {
+  if (role === 'CIVILIAN') return '#6a8c6f'
+  if (role === 'UNDERCOVER') return '#9E3A3A'
+  if (role === 'MR_WHITE') return '#b5b0a1'
+  return '#ffffff'
 }
+
+function getRoleSentence(playerName, role) {
+  if (role === 'UNDERCOVER') return `Undercover Agent`
+  if (role === 'CIVILIAN') return `Civilian`
+  if (role === 'MR_WHITE') return `Mr. White`
+  return `Unknown Identity`
+}
+
 
 function getInitials(name) {
   if (!name) return '?'
@@ -414,26 +422,32 @@ export default function EliminationOverlay({
           pointerEvents: 'none'
         }}
       >
-        <div style={{ transform: 'translateY(-220px)', textAlign: 'center' }}>
-          <h2 className="elimination-title" style={{ opacity: isMorphingOrLater && !isExiting ? 1 : 0, transition: 'opacity 450ms ease', margin: 0 }}>
-            PLAYER <span className="elimination-title--danger">ELIMINATED</span>
-          </h2>
-          <p className="elimination-subtitle" style={{ opacity: isMorphingOrLater && !isExiting ? 1 : 0, transition: 'opacity 450ms ease', margin: '8px 0 0 0' }}>
-            {playerName} has been eliminated from the game.
-          </p>
+        <div style={{ transform: 'translateY(-165px)', textAlign: 'center' }}>
+          <div style={{ opacity: isMorphingOrLater && !isExiting ? 1 : 0, transition: 'opacity 450ms ease' }}>
+            <div style={{ display: 'inline-block', borderBottom: '1px solid #6F2C2F', paddingBottom: '4px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.65rem', fontFamily: 'monospace', color: '#9E3A3A', letterSpacing: '0.15em', fontWeight: 'bold' }}>STATUS UPDATE</span>
+            </div>
+            <h2 className="elimination-title" style={{ margin: 0, fontSize: '1.7rem', letterSpacing: '0.08em', fontWeight: '600' }}>
+              SUBJECT <span style={{ color: '#9E3A3A' }}>ELIMINATED</span>
+            </h2>
+            <p className="elimination-subtitle" style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '0.8rem', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
+              {playerName} REMOVED FROM INVESTIGATION
+            </p>
+          </div>
         </div>
 
         {!isMrWhiteGuessing && (
-          <div style={{ transform: 'translateY(220px)', width: '90%', maxWidth: '420px', textAlign: 'center' }}>
-            <p className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0 0 24px 0' }}>
-              {getRoleSentence(playerName, role)}
-            </p>
+          <div style={{ transform: 'translateY(165px)', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '10px 24px', background: 'rgba(35, 35, 35, 0.4)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Confirmed Identity</span>
+              <span style={{ fontSize: '1.2rem', color: getRoleColor(role), fontFamily: "'Bebas Neue', 'Oswald', sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase' }}>{getRoleSentence(playerName, role)}</span>
+            </div>
           </div>
         )}
 
         {/* STATIC LAYER B: Mr White Guess UI completely independent from the animated card */}
         {showGuessUI && (
-          <div style={{ transform: 'translateY(190px)', width: '90%', maxWidth: '340px', pointerEvents: 'auto' }}>
+          <div style={{ transform: 'translateY(155px)', width: '90%', maxWidth: '340px', pointerEvents: 'auto' }}>
             <MrWhiteGuessPanel
               isMe={isMe}
               liveGuess={mrWhiteLiveGuess || ''}

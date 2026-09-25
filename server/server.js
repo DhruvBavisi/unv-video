@@ -65,10 +65,21 @@ const sessionSockets = new Map()
 // How long a room whose players are all disconnected is kept before reap.
 const RECONNECT_GRACE_MS = 5 * 60 * 1000
 
-const WORD_PAIRS = {
+let WORD_PAIRS = {
   places: [{ civilianWord: 'Ocean', undercoverWord: 'Swimming Pool' }],
   objects: [{ civilianWord: 'Camera', undercoverWord: 'Binoculars' }],
   'open-file': [{ civilianWord: 'Ocean', undercoverWord: 'Swimming Pool' }],
+}
+
+if (process.env.NODE_ENV === 'production') {
+  try {
+    const prodWordsPath = path.resolve(__dirname, 'prodWords.json')
+    if (fs.existsSync(prodWordsPath)) {
+      WORD_PAIRS = JSON.parse(fs.readFileSync(prodWordsPath, 'utf8'))
+    }
+  } catch (err) {
+    console.error('Failed to load prodWords.json:', err)
+  }
 }
 
 let clueIdCounter = 0
@@ -86,8 +97,9 @@ function validateConfig(config, room) {
   const undercover = config.undercover ?? room.configuration.undercover
   const mrWhite = config.mrWhite ?? room.configuration.mrWhite
   if (typeof totalPlayers !== 'number' || totalPlayers < 3 || totalPlayers > 20) return false
-  if (typeof undercover !== 'number' || undercover < 1) return false
+  if (typeof undercover !== 'number' || undercover < 0) return false
   if (typeof mrWhite !== 'number' || mrWhite < 0) return false
+  if (undercover + mrWhite < 1) return false
   if (undercover + mrWhite > Math.floor(totalPlayers / 2)) return false
   const civilianCount = totalPlayers - undercover - mrWhite
   if (civilianCount < Math.ceil(totalPlayers / 2)) return false
@@ -154,12 +166,13 @@ function getPublicRoomState(room) {
       status: p.status,
       eliminated: p.eliminated,
       spectator: p.spectator,
-      role: p.eliminated ? p.role : undefined,
+      role: (p.eliminated || room.gamePhase === 'RESULT') ? p.role : undefined,
       playAgain: !!p.playAgain,
       continueAck: !!p.continueAck,
     })),
     configuration: { ...room.configuration },
     category: room.category,
+    wordPair: room.gamePhase === 'RESULT' ? room.wordPair : undefined,
   }
 }
 
@@ -352,7 +365,10 @@ function advanceTurn(room) {
 }
 
 function assignWords(room) {
-  const category = room.category || 'open-file'
+  let category = room.category
+  if (!category || !WORD_PAIRS[category]) {
+    category = Object.keys(WORD_PAIRS)[0] || 'open-file'
+  }
   const pairs = WORD_PAIRS[category]
   if (!pairs || pairs.length === 0) return
 
@@ -482,7 +498,7 @@ io.on('connection', (socket) => {
     let roomId = makeRoomId()
     while (rooms.has(roomId)) roomId = makeRoomId()
 
-    const config = getDefaultConfig(5)
+    const config = getDefaultConfig(3)
     const room = {
       id: roomId,
       hostId: sessionId,
