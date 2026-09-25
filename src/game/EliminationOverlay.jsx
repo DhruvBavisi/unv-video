@@ -236,7 +236,7 @@ export default function EliminationOverlay({
     if (eliminationResult?.role === 'MR_WHITE') return
 
     const timeElapsed = Date.now() - eliminationResult.startedAt
-    const remaining = 5000 - timeElapsed
+    const remaining = 4000 - timeElapsed
     
     if (remaining <= 0) {
       setPhase(6)

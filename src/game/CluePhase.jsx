@@ -19,6 +19,7 @@ const ERROR_MESSAGES = {
 }
 
 function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const role = localSecret?.role
   const word = localSecret?.word
   const roleVisible = revealRoles === true && role != null
@@ -26,24 +27,39 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE'
 
   return (
-    <div className={`clue-panel__identity${roleVisible ? ` clue-panel__identity--${role.toLowerCase()}` : ''}`}>
-      <span className="online-kicker">Classified</span>
-      {roleVisible ? (
-        <div className="clue-panel__avatar">
-          <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" />
+    <div className={`clue-panel__identity${roleVisible ? ` clue-panel__identity--${role.toLowerCase()}` : ''} ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
+      
+      <div 
+        className="clue-panel__identity-toggle"
+        onClick={() => !isExpanded && setIsExpanded(true)}
+        role="button"
+        tabIndex={0}
+      >
+        <span>🔒</span> SHOW ROLE &amp; SECRET WORD <span className="chevron">›</span>
+      </div>
+
+      <div className="clue-panel__identity-content">
+        <span className="online-kicker">Classified</span>
+        {roleVisible ? (
+          <div className="clue-panel__avatar">
+            <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" />
+          </div>
+        ) : null}
+        <h2 className="clue-panel__role-name">{roleLabel}</h2>
+        {wordVisible && (
+          <div className="clue-panel__secret">
+            <span className="clue-panel__word-label">Your Secret Word</span>
+            {word ? (
+              <div className="clue-panel__word-box">{word}</div>
+            ) : (
+              <p className="clue-panel__no-word">No word assigned. Listen carefully to every clue.</p>
+            )}
+          </div>
+        )}
+        <div className="clue-panel__identity-actions">
+          <Button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}>HIDE</Button>
         </div>
-      ) : null}
-      <h2 className="clue-panel__role-name">{roleLabel}</h2>
-      {wordVisible && (
-        <div className="clue-panel__secret">
-          <span className="clue-panel__word-label">Your Secret Word</span>
-          {word ? (
-            <div className="clue-panel__word-box">{word}</div>
-          ) : (
-            <p className="clue-panel__no-word">No word assigned. Listen carefully to every clue.</p>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -428,7 +444,7 @@ function getInitials(name) {
     .join('')
 }
 
-function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting, eliminationResult, onSourceRect }) {
+function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting, eliminationResult, onSourceRect, currentRound }) {
   const activePlayers = players.filter(p => {
     // Keep the currently eliminated player in the list so their card can be used as the animation source
     if (eliminationResult && eliminationResult.playerId === p.id) {
@@ -461,7 +477,12 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
         <h2>Time to Vote</h2>
         {voteResult?.tie && <p className="clue-panel__voting-tie">TIE! A revote is required.</p>}
       </div>
-      <div className="clue-panel__voting-list">
+      <div className="clue-panel__order" style={{ flexGrow: 1, minHeight: 0 }}>
+        <div className="clue-panel__order-header">
+          <span className="clue-panel__order-title">Voting Phase</span>
+          <span className="clue-panel__round-badge">Round {String(currentRound || 1).padStart(2, '0')}</span>
+        </div>
+        <div className="clue-panel__voting-list" style={{ padding: '10px 14px', gap: '7px' }}>
         {activePlayers.map((p, index) => {
           const isMe = p.id === myPlayerId
           const isSelected = p.id === myVote
@@ -487,6 +508,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
             </button>
           )
         })}
+      </div>
       </div>
       <div className="clue-panel__voting-actions">
         <Button 
@@ -528,6 +550,14 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
   const isMyTurn = currentTurnPlayerId === sessionId
   const currentRound = round
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant'
+    })
+  }, [])
 
   useEffect(() => {
     submitLockRef.current = false
@@ -638,6 +668,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                   submitting={submitting}
                   eliminationResult={state.eliminationResult}
                   onSourceRect={onSourceRect}
+                  currentRound={currentRound}
                 />
               </div>
               

@@ -1373,6 +1373,7 @@ video {
   display: flex;
   flex-direction: column;
   height: 100%;
+  gap: 14px;
 }
 
 .clue-panel__voting-header {
@@ -1425,7 +1426,7 @@ video {
   animation: playerJoin 300ms ease both;
 }
 
-.voting-card:hover:not(:disabled) {
+.voting-card:hover:not(:disabled):not(.voting-card--selected) {
   border-color: rgba(169, 166, 158, 0.25);
   background: rgba(11, 12, 13, 0.7);
 }
@@ -1514,14 +1515,86 @@ video {
 /* --- Local Role Section (PRIVATE — avatar → role → word, vertical) --- */
 .clue-panel__identity {
   --role-accent: #b0ab9e;
-  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clue-panel__identity-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(28, 29, 31, 0.96);
   border: 1px solid rgba(169, 166, 158, 0.22);
-  background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  max-height: 80px;
+  opacity: 1;
+}
+
+.clue-panel__identity-toggle:hover {
+  background: rgba(40, 42, 45, 0.96);
+  border-color: rgba(169, 166, 158, 0.35);
+}
+
+.clue-panel__identity-toggle .chevron {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.clue-panel__identity.is-expanded .clue-panel__identity-toggle {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-width: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.clue-panel__identity-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 12px;
+  padding: 22px 20px;
+  border: 1px solid rgba(169, 166, 158, 0.22);
+  background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
+  border-radius: 4px;
+  overflow: hidden;
+  max-height: 800px;
+  opacity: 1;
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clue-panel__identity.is-collapsed .clue-panel__identity-content {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-width: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.clue-panel__identity-actions {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.clue-panel__identity-actions button {
+  width: 100%;
 }
 
 .clue-panel__identity--civilian { --role-accent: #57b06f; }

@@ -451,7 +451,7 @@ io.on('connection', (socket) => {
     player.isConnected = true
     player.disconnectedAt = null
     reassignHostIfNeeded(room)
-    socket.emit('session-token', { resumeToken: player.resumeToken, roomId })
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
     console.log('[ROOM] session reconnected', { sessionId, roomId })
     socket.emit('session-reconnected', getPublicRoomState(room))
 
@@ -527,7 +527,7 @@ io.on('connection', (socket) => {
     currentRoomId = roomId
     socket.join(roomId)
     connectPlayer(socket, sessionId)
-    callback?.({ room: getPublicRoomState(room), resumeToken: room.players[0].resumeToken })
+    callback?.({ room: getPublicRoomState(room), resumeToken: room.players[0].resumeToken, playerName: room.players[0].name })
   })
 
   socket.on('join-room', ({ sessionId, roomId, playerName, isBot }, callback) => {
@@ -554,7 +554,7 @@ io.on('connection', (socket) => {
     if (existing) {
       existing.isConnected = true
       existing.disconnectedAt = null
-      existing.name = trimmed
+      // Never overwrite the existing player's authoritative name!
       currentSessionId = sessionId
       currentRoomId = normalizedId
       socket.join(normalizedId)
@@ -562,7 +562,7 @@ io.on('connection', (socket) => {
       ensureResumeToken(existing)
       const publicState = getPublicRoomState(room)
       console.log('[ROOM] join successful (rejoin)', { roomId: normalizedId, playerId: sessionId })
-      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId })
+      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name })
 
       if (room.wordPair) {
         const role = existing.role || null
@@ -571,7 +571,7 @@ io.on('connection', (socket) => {
         socket.emit('role-assigned', { role: roleToReveal, word })
       }
 
-      callback?.({ room: publicState, resumeToken: existing.resumeToken })
+      callback?.({ room: publicState, resumeToken: existing.resumeToken, playerName: existing.name })
       broadcastRoom(room)
       return
     }
@@ -605,8 +605,8 @@ io.on('connection', (socket) => {
     connectPlayer(socket, sessionId)
     const publicState = getPublicRoomState(room)
     console.log('[ROOM] join successful', { roomId: normalizedId, playerId: sessionId })
-    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId })
-    callback?.({ room: publicState, resumeToken: room.players[room.players.length - 1].resumeToken })
+    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId, playerName: trimmed })
+    callback?.({ room: publicState, resumeToken: room.players[room.players.length - 1].resumeToken, playerName: trimmed })
     if (room.status === 'LOBBY') {
       const newTotal = Math.max(3, room.players.length)
       const defConfig = getDefaultConfig(newTotal)

@@ -19,6 +19,7 @@ import CluePhase from './CluePhase.jsx'
 import ResultPhase from './ResultPhase.jsx'
 import PlayersPanel from './PlayersPanel.jsx'
 import EliminationOverlay from './EliminationOverlay.jsx'
+import { readIdentity } from './identity.js'
 
 function ErrorState({ children }) {
   return children ? <p className="online-error" role="alert">{children}</p> : null
@@ -40,8 +41,32 @@ function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
 }
 
 function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, joining }) {
+  const savedSession = requiresRoomId ? readIdentity() : null
   const [name, setName] = useState('')
   const [room, setRoom] = useState(roomId || '')
+
+  const isRejoin = requiresRoomId && savedSession && savedSession.roomId && savedSession.roomId === room.trim().toUpperCase() && savedSession.playerName
+
+  if (isRejoin) {
+    return (
+      <section className="online-panel">
+        <span className="online-kicker">Previous game found</span>
+        <h1>Welcome back</h1>
+        <div style={{ margin: '24px 0', padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>{savedSession.playerName}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Room {savedSession.roomId}</div>
+        </div>
+        {joining && <p className="online-joining">Joining room...</p>}
+        <div className="online-actions">
+          <Button variant="primary" onClick={() => onSubmit(savedSession.playerName, savedSession.roomId)} disabled={loading || joining}>
+            {joining ? 'Rejoining...' : loading ? 'Connecting...' : 'REJOIN GAME'}
+          </Button>
+          <Button onClick={onBack} disabled={loading || joining}>Back</Button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="online-panel">
       <span className="online-kicker">Classified access</span>
@@ -550,15 +575,44 @@ export default function OnlineGame({ onExit }) {
       </section>
     )
   } else if (activePhase === GAME_PHASES.ONLINE_SETUP) {
+    const savedSession = readIdentity()
+    const hasSession = !!(savedSession && savedSession.roomId && savedSession.playerName)
+
     content = (
       <section className="online-panel">
         <span className="online-kicker">Online investigation</span>
         <h1>Create or join</h1>
         <p>Open a new case file or enter an existing room ID.</p>
+        {joining && <p className="online-joining">Rejoining room...</p>}
         <div className="online-actions">
-          <Button variant="primary" onClick={() => dispatch({ type: 'OPEN_CREATE' })}>Create room</Button>
-          <Button onClick={() => dispatch({ type: 'OPEN_JOIN' })}>Join room</Button>
-          <Button onClick={() => dispatch({ type: 'BACK_TO_MODE' })}>Back</Button>
+          <Button 
+            variant={hasSession ? undefined : 'primary'} 
+            onClick={() => dispatch({ type: 'OPEN_CREATE' })}
+            disabled={loading || joining}
+          >
+            Create room
+          </Button>
+          <Button 
+            onClick={() => dispatch({ type: 'OPEN_JOIN' })}
+            disabled={loading || joining}
+            >
+            Join room
+          </Button>
+            {hasSession && (
+              <Button 
+                variant="primary" 
+                onClick={() => handleJoinRoom(savedSession.playerName, savedSession.roomId)} 
+                disabled={loading || joining}
+              >
+                {joining ? 'Rejoining...' : `Rejoin`}
+              </Button>
+            )}
+          <Button 
+            onClick={() => dispatch({ type: 'BACK_TO_MODE' })}
+            disabled={loading || joining}
+          >
+            Back
+          </Button>
         </div>
       </section>
     )
