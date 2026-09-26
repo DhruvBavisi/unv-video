@@ -6,6 +6,7 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../shared/game-limits.js'
+import { onRoundStart, onVoteTallied, onElimination, onGameEnd } from './specialRolesHooks.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -167,12 +168,16 @@ function getPublicRoomState(room) {
       eliminated: p.eliminated,
       spectator: p.spectator,
       role: (p.eliminated || room.gamePhase === 'RESULT') ? p.role : undefined,
+      specialRole: (p.eliminated || room.gamePhase === 'RESULT') ? p.specialRole : undefined,
+      specialRoleData: p.specialRoleData,
+      points: p.points,
       playAgain: !!p.playAgain,
       continueAck: !!p.continueAck,
     })),
     configuration: { ...room.configuration },
     category: room.category,
     wordPair: room.gamePhase === 'RESULT' ? room.wordPair : undefined,
+    specialRoleOutcomes: room.specialRoleOutcomes || [],
   }
 }
 
@@ -300,10 +305,12 @@ function evaluateWinCondition(room) {
     } else {
       room.winner = 'MR_WHITE'
     }
+    onGameEnd(room, { winner: room.winner })
     return true
   } else if (undercovers === 0 && mrWhites === 0) {
     room.gamePhase = 'RESULT'
     room.winner = 'CIVILIAN'
+    onGameEnd(room, { winner: room.winner })
     return true
   }
   
@@ -328,6 +335,8 @@ function startCluePhase(room) {
   room.turnOrder = shuffle(active.map((p) => p.id))
   room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
   room.turnIndex = 0
+
+  onRoundStart(room)
 
   console.log('[CLUE] phase started', {
     roomId: room.id,
@@ -481,7 +490,7 @@ io.on('connection', (socket) => {
       const role = player?.role || null
       const word = wordForRole(role, room.wordPair)
       const roleToReveal = (room.configuration.revealRoles || role === 'MR_WHITE') ? role : null
-      socket.emit('role-assigned', { role: roleToReveal, word })
+      socket.emit('role-assigned', { role: roleToReveal, word, specialRole: player?.specialRole || null })
     }
 
     broadcastRoom(room)
@@ -530,6 +539,9 @@ io.on('connection', (socket) => {
         status: 'READY',
         role: null,
         word: null,
+        specialRole: null,
+        specialRoleData: {},
+        points: 0,
         eliminated: false,
         spectator: false,
         resumeToken: crypto.randomUUID(),
@@ -540,8 +552,10 @@ io.on('connection', (socket) => {
         mrWhite: config.mrWhite,
         civilians: config.totalPlayers - config.undercover - config.mrWhite,
         revealRoles: false,
+        specialRoles: { joyFool: false, duelists: false, lovers: false, revenger: false, boomerang: false, goddessOfJustice: false, ghost: false, falafelVendor: false, mrMeme: false }
       },
       category: 'open-file',
+      specialRoleOutcomes: [],
     }
 
     rooms.set(roomId, room)
@@ -590,7 +604,7 @@ io.on('connection', (socket) => {
         const role = existing.role || null
         const word = wordForRole(role, room.wordPair)
         const roleToReveal = (room.configuration.revealRoles || role === 'MR_WHITE') ? role : null
-        socket.emit('role-assigned', { role: roleToReveal, word })
+        socket.emit('role-assigned', { role: roleToReveal, word, specialRole: existing.specialRole || null })
       }
 
       callback?.({ room: publicState, resumeToken: existing.resumeToken, playerName: existing.name })
@@ -615,6 +629,9 @@ io.on('connection', (socket) => {
       status: isMidGame ? 'SPECTATING' : 'JOINED',
       role: null,
       word: null,
+      specialRole: null,
+      specialRoleData: {},
+      points: 0,
       eliminated: false,
       spectator: isMidGame,
       isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
@@ -723,6 +740,8 @@ io.on('connection', (socket) => {
       room.turnIndex = 0
       room.submittedCluePlayerIds = []
 
+      room.specialRoleOutcomes = []
+
       room.players.forEach(p => {
         if (!p.playAgain) {
           p.status = p.isHost ? 'READY' : 'JOINED'
@@ -731,6 +750,9 @@ io.on('connection', (socket) => {
         p.spectator = false
         p.role = null
         p.word = null
+        p.specialRole = null
+        p.specialRoleData = {}
+        p.points = 0
         p.playAgain = false
         p.continueAck = false
       })
@@ -766,6 +788,7 @@ io.on('connection', (socket) => {
         ? config.totalPlayers - (config.undercover ?? room.configuration.undercover) - (config.mrWhite ?? room.configuration.mrWhite)
         : room.configuration.civilians,
       revealRoles: config.revealRoles ?? room.configuration.revealRoles,
+      specialRoles: config.specialRoles ?? room.configuration.specialRoles,
     }
     broadcastRoom(room)
   })
@@ -814,13 +837,15 @@ io.on('connection', (socket) => {
       p.status = 'PLAYING'
       p.eliminated = false
       p.spectator = false
+      p.specialRoleData = {}
+      p.points = 0
 
       const word = wordForRole(p.role, room.wordPair)
 
       const socketId = sessionSockets.get(p.id)
       if (socketId) {
         const roleToReveal = (room.configuration.revealRoles || p.role === 'MR_WHITE') ? p.role : null
-        io.to(socketId).emit('role-assigned', { role: roleToReveal, word })
+        io.to(socketId).emit('role-assigned', { role: roleToReveal, word, specialRole: p.specialRole })
       }
     })
 
@@ -1016,6 +1041,7 @@ io.on('connection', (socket) => {
         const targetId = room.votes[voterId]
         voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
       }
+      onVoteTallied(room, voteCounts)
       
       let maxVotes = 0
       let mostVoted = []
@@ -1036,6 +1062,7 @@ io.on('connection', (socket) => {
         if (eliminatedPlayer) {
           eliminatedPlayer.eliminated = true
           eliminatedPlayer.spectator = true
+          onElimination(room, eliminatedId)
           
           room.voteResult = { tie: false, eliminated: eliminatedId }
           room.gamePhase = 'ELIMINATION'
@@ -1130,6 +1157,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.eliminationResult = null
       room.mrWhiteGuessSubmitted = false
       room.mrWhiteLiveGuess = ''
+      onGameEnd(room, { winner: room.winner })
       broadcastRoom(room)
     } else {
       chatIdCounter++

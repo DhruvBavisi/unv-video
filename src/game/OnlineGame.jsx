@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback, useReducer } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useReducer } from 'react'
 import Button from '../components/Button.jsx'
 import { WORD_CATEGORIES } from '../data/wordCategories.js'
+import { SPECIAL_ROLES } from '../data/specialRoles.js'
 import { GAME_PHASES, PLAYER_STATUS } from './gamePhases.js'
 import {
   canStart, createInitialState, gameReducer, localPlayer,
@@ -343,6 +344,13 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
         </button>
       </div>
 
+      <SpecialRolesConfig 
+        configuration={configuration} 
+        host={host} 
+        onChangeConfig={onChangeConfig} 
+        totalPlayers={totalPlayers} 
+      />
+
       <label className="config-field">
         <span className="config-field__label">Word category</span>
         <select
@@ -357,6 +365,134 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
         </select>
       </label>
     </aside>
+  )
+}
+
+function SpecialRoleInfoModal({ role, onClose, originRect }) {
+  const [animationState, setAnimationState] = useState('opening')
+
+  const handleClose = useCallback(() => {
+    if (animationState === 'closing') return
+    setAnimationState('closing')
+    setTimeout(() => {
+      onClose()
+    }, 400)
+  }, [animationState, onClose])
+
+  useEffect(() => {
+    const handleEsc = (e) => e.key === 'Escape' && handleClose()
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [handleClose])
+
+  const style = originRect ? {
+    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`
+  } : {}
+
+  const isClosing = animationState === 'closing'
+
+  return (
+    <div className={`special-role-modal-overlay ${isClosing ? 'special-role-modal-overlay--closing' : ''}`} onClick={handleClose}>
+      <div className="special-role-modal-wrapper" onClick={e => e.stopPropagation()}>
+        <div className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} style={style}>
+          <button className="special-role-modal__close" onClick={handleClose} aria-label="Close modal">✕</button>
+          
+          <div className="special-role-modal__avatar-frame">
+            {role.avatar && <img src={role.avatar} alt={role.name} />}
+          </div>
+          
+          <h2 className="special-role-modal__title">{role.name}</h2>
+          <p className="special-role-modal__desc">{role.description}</p>
+          
+          <div className="special-role-modal__rules">
+            <ul>
+              {role.rules.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
+          
+          <div className="special-role-modal__meta">
+            Minimum players: {role.minPlayers}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers }) {
+  const [expanded, setExpanded] = useState(false)
+  const [activeRoleInfo, setActiveRoleInfo] = useState(null)
+  const [activeRect, setActiveRect] = useState(null)
+  
+  const handleToggle = (key) => {
+    if (!host) return
+    const specialRoles = { ...configuration.specialRoles }
+    specialRoles[key] = !specialRoles[key]
+    onChangeConfig({ specialRoles })
+  }
+  
+  const handleInfo = (e, role) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.closest('.special-role-card').getBoundingClientRect()
+    setActiveRect(rect)
+    setActiveRoleInfo(role)
+  }
+
+  return (
+    <div className="special-roles-section">
+      <button className="special-roles-header" onClick={() => setExpanded(!expanded)}>
+        <span>Special Roles</span>
+        <span>{expanded ? '▲' : '▼'}</span>
+      </button>
+      
+      <div className={`special-roles-dropdown-wrapper ${expanded ? 'special-roles-dropdown-wrapper--open' : ''}`}>
+        <div className="special-roles-list-inner">
+          <div className="special-roles-list">
+            {SPECIAL_ROLES.map(role => {
+              const enabled = configuration.specialRoles?.[role.key]
+              const canEnable = totalPlayers >= role.minPlayers
+              const unavailable = !canEnable
+              
+              return (
+                <div key={role.key} className={`special-role-card ${unavailable ? 'special-role-card--disabled' : ''}`}>
+                  <div className="special-role-card__main">
+                    <span className="special-role-card__name">{role.name}</span>
+                    {unavailable && <span className="special-role-card__req">Unavailable — requires {role.minPlayers} players</span>}
+                  </div>
+                  
+                  <div className="special-role-card__actions">
+                    <button type="button" className="special-role-card__info-btn" onClick={(e) => handleInfo(e, role)}>i</button>
+                    <div className="config-field--toggle" style={{ margin: 0, padding: 0 }}>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!!enabled}
+                        disabled={!host || unavailable}
+                        onClick={() => handleToggle(role.key)}
+                        className={`toggle-switch ${enabled ? 'toggle-switch--active' : ''}`}
+                        aria-label={`Toggle ${role.name}`}
+                      >
+                        <span className="toggle-switch__track">
+                          <span className="toggle-switch__knob" />
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+      
+      {activeRoleInfo && (
+        <SpecialRoleInfoModal 
+          role={activeRoleInfo} 
+          onClose={() => setActiveRoleInfo(null)} 
+          originRect={activeRect}
+        />
+      )}
+    </div>
   )
 }
 

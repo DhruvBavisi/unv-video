@@ -23,7 +23,13 @@ export function createInitialState() {
     copied: false,
     gameStatus: 'SETUP',
     round: 1,
-    configuration: { totalPlayers: 3, undercover: 1, mrWhite: 0, civilians: 2 },
+    configuration: { 
+      totalPlayers: 3, 
+      undercover: 1, 
+      mrWhite: 0, 
+      civilians: 2,
+      specialRoles: { joyFool: false, duelists: false, lovers: false, revenger: false, boomerang: false, goddessOfJustice: false, ghost: false, falafelVendor: false, mrMeme: false }
+    },
     category: import.meta.env.PROD ? 'random' : 'open-file',
     players: [],
     localSecret: null,
@@ -41,6 +47,7 @@ export function createInitialState() {
     mrWhiteGuesserId: null,
     mrWhiteLiveGuess: '',
     winner: null,
+    specialRoleOutcomes: [],
   }
 }
 
@@ -145,6 +152,7 @@ export function gameReducer(state, action) {
         mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
         wordPair: room.wordPair || state.wordPair || null,
+        specialRoleOutcomes: room.specialRoleOutcomes || [],
         error: '',
       }
     }
@@ -177,7 +185,13 @@ export function gameReducer(state, action) {
         phase: GAME_PHASES.ONLINE_SETUP,
         membershipState: MEMBERSHIP.NONE,
         gameStatus: 'SETUP',
-        configuration: { totalPlayers: 3, undercover: 1, mrWhite: 0, civilians: 2 },
+        configuration: { 
+          totalPlayers: 3, 
+          undercover: 1, 
+          mrWhite: 0, 
+          civilians: 2,
+          specialRoles: { joyFool: false, duelists: false, lovers: false, revenger: false, boomerang: false, goddessOfJustice: false, ghost: false, falafelVendor: false, mrMeme: false }
+        },
         category: import.meta.env.PROD ? 'random' : 'open-file',
         error: '',
         clues: [],
@@ -191,6 +205,7 @@ export function gameReducer(state, action) {
         eliminationResult: null,
         mrWhiteGuesserId: null,
         winner: null,
+        specialRoleOutcomes: [],
       }
     }
     case 'SESSION_RECONNECTED': {
@@ -228,6 +243,7 @@ export function gameReducer(state, action) {
         mrWhiteLiveGuess: room.mrWhiteLiveGuess ?? '',
         winner: room.winner || null,
         wordPair: room.wordPair || state.wordPair || null,
+        specialRoleOutcomes: room.specialRoleOutcomes || [],
         error: '',
       }
     }
@@ -259,10 +275,10 @@ export function gameReducer(state, action) {
     case 'CONNECTION_CHANGE': return { ...state, connectionState: action.state }
     case 'JOIN_FAILED': return { ...state, error: action.error, membershipState: MEMBERSHIP.NONE }
     case 'ROLE_ASSIGNED': {
-      console.log('[ROLE] role assigned privately', { role: action.role, word: action.word })
+      console.log('[ROLE] role assigned privately', { role: action.role, word: action.word, specialRole: action.specialRole })
       return {
         ...state,
-        localSecret: { role: action.role, word: action.word },
+        localSecret: { role: action.role, word: action.word, specialRole: action.specialRole },
       }
     }
     case 'CHAT_MESSAGE': {
@@ -313,9 +329,9 @@ export function initSocket(sid) {
       dispatchRef?.({ type: 'SESSION_EXPIRED' })
     })
 
-    socket.on('role-assigned', ({ role, word }) => {
-      console.log('[ROLE] role-assigned received', { role, word })
-      dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word })
+    socket.on('role-assigned', ({ role, word, specialRole }) => {
+      console.log('[ROLE] role-assigned received', { role, word, specialRole })
+      dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word, specialRole })
     })
 
     socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
