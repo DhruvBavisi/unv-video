@@ -437,11 +437,30 @@ export default function EliminationOverlay({
         </div>
 
         {!isMrWhiteGuessing && (
-          <div style={{ transform: 'translateY(165px)', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ transform: 'translateY(165px)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '10px 24px', background: 'rgba(35, 35, 35, 0.4)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', textAlign: 'center' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Confirmed Identity</span>
               <span style={{ fontSize: '1.2rem', color: getRoleColor(role), fontFamily: "'Bebas Neue', 'Oswald', sans-serif", letterSpacing: '0.08em', textTransform: 'uppercase' }}>{getRoleSentence(playerName, role)}</span>
             </div>
+            
+            {eliminationResult?.specialRoleOutcomes?.some(o => o.role === 'duelists' && o.eliminatedName === playerName) && (
+              <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '12px 24px', background: 'linear-gradient(145deg, rgba(30, 32, 40, 0.7), rgba(20, 22, 28, 0.6))', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '6px', textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#d4af37', display: 'block', marginBottom: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 'bold' }}>DUEL RESOLVED</span>
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#9E3A3A', fontWeight: 'bold' }}>{playerName}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>ELIMINATED</div>
+                    <div style={{ fontSize: '0.85rem', color: '#9E3A3A', fontWeight: 'bold', marginTop: '2px' }}>−2 PTS</div>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', opacity: 0.5 }}>vs.</div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#4ade80', fontWeight: 'bold' }}>{eliminationResult.specialRoleOutcomes.find(o => o.role === 'duelists' && o.eliminatedName === playerName).survivingName}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>SURVIVED</div>
+                    <div style={{ fontSize: '0.85rem', color: '#4ade80', fontWeight: 'bold', marginTop: '2px' }}>+2 PTS</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

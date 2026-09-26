@@ -845,10 +845,36 @@ io.on('connection', (socket) => {
 
     // Assign Special Roles
     const specialRolesConfig = room.configuration.specialRoles || {}
+    let availablePlayers = [...room.players]
+
+    const assignRole = (roleKey, count) => {
+      const assigned = []
+      for (let i = 0; i < count; i++) {
+        if (availablePlayers.length === 0) break
+        const rIndex = Math.floor(Math.random() * availablePlayers.length)
+        const p = availablePlayers.splice(rIndex, 1)[0]
+        p.specialRole = roleKey
+        assigned.push(p)
+      }
+      return assigned
+    }
+
     if (specialRolesConfig.joyFool?.enabled) {
       if (room.players.length >= specialRolesConfig.joyFool.minPlayers) {
-        const randomIndex = Math.floor(Math.random() * room.players.length)
-        room.players[randomIndex].specialRole = 'joyFool'
+        assignRole('joyFool', 1)
+      }
+    }
+
+    if (specialRolesConfig.duelists?.enabled) {
+      if (room.players.length >= specialRolesConfig.duelists.minPlayers) {
+        const duelists = assignRole('duelists', 2)
+        if (duelists.length === 2) {
+          const duelId = crypto.randomUUID()
+          duelists[0].specialRoleData = { duelId, partnerId: duelists[1].id, partnerName: duelists[1].name, resolved: false }
+          duelists[1].specialRoleData = { duelId, partnerId: duelists[0].id, partnerName: duelists[0].name, resolved: false }
+        } else {
+          duelists.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
+        }
       }
     }
 
@@ -1085,6 +1111,7 @@ io.on('connection', (socket) => {
             role: eliminatedPlayer.role,
             voteCount: maxVotes,
             startedAt: Date.now(),
+            specialRoleOutcomes: room.specialRoleOutcomes
           }
           
           console.log(`[ELIMINATION DEBUG]

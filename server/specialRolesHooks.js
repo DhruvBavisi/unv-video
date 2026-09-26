@@ -25,6 +25,28 @@ export function onElimination(room, eliminatedPlayerId) {
       });
     }
   }
+
+  if (eliminatedPlayer.specialRole === 'duelists') {
+    if (!eliminatedPlayer.specialRoleData.resolved) {
+      const partner = room.players.find(p => p.id === eliminatedPlayer.specialRoleData.partnerId);
+      if (partner) {
+        eliminatedPlayer.points = (eliminatedPlayer.points || 0) - 2;
+        partner.points = (partner.points || 0) + 2;
+        
+        eliminatedPlayer.specialRoleData.resolved = true;
+        partner.specialRoleData.resolved = true;
+        
+        if (!room.specialRoleOutcomes) room.specialRoleOutcomes = [];
+        room.specialRoleOutcomes.push({
+          role: 'duelists',
+          duelId: eliminatedPlayer.specialRoleData.duelId,
+          eliminatedName: eliminatedPlayer.name,
+          survivingName: partner.name,
+          message: `Duelists\n${eliminatedPlayer.name} — eliminated — −2 pts\n${partner.name} — survived the duel — +2 pts`
+        });
+      }
+    }
+  }
 }
 
 export function onGameEnd(room, result) {

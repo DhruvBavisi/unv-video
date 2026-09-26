@@ -137,7 +137,8 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
                 color: '#d4af37',
                 fontSize: '0.95rem',
                 letterSpacing: '0.03em',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)'
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)',
+                whiteSpace: 'pre-wrap'
               }}>
                 {outcome.message}
               </div>

@@ -413,13 +413,20 @@ Simplest role: no interaction with voting/elimination logic beyond a read.
 - Integrated a new visual `Special Role Outcomes` component into `ResultPhase.jsx`.
 - Kept the unresolved Special Role exit animation untouched as requested.
 
-## PHASE 27 — The Duelists
+## PHASE 27 — The Duelists ✅
 Two players, points-only, no elimination-order or vote logic changes.
 
 - When enabled with ≥5 active players, assign the `duelist` trait to exactly two players (any alignment(s), independent of each other).
 - `onElimination`: if the eliminated player is a duelist, the **other** duelist gets +2 points and the eliminated duelist gets −2 points. Only the first duelist elimination triggers this (once resolved, the pair's duel is closed).
 - Duel identity is never shown to either player or the room before it resolves; reveal both duelists' identity + point outcome only on the Elimination/Result screen once resolved (matches the site's flavor of "no big deal" — private until settled).
 - Minimum 5 active players (per source).
+
+**Implementation Note:**
+- Server-authoritative assignment created in `server.js` start-game hook for 2 random active players.
+- Created robust `onElimination` hook logic inside `specialRolesHooks.js`. The hook applies `+2` / `-2` and prevents duplicate triggers.
+- Updated `EliminationOverlay.jsx` to parse and render a polished Duelist Reveal UI immediately upon resolving the duel.
+- Privacy maintained: Identities stay concealed in memory and UI until explicitly triggered by the hook.
+- Works correctly in tandem with the Joy Fool without conflicts.
 
 ## PHASE 28 — The Lovers
 First role that changes elimination flow (cascading elimination).

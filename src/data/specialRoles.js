@@ -17,7 +17,8 @@ export const SPECIAL_ROLES = [
     description: "Two players locked in a rivalry. One must fall for the other to triumph.",
     rules: [
       "Assigned to exactly two players.",
-      "If one Duelist is eliminated, the surviving Duelist earns bonus points if they win the game."
+      "If a Duelist is eliminated first, the eliminated player loses 2 points, and the surviving Duelist gains 2 points.",
+      "The duel resolves only once."
     ],
     avatar: null
   },
