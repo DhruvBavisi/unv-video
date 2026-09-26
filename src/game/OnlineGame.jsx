@@ -400,10 +400,7 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [handleClose])
 
-  const style = originRect ? {
-    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`,
-    ...exitStyle
-  } : exitStyle
+  const style = exitStyle
 
   const isClosing = animationState === 'closing'
 
