@@ -819,6 +819,7 @@ io.on('connection', (socket) => {
     room.votes = {}
     room.lockedVotes = []
     room.voteResult = null
+    room.specialRoleOutcomes = []
 
     assignWords(room)
 
@@ -837,9 +838,21 @@ io.on('connection', (socket) => {
       p.status = 'PLAYING'
       p.eliminated = false
       p.spectator = false
+      p.specialRole = null
       p.specialRoleData = {}
       p.points = 0
+    })
 
+    // Assign Special Roles
+    const specialRolesConfig = room.configuration.specialRoles || {}
+    if (specialRolesConfig.joyFool?.enabled) {
+      if (room.players.length >= specialRolesConfig.joyFool.minPlayers) {
+        const randomIndex = Math.floor(Math.random() * room.players.length)
+        room.players[randomIndex].specialRole = 'joyFool'
+      }
+    }
+
+    room.players.forEach((p) => {
       const word = wordForRole(p.role, room.wordPair)
 
       const socketId = sessionSockets.get(p.id)

@@ -5,7 +5,7 @@ export const SPECIAL_ROLES = [
     minPlayers: 3,
     description: "The Joy Fool has a singular, bizarre goal: to be eliminated by the group.",
     rules: [
-      "Wins the investigation immediately if eliminated by a group vote.",
+      "The Joy Fool receives a +4 point bonus if eliminated in the first elimination of the investigation.",
       "Does not know who the Undercovers or Mr. White are."
     ],
     avatar: null

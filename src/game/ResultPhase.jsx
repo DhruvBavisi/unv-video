@@ -124,6 +124,28 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
         </div>
       )}
 
+      {state.specialRoleOutcomes && state.specialRoleOutcomes.length > 0 && (
+        <div className="anim-item anim-role" style={{ marginBottom: '32px' }}>
+          <div className="result-section-title" style={{ marginBottom: '12px' }}>Special Role Outcomes</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {state.specialRoleOutcomes.map((outcome, idx) => (
+              <div key={idx} style={{ 
+                background: 'linear-gradient(145deg, rgba(30, 32, 40, 0.7), rgba(20, 22, 28, 0.6))',
+                border: '1px solid rgba(212, 175, 55, 0.25)',
+                borderRadius: '6px',
+                padding: '12px 16px',
+                color: '#d4af37',
+                fontSize: '0.95rem',
+                letterSpacing: '0.03em',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)'
+              }}>
+                {outcome.message}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="anim-item anim-role" style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '12px', paddingBottom: '8px' }}>
           <div className="result-section-title" style={{ margin: 0 }}>Investigators</div>
@@ -170,11 +192,18 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
                   </span>
                 </div>
 
-                {p.eliminated && (
-                  <div style={{ fontSize: '0.7rem', color: '#9E3A3A', fontWeight: 'bold', marginLeft: '12px' }}>
-                    ELIMINATED
-                  </div>
-                )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  {p.points > 0 && (
+                    <div style={{ fontSize: '0.8rem', color: '#d4af37', fontWeight: 'bold' }}>
+                      {p.points} PTS
+                    </div>
+                  )}
+                  {p.eliminated && (
+                    <div style={{ fontSize: '0.7rem', color: '#9E3A3A', fontWeight: 'bold', marginLeft: '12px' }}>
+                      ELIMINATED
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}

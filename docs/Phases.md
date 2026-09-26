@@ -398,7 +398,7 @@ Build the extensibility layer every individual role will plug into. No role-spec
 - Lobby UI: a "Special Roles" panel (collapsed by default) listing each role with a toggle, its one-line description, and its minimum player count; toggles auto-disable below the minimum with an inline reason.
 - No visible gameplay change yet if all toggles stay OFF — this phase must not alter existing verified behavior.
 
-## PHASE 26 — The Joy Fool
+## PHASE 26 — The Joy Fool ✅
 Simplest role: no interaction with voting/elimination logic beyond a read.
 
 - Assignable to any one active player (any alignment) when enabled.
@@ -406,6 +406,12 @@ Simplest role: no interaction with voting/elimination logic beyond a read.
 - No effect on win conditions — the Joy Fool's own alignment still needs to win/lose normally; points are a side-score only.
 - Game Result screen shows a small "Special Role Outcomes" list when any special roles were active this game (e.g. "Joy Fool bonus: +4 pts — PlayerName").
 - No minimum player count (site does not specify one; usable from 3 players, same as base game).
+
+**Implementation Note:**
+- Server-side authoritative assignment integrated into `server.js` start-game hook.
+- Added Joy Fool hook inside `specialRolesHooks.js` `onElimination` which ensures `+4` points are only granted on the first elimination of the game. 
+- Integrated a new visual `Special Role Outcomes` component into `ResultPhase.jsx`.
+- Kept the unresolved Special Role exit animation untouched as requested.
 
 ## PHASE 27 — The Duelists
 Two players, points-only, no elimination-order or vote logic changes.

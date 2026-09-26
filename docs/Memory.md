@@ -4,9 +4,9 @@
 > This is not the original requirements document.
 
 ## Current Phase
-**Phase 16B — Elimination Phase / Presentation**
+**Phase 26 — The Joy Fool**
 
-The landing cinematic is treated as complete enough to begin the actual playable game. The existing landing implementation must remain isolated from gameplay state.
+The Joy Fool special role has been implemented with authoritative scoring (+4 points if eliminated first). The Special Role Outcomes list has been integrated into the Result screen. The Special Role info-card exit animation issue is intentionally left unresolved for now.
 
 ## Landing Project Status
 The cinematic renders a **300-frame JPEG sequence** extracted across the 10-second timeline (`investigation-room-30fps`, frames 1–300). The source MP4 is genuinely 10.0 s / 24 fps / 240 frames (despite the "30fps" filename); the 300 frames are a 30 fps re-sample of the same 10 s visual timeline (frame n ↔ t = (n−1)/30 s).
