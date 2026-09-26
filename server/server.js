@@ -366,10 +366,16 @@ function advanceTurn(room) {
 
 function assignWords(room) {
   let category = room.category
-  if (!category || !WORD_PAIRS[category]) {
-    category = Object.keys(WORD_PAIRS)[0] || 'open-file'
+  let pairs = []
+  if (category === 'random') {
+    pairs = Object.values(WORD_PAIRS).flat()
+  } else {
+    if (!category || !WORD_PAIRS[category]) {
+      category = Object.keys(WORD_PAIRS)[0] || 'open-file'
+    }
+    pairs = WORD_PAIRS[category]
   }
-  const pairs = WORD_PAIRS[category]
+  
   if (!pairs || pairs.length === 0) return
 
   const pairIndex = Math.floor(Math.random() * pairs.length)

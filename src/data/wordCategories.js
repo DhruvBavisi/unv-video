@@ -1,4 +1,5 @@
 export const WORD_CATEGORIES = import.meta.env.PROD ? [
+  { id: 'random', label: 'Random Mix', description: 'A surprising selection from all categories.' },
   { id: 'food', label: 'Food & Drink', description: 'Delicious treats and meals.' },
   { id: 'animals', label: 'Animals', description: 'Creatures from around the world.' },
   { id: 'household', label: 'Household', description: 'Everyday objects in your home.' },
