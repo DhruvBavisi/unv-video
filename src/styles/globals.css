@@ -4414,7 +4414,7 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 .special-role-modal-overlay.special-role-modal-overlay--closing {
-  animation: srm-fade-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: srm-fade-out 0.2s 0.15s forwards;
 }
 @keyframes srm-fade-out { to { opacity: 0; } }
 
@@ -4422,8 +4422,9 @@ input, select, textarea, button { font-size: 16px; }
   animation: srm-pop-flip-out 0.35s ease-in forwards;
 }
 @keyframes srm-pop-flip-out {
-  0% { transform: scale(1) rotateX(0deg) translateY(0); opacity: 1; }
-  100% { transform: scale(0.5) rotateX(90deg) translateY(50px); opacity: 0; }
+  0% { transform: translate(0px, 0px) scale(1) rotateX(0deg); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(var(--exit-tx, 0px), var(--exit-ty, 50px)) scale(0.5) rotateX(90deg); opacity: 0; }
 }
 
 .special-roles-dropdown-wrapper {

@@ -370,14 +370,29 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
 
 function SpecialRoleInfoModal({ role, onClose, originRect }) {
   const [animationState, setAnimationState] = useState('opening')
+  const modalRef = useRef(null)
+  const [exitStyle, setExitStyle] = useState({})
 
   const handleClose = useCallback(() => {
     if (animationState === 'closing') return
+
+    if (originRect && modalRef.current) {
+      const rect = modalRef.current.getBoundingClientRect()
+      const modalCenterX = rect.left + rect.width / 2
+      const modalCenterY = rect.top + rect.height / 2
+      const sourceX = originRect.left + originRect.width / 2
+      const sourceY = originRect.top + originRect.height / 2
+      
+      const tx = sourceX - modalCenterX
+      const ty = sourceY - modalCenterY
+      setExitStyle({
+        '--exit-tx': `${tx}px`,
+        '--exit-ty': `${ty}px`
+      })
+    }
+    
     setAnimationState('closing')
-    setTimeout(() => {
-      onClose()
-    }, 400)
-  }, [animationState, onClose])
+  }, [animationState, originRect])
 
   useEffect(() => {
     const handleEsc = (e) => e.key === 'Escape' && handleClose()
@@ -386,15 +401,26 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
   }, [handleClose])
 
   const style = originRect ? {
-    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`
-  } : {}
+    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`,
+    ...exitStyle
+  } : exitStyle
 
   const isClosing = animationState === 'closing'
 
+  const handleAnimationEnd = (e) => {
+    if (animationState === 'closing' && e.animationName === 'srm-fade-out') {
+      onClose()
+    }
+  }
+
   return (
-    <div className={`special-role-modal-overlay ${isClosing ? 'special-role-modal-overlay--closing' : ''}`} onClick={handleClose}>
+    <div 
+      className={`special-role-modal-overlay ${isClosing ? 'special-role-modal-overlay--closing' : ''}`} 
+      onClick={handleClose}
+      onAnimationEnd={handleAnimationEnd}
+    >
       <div className="special-role-modal-wrapper" onClick={e => e.stopPropagation()}>
-        <div className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} style={style}>
+        <div ref={modalRef} className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} style={style}>
           <button className="special-role-modal__close" onClick={handleClose} aria-label="Close modal">✕</button>
           
           <div className="special-role-modal__avatar-frame">
