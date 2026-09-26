@@ -942,8 +942,8 @@ video {
 
 .online-topbar { min-height: var(--nav-h); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid rgba(169,166,158,.18); color: var(--text-secondary); font-size: .62rem; letter-spacing: .25em; text-transform: uppercase; }
 .online-topbar button { justify-self: start; border: 0; padding: 0; background: transparent; color: var(--text-primary); font-family: var(--font-display); font-size: 1.4rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
-.online-topbar span:nth-child(2) { justify-self: center; }
-.online-topbar span:last-child { justify-self: end; }
+.online-topbar > span:nth-child(2) { justify-self: center; }
+.online-topbar > span:last-child, .online-topbar > div:last-child { justify-self: end; }
 
 .online-topbar__status { transition: color 300ms ease; }
 .online-topbar__status--connected { color: var(--accent); }
@@ -1173,8 +1173,24 @@ video {
 
 @media (max-width: 760px) {
   .online-topbar { grid-template-columns: 1fr auto; }
-  .online-topbar span:nth-child(2) { display: none; }
+  .online-topbar > span:nth-child(2) { display: none; }
   .online-topbar { padding: 0 14px 0 20px; }
+  
+  .online-topbar__status {
+    font-size: 0;
+    width: 1.2rem;
+  }
+  
+  .online-topbar__status::after {
+    content: "";
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18l0 -3' /%3E%3Cpath d='M10 18l0 -6' /%3E%3Cpath d='M14 18l0 -9' /%3E%3Cpath d='M18 18l0 -12' /%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18l0 -3' /%3E%3Cpath d='M10 18l0 -6' /%3E%3Cpath d='M14 18l0 -9' /%3E%3Cpath d='M18 18l0 -12' /%3E%3C/svg%3E") center/contain no-repeat;
+  }
+  
   .online-panel .btn { width: 100%; }
   .room-copy { justify-self: start; grid-column: 1; grid-row: auto; }
   .online-game__content { padding: 28px 16px; }

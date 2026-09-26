@@ -366,3 +366,130 @@ Do not proceed to Pass & Play until the Online Mode is stable and the above flow
 
 ## PHASE 24 — Pass & Play
 Reserved for a separate design discussion. Do not implement until the Pass & Play rules and flow are defined and approved.
+
+# SPECIAL ROLES EXPANSION
+
+Source: Yanstar Studio's official "Undercover" special-roles list (https://www.yanstarstudio.com/undercover-special-roles).
+These are **optional add-on traits**, not replacements for the base alignment. A player's authoritative alignment is always `ci` / `uc` / `mw`. A Special Role is an additional flag layered on top of that alignment (e.g. a player can be `ci` **and** have the `lovers` trait).
+
+Do not begin this section until Phase 11–23 (core Online Mode) is fully stable and QA-passed. Build strictly one role at a time, in the order below, and keep every role behind its own host toggle so it can be shipped independently.
+
+### Cross-cutting ground rules (apply to every phase in this section)
+- Special Roles are **entirely opt-in**. Default state = all OFF, identical to current behavior.
+- The host enables/disables each Special Role individually in the lobby, alongside `Reveal Roles`. Selection locks when the investigation starts, exactly like `Reveal Roles`.
+- A player may hold **at most one** Special Role trait per investigation. Traits are never stacked on the same player.
+- A Special Role is assigned in addition to, and never instead of, the authoritative `ci`/`uc`/`mw` alignment. Nothing in this section may change role-distribution counts from the approved table.
+- Each role that says "can only be activated from N players" must be **disabled and disabled-looking in the host UI** (not merely rejected on submit) when the active player count is below its minimum.
+- Special-role identity is private information with the same protection level as base role/word: never exposed in public state, DOM, accessible labels, or another player's view, except at the exact moment the role's own rule says to reveal it (e.g. Lovers reveal only on elimination).
+- Any role that changes vote tallying, elimination, or win-condition eligibility must be implemented as an explicit hook in the authoritative state machine (not a UI-layer patch), consistent with the existing "server rejects invalid actions" principle in Rules.md.
+- **Open assumptions below are flagged `ASSUMPTION:`** — confirm or override these before the agent builds that phase, since the source page does not fully specify them.
+
+## PHASE 25 — Special Roles Framework
+Build the extensibility layer every individual role will plug into. No role-specific behavior yet.
+
+- Extend authoritative state with a `specialRoles` config: map of role key → `{ enabled: boolean, minPlayers: number }`, host-controlled, locked at investigation start.
+- Extend per-player private state with an optional `specialRole` field (null by default) and any role-scoped data (target player id, points, used/unused flag) as a generic `specialRoleData` bag.
+- Add a `points` field to player state, defaulting to 0, surfaced only on the Game Result screen. This is investigation-scoped (resets on Play Again) unless product later asks for cross-game persistence — do not build persistence yet.
+- Add explicit extension hooks to the state machine so individual roles don't require touching core logic later:
+  - `onRoundStart(state)`
+  - `onVoteTallied(state, tally)` — before elimination is finalized
+  - `onElimination(state, eliminatedPlayerId)` — after elimination is finalized
+  - `onGameEnd(state, result)`
+- Lobby UI: a "Special Roles" panel (collapsed by default) listing each role with a toggle, its one-line description, and its minimum player count; toggles auto-disable below the minimum with an inline reason.
+- No visible gameplay change yet if all toggles stay OFF — this phase must not alter existing verified behavior.
+
+## PHASE 26 — The Joy Fool
+Simplest role: no interaction with voting/elimination logic beyond a read.
+
+- Assignable to any one active player (any alignment) when enabled.
+- `onElimination`: if the eliminated player holds `joy-fool` **and** this is the first elimination of the investigation, award +4 points via `specialRoleData`/`points`.
+- No effect on win conditions — the Joy Fool's own alignment still needs to win/lose normally; points are a side-score only.
+- Game Result screen shows a small "Special Role Outcomes" list when any special roles were active this game (e.g. "Joy Fool bonus: +4 pts — PlayerName").
+- No minimum player count (site does not specify one; usable from 3 players, same as base game).
+
+## PHASE 27 — The Duelists
+Two players, points-only, no elimination-order or vote logic changes.
+
+- When enabled with ≥5 active players, assign the `duelist` trait to exactly two players (any alignment(s), independent of each other).
+- `onElimination`: if the eliminated player is a duelist, the **other** duelist gets +2 points and the eliminated duelist gets −2 points. Only the first duelist elimination triggers this (once resolved, the pair's duel is closed).
+- Duel identity is never shown to either player or the room before it resolves; reveal both duelists' identity + point outcome only on the Elimination/Result screen once resolved (matches the site's flavor of "no big deal" — private until settled).
+- Minimum 5 active players (per source).
+
+## PHASE 28 — The Lovers
+First role that changes elimination flow (cascading elimination).
+
+- When enabled with ≥5 active players, assign the `lover` trait to exactly two players. Lovers may share the same alignment or different alignments — assignment is independent of `ci`/`uc`/`mw` distribution.
+- `onElimination`: if the eliminated player is a Lover, immediately and automatically eliminate the other Lover too, **before** the next phase (Mr. White guess check, win check) evaluates. This is a single atomic double-elimination for win-condition and Mr. White-guess purposes — both eliminations resolve, then Mr. White guess checks run for each eliminated Lover who is `mw`, then win conditions evaluate once against the resulting state.
+- The Lovers pairing is revealed to the whole room **only at the moment one is eliminated** — not before, not via any public/DOM state.
+- ASSUMPTION: if the cascade eliminates a second Lover who is also mid-guess-eligible (`mw`), both get independent guess opportunities sequentially (consistent with "every eliminated Mr. White gets a guess"). Confirm this ordering before building.
+- Minimum 5 active players (per source).
+
+## PHASE 29 — The Revenger
+Elimination-triggered secondary elimination, this time player-chosen rather than automatic.
+
+- When enabled with ≥5 active players, assign the `revenger` trait to one active player (any alignment).
+- `onElimination`: if the eliminated player is the Revenger, immediately open a private "choose a target" action for that (now-eliminated) player, scoped to remaining active players, excluding self.
+- The Revenger's chosen target is eliminated immediately once submitted; then Mr. White-guess checks and win checks run against the resulting state (same ordering principle as Phase 28).
+- Define and enforce a timeout/default behavior if the Revenger disconnects or does not choose (reuse the reconnection/stale-action patterns from Phase 18/21) — ASSUMPTION: no target is eliminated if the Revenger fails to choose within the timeout; confirm before building.
+- Minimum 5 active players (per source).
+
+## PHASE 30 — The Boomerang
+First role that changes vote-tallying itself rather than post-elimination effects.
+
+- When enabled, assign the `boomerang` trait to one active player (any alignment), with a `used: false` flag.
+- `onVoteTallied`: if the Boomerang trait is unused and the Boomerang player is this round's uniquely-highest-voted (i.e. about to be eliminated), reroute: every vote cast **against** the Boomerang is instead tallied against the voter who cast it, mark the trait `used: true`, and re-resolve the tally (which may itself produce a new highest-voted player, a tie, or no majority).
+- This can only trigger once per Boomerang player for the whole investigation (one-shot).
+- Re-resolution must still respect existing tie rules (Phase 16) if the rerouted tally produces a tie.
+- No minimum player count specified by source — ASSUMPTION: usable from 5 players (consistent with the other vote/elimination-altering roles); confirm before building.
+
+## PHASE 31 — The Goddess of Justice
+Changes the existing tie-resolution rule (Phase 16) — must not silently break the default (no-Goddess) tie→revote behavior.
+
+- When enabled, assign the `goddess` trait to one active player, announced to the room once roles/words are distributed (per source, this is the one special role whose identity is public from the start, not private).
+- `onVoteTallied`: if this round's vote is tied **and** the Goddess is still in the game (active **or** eliminated — she "remains in the game to deal out justice" even after elimination per the source), open a private "decide who is eliminated" action for the Goddess, scoped to the tied players only, instead of triggering a revote.
+- If the Goddess herself has been eliminated in a prior round, she is still summoned for this decision (spectator-with-power, similar in spirit to Phase 32's Ghost, but scoped only to tie-breaking, not general voting).
+- If the Goddess is disabled or was never assigned (shouldn't happen while enabled, but guard for it), fall back to the existing revote rule unchanged.
+- ASSUMPTION: no minimum player count is stated by the source; default to no minimum beyond the base game's 3-player floor — confirm before building.
+
+## PHASE 32 — The Ghost
+Changes eligibility for post-elimination participation — most invasive role relative to existing Rules.md ("eliminated players/spectators cannot vote").
+
+- When enabled, assign the `ghost` trait to one player at investigation start (any alignment). Unlike other roles, the Ghost's power only activates once that player is eliminated.
+- Once the Ghost is eliminated: they remain able to post in Chat/Clue-discussion context and **cast a vote** in subsequent rounds, in addition to ordinary spectators who still cannot vote or clue.
+- The Ghost's vote counts toward vote tallying/tie resolution for elimination purposes, but the Ghost is explicitly excluded from win-condition player counts (`uc > ci`, Civilian/Undercover win checks) since they are not an active player.
+- The Ghost does not clue and does not re-enter the active roster; this is a voting/discussion exception only.
+- UI must distinguish an ordinary spectator ("SPECTATOR — cannot vote") from a Ghost-empowered spectator ("SPECTATOR — GHOST — may still vote") without exposing this to other players beyond the fact that a Ghost rule is active in this room (the Ghost's own identity can be public per source flavor, since the haunting is meant to be visible — ASSUMPTION: identity is revealed at elimination, same as Lovers; confirm before building).
+- No minimum player count specified by source.
+
+## PHASE 33 — The Falafel Vendor
+Needs a concrete effect definition before an agent can build it — the source only says "protection or sabotage," not the mechanics.
+
+- When enabled with ≥4 active players, assign the `falafel-vendor` trait to one active player.
+- `onRoundStart`: before clues begin, the Vendor privately chooses another active player to give a "falafel" to.
+- ASSUMPTION (needs product decision before building): define "protection" and "sabotage" concretely for this game, e.g.:
+  - Protection candidate: the recipient's vote cannot be redirected/nullified this round, or the recipient is immune to being the tie-break target.
+  - Sabotage candidate: the recipient's clue this round is hidden from everyone except the Vendor until the next round, or the recipient's vote this round is discarded.
+  - Whether the Vendor knows which effect they're giving, or it's randomized and hidden even from the Vendor (source says "try your luck," implying it may be random/blind).
+- Do not start implementation until this is resolved with the product owner; treat this phase as spec-then-build, not build-from-the-page-alone.
+- Minimum 4 active players (per source).
+
+## PHASE 34 — Mr. Meme
+Needs an online-play adaptation decision — the source assumes players are physically co-located and can see gestures; this product is an online room, not in-person.
+
+- ASSUMPTION (needs product decision before building): the site's rule is "describe your word with gestures instead of speaking," which has no direct equivalent in a text-clue online game. Candidate adaptations, pick one:
+  - The selected player's clue this round must be an emoji-only clue (no letters/words), enforced by the same clue-validation layer as the 3-word-max rule.
+  - The selected player's clue this round is temporarily replaced by a short webcam/gesture capture if the product later adds video — explicitly out of scope for the current text/canvas architecture and should not be attempted until a video layer exists.
+  - Skip Mr. Meme for the online mode entirely and reserve it for the future Pass & Play (in-person) mode, where physical gestures are actually visible.
+- Given the current architecture (Architecture.md) has no camera/video-chat capability, the emoji-only-clue adaptation is the only option buildable without new infrastructure — recommend confirming that adaptation, or deferring this role to Pass & Play.
+- `onRoundStart`: if adopted, randomly select one active player each round to be "possessed"; that player's Clues-tab input is constrained to emoji characters only for their turn.
+- No minimum player count specified by source.
+
+## PHASE 35 — Special Roles QA & Balancing
+Do not begin until every enabled-by-default-off role above has been individually built and verified.
+
+- Test every role in isolation with all others OFF, at its minimum valid player count and above.
+- Test legal combinations of multiple simultaneously-enabled roles (e.g. Lovers + Duelists + Joy Fool active together) for state conflicts, especially around cascading eliminations (Lovers/Revenger) interacting with Mr. White guess timing and win-condition evaluation.
+- Verify no Special Role identity leaks through public state, DOM, accessible labels, or reconnect, except at each role's own defined reveal moment.
+- Verify host-only control, per-role locking at investigation start, and correct enable/disable gating below each role's minimum player count.
+- Verify Play Again correctly resets all special-role assignments, traits, points, and used/unused flags alongside the existing reset scope from Phase 20.
+- Re-run the full Phase 23 QA matrix with a representative set of Special Roles enabled to confirm the base game is unaffected when a given role is OFF.
