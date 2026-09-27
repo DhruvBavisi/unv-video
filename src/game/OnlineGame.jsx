@@ -43,6 +43,56 @@ function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
   )
 }
 
+function ActionMenu({ menu, onClose, onKick, onMakeHost }) {
+  const { player, rect, context } = menu
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        onClose()
+      }
+    }
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('touchstart', handleOutsideClick)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('touchstart', handleOutsideClick)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [onClose])
+
+  const top = rect.bottom + window.scrollY
+  const left = Math.min(rect.left, window.innerWidth - 180)
+
+  return createPortal(
+    <div className="action-menu" style={{ top: top + 4, left }} ref={menuRef}>
+      <div className="action-menu__header">
+        {player.name}
+      </div>
+      {context === 'lobby' && (
+        <button 
+          className="action-menu__btn"
+          onClick={() => { onMakeHost(player); onClose(); }}
+        >
+          Make Host
+        </button>
+      )}
+      <button 
+        className="action-menu__btn action-menu__btn--danger"
+        onClick={() => { onKick(player); onClose(); }}
+      >
+        Kick Player
+      </button>
+    </div>,
+    document.body
+  )
+}
+
 function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, joining }) {
   const savedSession = requiresRoomId ? readIdentity() : null
   const [name, setName] = useState('')
@@ -683,23 +733,50 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   )
 }
 
-function PlayerListItem({ player, index, host, onKick }) {
+function PlayerListItem({ player, index, host, onActionRequest }) {
+  const timerRef = useRef(null)
+  const isTouchRef = useRef(false)
+  const canAction = host && !player.isHost
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const handleTouchStart = (e) => {
+    isTouchRef.current = true
+    if (!canAction) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    timerRef.current = setTimeout(() => {
+      onActionRequest(player, rect, 'lobby')
+    }, 600)
+  }
+
+  const handleClick = (e) => {
+    if (isTouchRef.current) return
+    if (!canAction) return
+    onActionRequest(player, e.currentTarget.getBoundingClientRect(), 'lobby')
+  }
+
   return (
-    <article className="online-player" style={{ animationDelay: `${index * 50}ms` }}>
+    <article 
+      className="online-player" 
+      style={{ animationDelay: `${index * 50}ms`, userSelect: canAction ? 'none' : 'auto', WebkitUserSelect: canAction ? 'none' : 'auto', cursor: canAction ? 'pointer' : 'default' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={clearTimer}
+      onTouchEnd={clearTimer}
+      onTouchCancel={clearTimer}
+      onClick={handleClick}
+      onContextMenu={(e) => {
+        if (!canAction) return
+        e.preventDefault()
+      }}
+    >
       <span className="online-player__index">Player {String(index + 1).padStart(2, '0')}</span>
       <span className="online-player__name">{player.name}</span>
       <span className="online-player__meta">
-        {host && !player.isHost && (
-          <button 
-            className="online-player__kick-btn"
-            onClick={() => onKick(player)}
-            aria-label={`Remove ${player.name}`}
-            title="Remove Player"
-            style={{ cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 4px', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center' }}
-          >
-            &times;
-          </button>
-        )}
         {player.isHost && <span className="online-player__badge">HOST</span>}
         <span className={`online-player__status online-player__status--${player.status?.toLowerCase()}`}>
           {player.status}
@@ -709,7 +786,7 @@ function PlayerListItem({ player, index, host, onKick }) {
   )
 }
 
-function PlayerList({ players, settings, host, onKick }) {
+function PlayerList({ players, settings, host, onActionRequest }) {
   return (
     <div className="player-list">
       <div className="player-list__header">
@@ -720,7 +797,7 @@ function PlayerList({ players, settings, host, onKick }) {
       </div>
       <div className="player-list__body">
         {players.map((player, index) => (
-          <PlayerListItem key={player.id} player={player} index={index} host={host} onKick={onKick} />
+          <PlayerListItem key={player.id} player={player} index={index} host={host} onActionRequest={onActionRequest} />
         ))}
         {players.length === 0 && (
           <div className="player-list__empty">No investigators yet.</div>
@@ -742,12 +819,22 @@ export default function OnlineGame({ onExit }) {
   const [sourceRect, setSourceRect] = useState(null)
   const [localElimination, setLocalElimination] = useState(null)
   const [kickTarget, setKickTarget] = useState(null)
+  const [makeHostTarget, setMakeHostTarget] = useState(null)
+  const [actionMenu, setActionMenu] = useState(null)
   const socketRef = useRef(null)
   const playersBtnRef = useRef(null)
   const menuBtnRef = useRef(null)
 
+  const handleActionRequest = useCallback((player, rect, context) => {
+    setActionMenu({ player, rect, context })
+  }, [])
+
   const handleKickRequest = useCallback((player) => {
     setKickTarget(player)
+  }, [])
+
+  const handleMakeHostRequest = useCallback((player) => {
+    setMakeHostTarget(player)
   }, [])
 
   const confirmKick = useCallback(() => {
@@ -759,6 +846,16 @@ export default function OnlineGame({ onExit }) {
     })
     setKickTarget(null)
   }, [kickTarget])
+
+  const confirmMakeHost = useCallback(() => {
+    if (!socketRef.current || !makeHostTarget) return
+    socketRef.current.emit('host-make-host', { targetId: makeHostTarget.id }, (res) => {
+      if (res?.error) {
+        dispatch({ type: 'SET_ERROR', error: res.error })
+      }
+    })
+    setMakeHostTarget(null)
+  }, [makeHostTarget])
 
   useEffect(() => {
     if (state.eliminationResult) {
@@ -1010,7 +1107,7 @@ export default function OnlineGame({ onExit }) {
         </header>
         <div className="online-lobby-grid">
           <div className="online-lobby__players">
-            <PlayerList players={state.players} settings={state.configuration} host={host} onKick={handleKickRequest} />
+            <PlayerList players={state.players} settings={state.configuration} host={host} onActionRequest={handleActionRequest} />
             {!host && (
               <Button variant="primary" className="online-ready-btn" onClick={handleToggleReady}>
                 {me?.status === PLAYER_STATUS.READY ? 'Mark not ready' : 'Mark ready'}
@@ -1111,7 +1208,7 @@ export default function OnlineGame({ onExit }) {
         {content}
         <ErrorState>{state.error}</ErrorState>
       </div>
-      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} onKick={handleKickRequest} />}
+      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} onActionRequest={handleActionRequest} />}
       {showGameMenu && (
         <GameMenu 
           state={state} 
@@ -1141,6 +1238,25 @@ export default function OnlineGame({ onExit }) {
             onCancel={() => setKickTarget(null)}
           />
         </div>
+      )}
+      {makeHostTarget && (
+        <div style={{ zIndex: 999999, position: 'relative' }}>
+          <ConfirmDialog
+            title="MAKE HOST?"
+            message={`Make "${makeHostTarget.name}" the host of this room?`}
+            confirmLabel="Make Host"
+            onConfirm={confirmMakeHost}
+            onCancel={() => setMakeHostTarget(null)}
+          />
+        </div>
+      )}
+      {actionMenu && (
+        <ActionMenu 
+          menu={actionMenu} 
+          onClose={() => setActionMenu(null)} 
+          onKick={handleKickRequest}
+          onMakeHost={handleMakeHostRequest}
+        />
       )}
         {localElimination && (
           <EliminationOverlay 

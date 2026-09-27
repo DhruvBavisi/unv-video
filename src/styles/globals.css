@@ -4744,3 +4744,78 @@ input, select, textarea, button { font-size: 16px; }
   }
 }
 
+
+/* ============================================================
+   Action Menu
+   ============================================================ */
+.action-menu {
+  position: absolute;
+  z-index: 999999;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(169, 166, 158, 0.2);
+  border-radius: 4px;
+  padding: 6px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+  min-width: 180px;
+  animation: actionMenuEnter 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes actionMenuEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.action-menu__header {
+  padding: 8px 16px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(169, 166, 158, 0.1);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-menu__btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.action-menu__btn:hover,
+.action-menu__btn:focus-visible {
+  background: rgba(181, 138, 82, 0.1);
+  color: var(--accent);
+  outline: none;
+}
+
+.action-menu__btn--danger {
+  color: var(--danger);
+}
+
+.action-menu__btn--danger:hover,
+.action-menu__btn--danger:focus-visible {
+  background: rgba(142, 41, 41, 0.1);
+  color: #ff6b6b;
+}
+

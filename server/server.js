@@ -1531,6 +1531,26 @@ ELIMINATION RESULT=`, room.eliminationResult)
     callback?.({ success: true })
   })
 
+  socket.on('host-make-host', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_MAKE_SELF_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    
+    const targetPlayer = room.players.find(p => p.id === targetId)
+    if (!targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+
+    const currentHostPlayer = room.players.find(p => p.id === currentSessionId)
+    if (currentHostPlayer) currentHostPlayer.isHost = false
+    targetPlayer.isHost = true
+    room.hostId = targetId
+
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
+
   socket.on('host-kick-player', ({ targetId }, callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = rooms.get(currentRoomId)

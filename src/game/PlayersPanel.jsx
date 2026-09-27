@@ -12,13 +12,22 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-export default function PlayersPanel({ state, onClose, buttonRect, onKick }) {
+export default function PlayersPanel({ state, onClose, buttonRect, onActionRequest }) {
   const { players, roomId } = state
   const [copied, setCopied] = useState(false)
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const panelRef = useRef(null)
   const overlayRef = useRef(null)
   const host = state.hostId === state.sessionId
+  const timerRef = useRef(null)
+  const isTouchRef = useRef(false)
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
 
   // Compute origin transform from button rect to panel center
   const getOriginVars = useCallback(() => {
@@ -77,22 +86,38 @@ export default function PlayersPanel({ state, onClose, buttonRect, onKick }) {
 
   const renderCard = (p, statusClass, index) => {
     const isDisconnected = !p.isConnected
+    const canAction = host && p.id !== state.sessionId
+
+    const handleTouchStart = (e) => {
+      isTouchRef.current = true
+      if (!canAction) return
+      const rect = e.currentTarget.getBoundingClientRect()
+      timerRef.current = setTimeout(() => {
+        if (onActionRequest) onActionRequest(p, rect, 'game')
+      }, 600)
+    }
+
+    const handleClick = (e) => {
+      if (isTouchRef.current) return
+      if (!canAction) return
+      if (onActionRequest) onActionRequest(p, e.currentTarget.getBoundingClientRect(), 'game')
+    }
+
     return (
       <li 
         key={p.id} 
         className={`player-card ${statusClass} ${isDisconnected ? 'player-card--disconnected' : ''}`}
-        style={{ animationDelay: `${index * 30}ms` }}
+        style={{ animationDelay: `${index * 30}ms`, userSelect: canAction ? 'none' : 'auto', WebkitUserSelect: canAction ? 'none' : 'auto', cursor: canAction ? 'pointer' : 'default' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={clearTimer}
+        onTouchEnd={clearTimer}
+        onTouchCancel={clearTimer}
+        onClick={handleClick}
+        onContextMenu={(e) => {
+          if (!canAction) return
+          e.preventDefault()
+        }}
       >
-        {host && p.id !== state.sessionId && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onKick && onKick(p); }}
-            style={{ position: 'absolute', top: 4, right: 4, background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', padding: 0 }}
-            aria-label={`Remove ${p.name}`}
-            title="Remove Player"
-          >
-            &times;
-          </button>
-        )}
         {isDisconnected && <span className="player-card__disconnected-badge">!</span>}
         {p.eliminated && p.role ? (
           <img src={getRoleImage(p.role)} alt={p.role} className="player-card__avatar" />
