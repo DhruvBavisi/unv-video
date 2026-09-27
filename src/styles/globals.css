@@ -2110,7 +2110,7 @@ video {
       'order'
       'comm'
       'input';
-    gap: 16px;
+    gap: 10px;
   }
 
   .clue-phase__order,
@@ -2122,15 +2122,19 @@ video {
   }
 
   .clue-phase__comm {
-    height: 440px;
+    height: 400px;
   }
 
   .clue-panel__order-list {
-    max-height: 220px;
+    max-height: 180px;
   }
 }
 
 @media (max-width: 640px) {
+  .clue-phase__grid {
+    gap: 8px;
+  }
+
   .clue-panel__avatar {
     width: 82px;
     height: 82px;
@@ -2145,17 +2149,21 @@ video {
   }
 
   .clue-phase__comm {
-    height: 380px;
+    height: 360px;
   }
 
   .clue-panel__order-list {
-    max-height: 200px;
+    max-height: 150px;
   }
 }
 
 @media (max-width: 480px) {
+  .clue-phase__grid {
+    gap: 6px;
+  }
+
   .clue-phase__comm {
-    height: 340px;
+    height: 320px;
   }
 
   .clue-panel__identity {
