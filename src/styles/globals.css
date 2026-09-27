@@ -4422,14 +4422,14 @@ input, select, textarea, button { font-size: 16px; }
 }
 @keyframes srm-pop-flip-out {
   from {
-    transform: translate3d(0, 0, 0) scale(1) rotateX(0deg);
+    transform: translate(0px, 0px) scale(1) rotateX(0deg);
     opacity: 1;
   }
   60% {
     opacity: 1;
   }
   to {
-    transform: translate3d(var(--exit-tx, 0px), var(--exit-ty, 0px), 0) scale(0.15) rotateX(90deg);
+    transform: translate(var(--exit-tx, 0px), var(--exit-ty, 0px)) scale(0.15) rotateX(90deg);
     opacity: 0;
   }
 }

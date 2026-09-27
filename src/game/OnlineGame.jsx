@@ -400,9 +400,11 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [handleClose])
 
-  const style = exitStyle
-
   const isClosing = animationState === 'closing'
+
+  const style = originRect && !isClosing ? {
+    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`,
+  } : exitStyle
 
   const handleAnimationEnd = (e) => {
     if (animationState === 'closing' && e.animationName === 'srm-fade-out') {
