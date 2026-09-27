@@ -194,9 +194,9 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  {p.points > 0 && (
-                    <div style={{ fontSize: '0.8rem', color: '#d4af37', fontWeight: 'bold' }}>
-                      {p.points} PTS
+                  {p.points !== 0 && p.points !== undefined && (
+                    <div style={{ fontSize: '0.8rem', color: p.points > 0 ? '#d4af37' : '#9E3A3A', fontWeight: 'bold' }}>
+                      {p.points > 0 ? '+' : '−'}{Math.abs(p.points)} PTS
                     </div>
                   )}
                   {p.eliminated && (

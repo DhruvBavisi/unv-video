@@ -7,6 +7,7 @@ import { Server } from 'socket.io'
 import cors from 'cors'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../shared/game-limits.js'
 import { onRoundStart, onVoteTallied, onElimination, onGameEnd } from './specialRolesHooks.js'
+import { SPECIAL_ROLES } from '../src/data/specialRoles.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -169,8 +170,16 @@ function getPublicRoomState(room) {
       spectator: p.spectator,
       role: (p.eliminated || room.gamePhase === 'RESULT') ? p.role : undefined,
       specialRole: (p.eliminated || room.gamePhase === 'RESULT') ? p.specialRole : undefined,
-      specialRoleData: p.specialRoleData,
-      points: p.points,
+      specialRoleData: (() => {
+        if (room.gamePhase === 'RESULT') return p.specialRoleData;
+        if (!p.specialRoleData) return {};
+        const safeData = { ...p.specialRoleData };
+        delete safeData.partnerId;
+        delete safeData.partnerName;
+        delete safeData.duelId;
+        return safeData;
+      })(),
+      points: room.gamePhase === 'RESULT' ? (p.points || 0) : 0,
       playAgain: !!p.playAgain,
       continueAck: !!p.continueAck,
     })),
@@ -859,14 +868,16 @@ io.on('connection', (socket) => {
       return assigned
     }
 
-    if (specialRolesConfig.joyFool?.enabled) {
-      if (room.players.length >= specialRolesConfig.joyFool.minPlayers) {
+    const joyFoolMeta = SPECIAL_ROLES.find(r => r.key === 'joyFool')
+    if (specialRolesConfig.joyFool === true || specialRolesConfig.joyFool?.enabled === true) {
+      if (room.players.length >= joyFoolMeta.minPlayers) {
         assignRole('joyFool', 1)
       }
     }
 
-    if (specialRolesConfig.duelists?.enabled) {
-      if (room.players.length >= specialRolesConfig.duelists.minPlayers) {
+    const duelistsMeta = SPECIAL_ROLES.find(r => r.key === 'duelists')
+    if (specialRolesConfig.duelists === true || specialRolesConfig.duelists?.enabled === true) {
+      if (room.players.length >= duelistsMeta.minPlayers) {
         const duelists = assignRole('duelists', 2)
         if (duelists.length === 2) {
           const duelId = crypto.randomUUID()
