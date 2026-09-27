@@ -12,7 +12,7 @@
     "start": "node server/server.js",
     "test": "node tests/test-runner.mjs",
     "test:phase14": "node tests/test-runner.mjs tests/phase14-clue-chat.test.mjs",
-    "test:phases25-27": "node tests/test-runner.mjs tests/phase25-27-special-roles.test.mjs"
+    "test:phases25-27": "node tests/test-runner.mjs tests/phase25-27-qa.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.6",
