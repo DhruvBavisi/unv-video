@@ -814,7 +814,7 @@ io.on('connection', (socket) => {
     broadcastRoom(room)
   })
 
-  socket.on('host-new-game', (_, callback) => {
+  socket.on('host-new-game', (callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
     const room = rooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
@@ -826,21 +826,37 @@ io.on('connection', (socket) => {
     room.status = 'ACTIVE'
     room.phase = 'ACTIVE'
     room.gamePhase = null
+    room.winner = null
     room.round = 1
+    room.wordPair = null
     room.clues = []
     room.chat = []
     room.votes = {}
     room.lockedVotes = []
     room.voteResult = null
-    room.specialRoleOutcomes = []
     room.eliminationResult = null
     room.mrWhiteGuesserId = null
     room.mrWhiteLiveGuess = ''
+    room.mrWhiteGuessSubmitted = false
     room.pendingMrWhiteElimination = null
     room.turnOrder = []
     room.currentTurnPlayerId = null
     room.turnIndex = 0
     room.submittedCluePlayerIds = []
+    room.specialRoleOutcomes = []
+
+    room.players.forEach((p) => {
+      p.eliminated = false
+      p.spectator = false
+      p.status = 'PLAYING'
+      p.role = null
+      p.word = null
+      p.specialRole = null
+      p.specialRoleData = {}
+      p.points = 0
+      p.playAgain = false
+      p.continueAck = false
+    })
 
     assignWords(room)
 
@@ -856,14 +872,6 @@ io.on('connection', (socket) => {
 
     room.players.forEach((p, i) => {
       p.role = rolePool[i]
-      p.status = 'PLAYING'
-      p.eliminated = false
-      p.spectator = false
-      p.specialRole = null
-      p.specialRoleData = {}
-      p.points = 0
-      p.playAgain = false
-      p.continueAck = false
     })
 
     const enabledSpecialRoles = Object.keys(room.configuration.specialRoles || {})
@@ -894,7 +902,7 @@ io.on('connection', (socket) => {
     callback?.({ success: true })
   })
 
-  socket.on('host-return-to-lobby', (_, callback) => {
+  socket.on('host-return-to-lobby', (callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
     const room = rooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
@@ -902,13 +910,6 @@ io.on('connection', (socket) => {
     if (room.status === 'LOBBY') return callback?.({ success: false, error: 'INVALID_PHASE' })
 
     room.gameVersion++
-
-    const newTotal = Math.max(3, room.players.length)
-    const defConfig = getDefaultConfig(newTotal)
-    room.configuration.totalPlayers = defConfig.totalPlayers
-    room.configuration.undercover = defConfig.undercover
-    room.configuration.mrWhite = defConfig.mrWhite
-    room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
 
     room.status = 'LOBBY'
     room.phase = 'LOBBY'

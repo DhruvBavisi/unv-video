@@ -135,7 +135,7 @@ export function gameReducer(state, action) {
         category: room.category || state.category,
         round: room.round || state.round,
         connectionState: 'CONNECTED',
-        gameStatus: room.status === 'ACTIVE' ? 'ACTIVE' : state.gameStatus,
+        gameStatus: room.status === 'ACTIVE' ? 'ACTIVE' : (room.status === 'LOBBY' ? 'SETUP' : state.gameStatus),
         phase: newPhase,
         membershipState: newMembership,
         clues: room.clues || state.clues,

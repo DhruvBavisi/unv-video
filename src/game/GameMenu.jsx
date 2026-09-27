@@ -88,6 +88,10 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
 
   const handleNewGame = async () => {
     if (loading) return
+    if (!socketRef.current || !socketRef.current.connected) {
+      dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
+      return
+    }
     setLoading(true)
     socketRef.current.emit('host-new-game', (res) => {
       setLoading(false)
@@ -101,6 +105,10 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
 
   const handleBackToLobby = async () => {
     if (loading) return
+    if (!socketRef.current || !socketRef.current.connected) {
+      dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
+      return
+    }
     setLoading(true)
     socketRef.current.emit('host-return-to-lobby', (res) => {
       setLoading(false)

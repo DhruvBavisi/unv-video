@@ -18,10 +18,15 @@ export function emitAck(socket, event, payload, timeoutMs = 5000) {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for acknowledgement on event: ${event}`))
     }, timeoutMs)
-    socket.emit(event, payload, (response) => {
+    const callback = (response) => {
       clearTimeout(timer)
       resolve(response)
-    })
+    }
+    if (payload === undefined) {
+      socket.emit(event, callback)
+    } else {
+      socket.emit(event, payload, callback)
+    }
   })
 }
 
