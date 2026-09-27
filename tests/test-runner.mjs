@@ -63,9 +63,10 @@ async function runTests() {
     const args = isNodeTest ? ['--test', testFile] : [testFile]
     const testProcess = spawn('node', args, { stdio: 'inherit', cwd: path.join(__dirname, '..'), env })
 
-    testProcess.on('exit', code => {
-      if (code !== 0) {
-        console.error(`\nTest failed with exit code ${code}: ${testFile}`)
+    testProcess.on('exit', (code, signal) => {
+      if (code !== 0 || signal) {
+        console.error(`\nTest failed with exit code ${code} (signal: ${signal}): ${testFile}`)
+        try { testProcess.kill('SIGKILL') } catch {}
         killServer()
         process.exit(code || 1)
       } else {
@@ -75,6 +76,7 @@ async function runTests() {
 
     testProcess.on('error', err => {
       console.error(`\nTest process error: ${err.message}`)
+      try { testProcess.kill('SIGKILL') } catch {}
       killServer()
       process.exit(1)
     })

@@ -13,9 +13,15 @@ export function makeClient(name) {
   return client
 }
 
-export function emitAck(socket, event, payload) {
-  return new Promise((resolve) => {
-    socket.emit(event, payload, (response) => resolve(response))
+export function emitAck(socket, event, payload, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout waiting for acknowledgement on event: ${event}`))
+    }, timeoutMs)
+    socket.emit(event, payload, (response) => {
+      clearTimeout(timer)
+      resolve(response)
+    })
   })
 }
 

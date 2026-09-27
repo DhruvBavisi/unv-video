@@ -9,8 +9,9 @@
 import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  makeClient, emitAck, waitForRoomState, connectClients, disconnectClients
+  makeClient, emitAck, waitForRoomState, waitForEvent, connectClients, disconnectClients
 } from './helpers.mjs'
+import { onElimination } from '../server/specialRolesHooks.js'
 
 /* ──────────────── shared utilities ──────────────── */
 
@@ -40,9 +41,6 @@ async function createAndJoinRoom(playerCount = 5) {
 
 async function setConfig(host, specialRoles) {
   host.socket.emit('update-config', { specialRoles })
-  // Wait for all changed keys to propagate
-  await sleep(200)
-  // Double check the last key is set
   const keys = Object.keys(specialRoles)
   const lastKey = keys[keys.length - 1]
   await waitForRoomState(host, s => s.configuration?.specialRoles?.[lastKey] === specialRoles[lastKey], 3000)
@@ -58,7 +56,11 @@ async function readyAndStart(clients, host, specialRoles = {}) {
   await waitForRoomState(host, s => s.players.every(p => p.status === 'READY' || p.isHost), 3000)
   host.socket.emit('start-game')
   await waitForRoomState(host, s => s.status === 'ACTIVE', 3000)
-  await sleep(200) // Wait for role-assigned socket events to reach all clients
+  const waitPromises = clients.map(c => new Promise(resolve => {
+    if (c.secret) return resolve()
+    c.socket.once('role-assigned', () => resolve())
+  }))
+  await Promise.all(waitPromises)
 }
 
 async function playCluePhase(clients, host) {
@@ -144,7 +146,8 @@ async function playToResult(clients, host) {
       const toElim = activeUC || activeMW || host.roomState.players.find(p => !p.eliminated)
       if (toElim) await eliminatePlayer(clients, host, toElim.id)
     } else {
-      await sleep(500)
+      const currPhase = host.roomState.gamePhase
+      await waitForRoomState(host, s => s.gamePhase !== currPhase, 5000).catch(() => {})
     }
   }
 }
@@ -180,6 +183,25 @@ describe('Phase 25 — Configuration & Base Game', () => {
     await setConfig(host, { joyFool: true })
     assert.strictEqual(host.roomState.configuration.specialRoles.joyFool, true)
     await setConfig(host, { joyFool: false })
+  })
+
+  it('server rejects invalid configurations', async () => {
+    const originalConfig = { ...host.roomState.configuration }
+    const cases = [
+      { totalPlayers: 2 },
+      { totalPlayers: 21 },
+      { undercover: -1 },
+      { mrWhite: -1 },
+      { undercover: 0, mrWhite: 0 },
+      { totalPlayers: 5, undercover: 2, mrWhite: 1 },
+      { totalPlayers: 5, undercover: 3, mrWhite: 0 },
+      { totalPlayers: "5" }
+    ]
+    for (const c of cases) {
+      host.socket.emit('update-config', c)
+      await waitForEvent(host.socket, 'room-state', 200).catch(() => {})
+      assert.deepStrictEqual(host.roomState.configuration, originalConfig, `Config ${JSON.stringify(c)} should have been rejected`)
+    }
   })
 
   it('non-host cannot modify configuration', async () => {
@@ -630,11 +652,115 @@ describe('Play Again — Joy Fool + Duelists → fresh assignment', { timeout: 6
     assert.deepStrictEqual(host.roomState.specialRoleOutcomes, [])
   })
 
+  it('resets all transient gameplay state', () => {
+    const s = host.roomState
+    assert.strictEqual(s.gamePhase, 'LOBBY')
+    assert.strictEqual(s.round, 1)
+    assert.strictEqual(s.phase, 'LOBBY')
+    assert.deepStrictEqual(s.turnOrder, [])
+    assert.strictEqual(s.currentTurnPlayerId, null)
+    assert.deepStrictEqual(s.submittedCluePlayerIds, [])
+    assert.deepStrictEqual(s.votes, {})
+    assert.deepStrictEqual(s.lockedVotes, [])
+    assert.strictEqual(s.voteResult, null)
+    assert.strictEqual(s.votingAttempt, 1)
+    assert.strictEqual(s.eliminationResult, null)
+    assert.strictEqual(s.winner, null)
+    assert.strictEqual(s.wordPair, undefined) // Not serialized in LOBBY unless revealed
+  })
+
   it('can assign fresh special roles in new game', async () => {
     await readyAndStart(clients, host, { joyFool: true, duelists: true })
     const jf = clients.filter(c => c.secret?.specialRole === 'joyFool')
     const duel = clients.filter(c => c.secret?.specialRole === 'duelists')
     assert.strictEqual(jf.length, 1)
     assert.strictEqual(duel.length, 2)
+  })
+})
+
+/* ═══════════════════════════════════════════════════════
+   UNIT TESTS — Exactly-Once & Elimination Order
+   ═══════════════════════════════════════════════════════ */
+
+describe('Phase 26 — Joy Fool exactly-once unit test', () => {
+  it('first elimination awards +4, duplicate ignores', () => {
+    const room = {
+      players: [{ id: 'jf', name: 'Joy', specialRole: 'joyFool', specialRoleData: {}, points: 0, eliminated: true }],
+      specialRoleOutcomes: []
+    }
+    onElimination(room, 'jf')
+    assert.strictEqual(room.players[0].points, 4)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+
+    onElimination(room, 'jf')
+    assert.strictEqual(room.players[0].points, 4)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+  })
+})
+
+describe('Phase 27 — Duelists exactly-once unit test', () => {
+  it('first elimination resolves, duplicate ignores', () => {
+    const room = {
+      players: [
+        { id: 'd1', name: 'D1', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd2' }, points: 0, eliminated: true },
+        { id: 'd2', name: 'D2', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd1' }, points: 0, eliminated: false }
+      ],
+      specialRoleOutcomes: []
+    }
+    onElimination(room, 'd1')
+    assert.strictEqual(room.players[0].points, -2)
+    assert.strictEqual(room.players[1].points, 2)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+
+    onElimination(room, 'd1')
+    assert.strictEqual(room.players[0].points, -2)
+    assert.strictEqual(room.players[1].points, 2)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+
+    room.players[1].eliminated = true
+    onElimination(room, 'd2')
+    assert.strictEqual(room.players[0].points, -2)
+    assert.strictEqual(room.players[1].points, 2)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+  })
+})
+
+describe('Phase 27 — Elimination-order coverage', () => {
+  it('Duelist eliminated first -> -2/+2 and Joy Fool remains 0', () => {
+    const room = {
+      players: [
+        { id: 'd1', name: 'D1', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd2' }, points: 0, eliminated: true },
+        { id: 'd2', name: 'D2', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd1' }, points: 0, eliminated: false },
+        { id: 'jf', name: 'Joy', specialRole: 'joyFool', specialRoleData: {}, points: 0, eliminated: false }
+      ],
+      specialRoleOutcomes: []
+    }
+    onElimination(room, 'd1')
+    
+    room.players[2].eliminated = true
+    onElimination(room, 'jf')
+
+    assert.strictEqual(room.players[0].points, -2)
+    assert.strictEqual(room.players[1].points, 2)
+    assert.strictEqual(room.players[2].points, 0)
+    assert.strictEqual(room.specialRoleOutcomes.length, 1)
+  })
+
+  it('normal player eliminated first -> later Duelist still resolves correctly', () => {
+    const room = {
+      players: [
+        { id: 'p1', name: 'Normal', specialRole: null, specialRoleData: {}, points: 0, eliminated: true },
+        { id: 'd1', name: 'D1', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd2' }, points: 0, eliminated: false },
+        { id: 'd2', name: 'D2', specialRole: 'duelists', specialRoleData: { duelId: 'duel-1', partnerId: 'd1' }, points: 0, eliminated: false }
+      ],
+      specialRoleOutcomes: []
+    }
+    onElimination(room, 'p1')
+
+    room.players[1].eliminated = true
+    onElimination(room, 'd1')
+
+    assert.strictEqual(room.players[1].points, -2)
+    assert.strictEqual(room.players[2].points, 2)
   })
 })
