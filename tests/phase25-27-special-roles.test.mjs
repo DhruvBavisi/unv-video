@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-const URL = 'http://localhost:3001'
+const URL = process.env.TEST_URL || 'http://localhost:3001'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const results = []

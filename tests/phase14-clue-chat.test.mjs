@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-const URL = 'http://localhost:3001'
+const URL = process.env.TEST_URL || 'http://localhost:3001'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const results = []
@@ -63,7 +63,7 @@ try {
   }
 
   // 3. Host sets config to 4 players (1 UC + 1 MW + 2 CIV)
-  host.socket.emit('update-config', { totalPlayers: 4, undercover: 1, mrWhite: 1 })
+  host.socket.emit('update-config', { totalPlayers: 4, undercover: 1, mrWhite: 1, revealRoles: true })
   await sleep(400)
   check('config broadcast to clients', clients.every((cl) => cl.roomState?.configuration?.totalPlayers === 4))
   check('mrWhite configured', host.roomState?.configuration?.mrWhite === 1)
@@ -167,10 +167,10 @@ try {
     }
   }
 
-  // 16. All clues submitted → VOTE_PREP
+  // 16. All clues submitted → VOTE
   let votePrepSeen = false
   for (let i = 0; i < 30; i++) {
-    if (host.roomState?.gamePhase === 'VOTE_PREP') { votePrepSeen = true; break }
+    if (host.roomState?.gamePhase === 'VOTE') { votePrepSeen = true; break }
     await sleep(200)
   }
   check('all clues done → VOTE_PREP', votePrepSeen)
@@ -209,7 +209,7 @@ try {
   const longChatRes = await emitAck(c.socket, 'send-chat-message', { roomId: host.roomId, text: 'y'.repeat(201) })
   check('chat over 200 chars rejected', longChatRes.success === false && longChatRes.error === 'MESSAGE_TOO_LONG', longChatRes.error)
 
-  // 20. Clue submission rejected when in VOTE_PREP
+  // 20. Clue submission rejected when in VOTE
   const votePrepClueRes = await emitAck(b.socket, 'submit-clue', { roomId: host.roomId, clue: 'late clue' })
   check('submit-clue rejected outside CLUE phase', votePrepClueRes.success === false, votePrepClueRes.error)
 
