@@ -370,29 +370,81 @@ function ConfigurationPanel({ configuration, category, host, onChangeConfig, onC
   )
 }
 
+function SpecialRoleAvatar({ role }) {
+  return (
+    <div className="special-role-avatar-frame">
+      {role.avatar ? (
+        <img 
+          src={role.avatar} 
+          alt={role.name} 
+          className="special-role-avatar-img"
+        />
+      ) : (
+        <div className="special-role-avatar-placeholder" aria-hidden="true">
+          <svg 
+            className="special-role-avatar-placeholder__icon" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="1.5" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SpecialRoleInfoModal({ role, onClose, originRect }) {
   const [animationState, setAnimationState] = useState('opening')
   const modalRef = useRef(null)
-  const [exitStyle, setExitStyle] = useState({})
+  const [originStyle, setOriginStyle] = useState({})
+
+  // Compute spatial offset from button center to modal center
+  useLayoutEffect(() => {
+    if (originRect && modalRef.current) {
+      const modalRect = modalRef.current.getBoundingClientRect()
+      const modalCenterX = modalRect.left + modalRect.width / 2
+      const modalCenterY = modalRect.top + modalRect.height / 2
+      const sourceCenterX = originRect.left + originRect.width / 2
+      const sourceCenterY = originRect.top + originRect.height / 2
+
+      const tx = sourceCenterX - modalCenterX
+      const ty = sourceCenterY - modalCenterY
+
+      setOriginStyle({
+        '--origin-tx': `${tx}px`,
+        '--origin-ty': `${ty}px`,
+        '--exit-tx': `${tx}px`,
+        '--exit-ty': `${ty}px`,
+      })
+    }
+  }, [originRect])
 
   const handleClose = useCallback(() => {
     if (animationState === 'closing') return
 
     if (originRect && modalRef.current) {
-      const rect = modalRef.current.getBoundingClientRect()
-      const modalCenterX = rect.left + rect.width / 2
-      const modalCenterY = rect.top + rect.height / 2
-      const sourceX = originRect.left + originRect.width / 2
-      const sourceY = originRect.top + originRect.height / 2
-      
-      const tx = sourceX - modalCenterX
-      const ty = sourceY - modalCenterY
-      setExitStyle({
+      const modalRect = modalRef.current.getBoundingClientRect()
+      const modalCenterX = modalRect.left + modalRect.width / 2
+      const modalCenterY = modalRect.top + modalRect.height / 2
+      const sourceCenterX = originRect.left + originRect.width / 2
+      const sourceCenterY = originRect.top + originRect.height / 2
+
+      const tx = sourceCenterX - modalCenterX
+      const ty = sourceCenterY - modalCenterY
+
+      setOriginStyle((prev) => ({
+        ...prev,
         '--exit-tx': `${tx}px`,
-        '--exit-ty': `${ty}px`
-      })
+        '--exit-ty': `${ty}px`,
+      }))
     }
-    
+
     setAnimationState('closing')
   }, [animationState, originRect])
 
@@ -425,12 +477,8 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
 
   const isClosing = animationState === 'closing'
 
-  const style = originRect && !isClosing ? {
-    transformOrigin: `${originRect.left + originRect.width / 2}px ${originRect.top + originRect.height / 2}px`,
-  } : exitStyle
-
   const handleAnimationEnd = (e) => {
-    if (animationState === 'closing' && (e.animationName === 'srm-fade-out' || e.animationName === 'srm-pop-flip-out')) {
+    if (animationState === 'closing' && (e.animationName === 'roleModalFadeOut' || e.animationName === 'roleCardExit')) {
       onClose()
     }
   }
@@ -440,52 +488,58 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
       className={`special-role-modal-overlay ${isClosing ? 'special-role-modal-overlay--closing' : ''}`} 
       onClick={handleClose}
       onAnimationEnd={handleAnimationEnd}
+      role="presentation"
     >
-      <div className="special-role-modal-wrapper" onClick={e => e.stopPropagation()}>
-        <div 
-          ref={modalRef} 
-          className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} 
-          style={style}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="special-role-modal-title"
+      <div 
+        ref={modalRef} 
+        className={`special-role-modal-card ${isClosing ? 'special-role-modal-card--closing' : 'special-role-modal-card--opening'}`} 
+        style={originStyle}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="special-role-card-title"
+      >
+        <button 
+          type="button"
+          className="special-role-modal-close" 
+          onClick={handleClose} 
+          aria-label="Close character details"
         >
-          <div className="special-role-modal__dossier-header">
-            <span className="special-role-modal__stamp">CLASSIFIED DOSSIER // EYES ONLY</span>
-            <button 
-              type="button"
-              className="special-role-modal__close" 
-              onClick={handleClose} 
-              aria-label="Close dossier modal"
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className="special-role-modal__avatar-frame">
-            {role.avatar ? (
-              <img src={role.avatar} alt={role.name} />
-            ) : (
-              <div className="special-role-modal__insignia" aria-hidden="true">
-                <span className="special-role-modal__insignia-symbol">◈</span>
-              </div>
-            )}
-          </div>
-          
-          <h2 id="special-role-modal-title" className="special-role-modal__title">{role.name}</h2>
-          <div className="special-role-modal__divider" aria-hidden="true" />
-          <p className="special-role-modal__desc">{role.description}</p>
-          
-          <div className="special-role-modal__rules">
-            <div className="special-role-modal__rules-label">FIELD DIRECTIVES</div>
-            <ul>
-              {role.rules.map((r, i) => <li key={i}>{r}</li>)}
-            </ul>
-          </div>
-          
-          <div className="special-role-modal__meta">
-            <span className="special-role-modal__meta-dot" aria-hidden="true">●</span>
-            <span>MINIMUM CLEARANCE: {role.minPlayers} INVESTIGATORS</span>
+          &times;
+        </button>
+
+        <div className="special-role-modal-card__header">
+          <SpecialRoleAvatar role={role} />
+          <h2 id="special-role-card-title" className="special-role-modal-card__title">{role.name}</h2>
+          <span className="special-role-modal-card__tagline">Special Character</span>
+        </div>
+
+        <div className="special-role-modal-card__divider" aria-hidden="true" />
+
+        <div className="special-role-modal-card__section">
+          <span className="special-role-modal-card__section-label">Description</span>
+          <p className="special-role-modal-card__desc">{role.description}</p>
+        </div>
+
+        <div className="special-role-modal-card__divider" aria-hidden="true" />
+
+        <div className="special-role-modal-card__section">
+          <span className="special-role-modal-card__section-label">Game Rules</span>
+          <ul className="special-role-modal-card__rules">
+            {role.rules.map((rule, i) => (
+              <li key={i}>{rule}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="special-role-modal-card__divider" aria-hidden="true" />
+
+        <div className="special-role-modal-card__footer">
+          <span className="special-role-modal-card__requirement">
+            Requires at least {role.minPlayers} players to be enabled in game
+          </span>
+          <div className="special-role-modal-card__actions">
+            <Button onClick={handleClose}>Close</Button>
           </div>
         </div>
       </div>
@@ -511,8 +565,8 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   
   const handleInfo = (e, role) => {
     e.stopPropagation()
-    const card = e.currentTarget.closest('.special-role-card')
-    const rect = card ? card.getBoundingClientRect() : null
+    const btn = e.currentTarget
+    const rect = btn.getBoundingClientRect()
     setActiveRect(rect)
     setActiveRoleInfo(role)
   }
@@ -520,26 +574,31 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   const activeRolesCount = SPECIAL_ROLES.filter(r => configuration?.specialRoles?.[r.key]).length
 
   return (
-    <div className="special-roles-section">
+    <div className={`special-roles-section ${expanded ? 'special-roles-section--expanded' : ''}`}>
       <button 
         type="button" 
-        className={`special-roles-header ${expanded ? 'special-roles-header--open' : ''}`} 
+        className="special-roles-header" 
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
       >
-        <div className="special-roles-header__meta">
-          <span className="special-roles-header__kicker">DOSSIER PROTOCOL // CLASSIFIED</span>
-          <span className="special-roles-header__title">SPECIAL ROLES</span>
+        <div className="special-roles-header__title-group">
+          <span className="special-roles-header__indicator" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </span>
+          <span className="special-roles-header__label">Special Roles</span>
         </div>
-        <div className="special-roles-header__badge-group">
+        
+        <div className="special-roles-header__status">
           {activeRolesCount > 0 && (
-            <span className="special-roles-header__active-badge">
-              {activeRolesCount} ACTIVE
+            <span className="special-roles-header__count">
+              {activeRolesCount} Active
             </span>
           )}
-          <span className="special-roles-header__chevron" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
+          <span className={`special-roles-header__chevron ${expanded ? 'special-roles-header__chevron--open' : ''}`} aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9" />
             </svg>
           </span>
         </div>
@@ -556,47 +615,51 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
               return (
                 <div 
                   key={role.key} 
-                  className={`special-role-card ${unavailable ? 'special-role-card--disabled' : ''} ${enabled ? 'special-role-card--enabled' : ''}`}
+                  className={`special-role-row special-role-card ${unavailable ? 'special-role-row--disabled special-role-card--disabled' : ''} ${enabled ? 'special-role-row--active special-role-card--enabled' : ''}`}
                 >
-                  <div className="special-role-card__leading">
-                    <div className="special-role-card__marker" aria-hidden="true">
-                      <span className="special-role-card__marker-symbol">◈</span>
-                    </div>
-                    <div className="special-role-card__main">
-                      <span className="special-role-card__name">{role.name}</span>
-                      {unavailable ? (
-                        <span className="special-role-card__req">LOCKED &bull; REQUIRES {role.minPlayers} INVESTIGATORS</span>
-                      ) : (
-                        <span className="special-role-card__avail">AVAILABLE &bull; MIN {role.minPlayers} PLAYERS</span>
-                      )}
+                  <div className="special-role-row__leading">
+                    <span className="special-role-row__avatar-badge" aria-hidden="true">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </span>
+                    <div className="special-role-row__info special-role-card__main">
+                      <span className="special-role-row__name special-role-card__name">{role.name}</span>
+                      <span className="special-role-row__requirement special-role-card__req">
+                        {unavailable ? `Requires ${role.minPlayers} players` : `Min ${role.minPlayers} players`}
+                      </span>
                     </div>
                   </div>
                   
-                  <div className="special-role-card__actions">
+                  <div className="special-role-row__actions special-role-card__actions">
                     <button 
                       type="button" 
-                      className="special-role-card__info-btn" 
+                      className="special-role-info-btn special-role-card__info-btn" 
                       onClick={(e) => handleInfo(e, role)}
-                      aria-label={`Role dossier briefing: ${role.name}`}
-                      title={`Role dossier briefing: ${role.name}`}
+                      aria-label={`View ${role.name} details`}
+                      title={`View ${role.name} details`}
                     >
-                      <span className="special-role-card__info-glyph" aria-hidden="true">i</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
                     </button>
-                    <div className="config-field--toggle" style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none' }}>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={!!enabled}
-                        disabled={!host || unavailable}
-                        onClick={() => handleToggle(role.key)}
-                        className={`toggle-switch ${enabled ? 'toggle-switch--active' : ''}`}
-                        aria-label={`Toggle ${role.name}`}
-                      >
-                        <span className="toggle-switch__track">
-                          <span className="toggle-switch__knob" />
-                        </span>
-                      </button>
-                    </div>
+                    
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!!enabled}
+                      disabled={!host || unavailable}
+                      onClick={() => handleToggle(role.key)}
+                      className={`toggle-switch ${enabled ? 'toggle-switch--active' : ''}`}
+                      aria-label={`Toggle ${role.name}`}
+                    >
+                      <span className="toggle-switch__track">
+                        <span className="toggle-switch__knob" />
+                      </span>
+                    </button>
                   </div>
                 </div>
               )
