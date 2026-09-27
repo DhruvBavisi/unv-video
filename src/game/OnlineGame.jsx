@@ -619,10 +619,14 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                 >
                   <div className="special-role-row__leading">
                     <span className="special-role-row__avatar-badge" aria-hidden="true">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
+                      {role.avatar ? (
+                        <img src={role.avatar} alt="" />
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                      )}
                     </span>
                     <div className="special-role-row__info special-role-card__main">
                       <span className="special-role-row__name special-role-card__name">{role.name}</span>
