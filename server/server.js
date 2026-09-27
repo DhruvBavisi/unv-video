@@ -722,27 +722,25 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.id === currentSessionId)
     if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     
-    const isFirstToPlayAgain = room.players.filter(p => p.playAgain).length === 0
-
     player.playAgain = true
     player.status = player.isHost ? 'READY' : 'JOINED'
     if (player.spectator) {
       player.spectator = false
     }
 
-    if (isFirstToPlayAgain) {
-      const newTotal = Math.max(3, room.players.length)
-      const defConfig = getDefaultConfig(newTotal)
-      room.configuration.totalPlayers = defConfig.totalPlayers
-      room.configuration.undercover = defConfig.undercover
-      room.configuration.mrWhite = defConfig.mrWhite
-      room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
-    }
-
     const requiredPlayers = room.players.filter(p => p.isConnected && !p.isBot)
     const allOptedIn = requiredPlayers.length > 0 && requiredPlayers.every(p => p.playAgain)
 
     if (allOptedIn) {
+      // Re-validate configuration based on final player count when entering lobby
+      room.configuration.totalPlayers = Math.max(3, room.players.length)
+      if (!validateConfig(room.configuration, room)) {
+        const defConfig = getDefaultConfig(room.configuration.totalPlayers)
+        room.configuration.undercover = defConfig.undercover
+        room.configuration.mrWhite = defConfig.mrWhite
+      }
+      room.configuration.civilians = room.configuration.totalPlayers - room.configuration.undercover - room.configuration.mrWhite
+
       room.status = 'LOBBY'
       room.phase = 'LOBBY'
       room.gamePhase = 'LOBBY'
@@ -762,7 +760,6 @@ io.on('connection', (socket) => {
       room.currentTurnPlayerId = null
       room.turnIndex = 0
       room.submittedCluePlayerIds = []
-
       room.specialRoleOutcomes = []
 
       room.players.forEach(p => {
@@ -800,7 +797,14 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId)
     if (!room) return
     if (room.hostId !== currentSessionId) return
-    if (room.status !== 'LOBBY') return
+    
+    const hostPlayer = room.players.find(p => p.id === currentSessionId)
+    if (room.status !== 'LOBBY') {
+      if (!(room.status === 'ACTIVE' && room.gamePhase === 'RESULT' && hostPlayer?.playAgain)) {
+        return
+      }
+    }
+    
     if (!validateConfig(config, room)) return
     room.configuration = {
       ...room.configuration,
@@ -821,6 +825,14 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId)
     if (!room) return
     if (room.hostId !== currentSessionId) return
+    
+    const hostPlayer = room.players.find(p => p.id === currentSessionId)
+    if (room.status !== 'LOBBY') {
+      if (!(room.status === 'ACTIVE' && room.gamePhase === 'RESULT' && hostPlayer?.playAgain)) {
+        return
+      }
+    }
+    
     if (typeof category !== 'string') return
     room.category = category
     broadcastRoom(room)
@@ -966,6 +978,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomId)
     if (!room) return
     if (room.hostId !== currentSessionId) return
+    if (room.status !== 'LOBBY') return
     if (room.players.length !== room.configuration.totalPlayers) return
     if (!room.players.every((p) => p.status === 'READY')) return
 
