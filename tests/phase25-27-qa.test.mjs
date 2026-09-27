@@ -58,6 +58,7 @@ async function readyAndStart(clients, host, specialRoles = {}) {
   await waitForRoomState(host, s => s.players.every(p => p.status === 'READY' || p.isHost), 3000)
   host.socket.emit('start-game')
   await waitForRoomState(host, s => s.status === 'ACTIVE', 3000)
+  await sleep(200) // Wait for role-assigned socket events to reach all clients
 }
 
 async function playCluePhase(clients, host) {
@@ -118,7 +119,7 @@ async function waitPastElimination(clients, host) {
     const mwPlayer = host.roomState.players.find(p => p.role === 'MR_WHITE')
     if (mwPlayer) {
       const mwClient = clients.find(c => c.sessionId === mwPlayer.id)
-      mwClient?.socket.emit('submit-mr-white-guess', { text: 'wrongguess' })
+      mwClient?.socket.emit('submit-mr-white-guess', { guess: 'wrongguess' })
       await waitForRoomState(host, s => s.gamePhase !== 'MR_WHITE_GUESS', 5000)
     }
   }
@@ -127,12 +128,13 @@ async function waitPastElimination(clients, host) {
 async function playToResult(clients, host) {
   let safety = 20
   while (host.roomState.gamePhase !== 'RESULT' && safety-- > 0) {
+    console.log(`[playToResult] current phase: ${host.roomState.gamePhase}`)
     if (host.roomState.gamePhase === 'ELIMINATION') {
       await waitPastElimination(clients, host)
     } else if (host.roomState.gamePhase === 'MR_WHITE_GUESS') {
       const mwPlayer = host.roomState.players.find(p => p.role === 'MR_WHITE')
       const mwClient = clients.find(c => c.sessionId === mwPlayer?.id)
-      mwClient?.socket.emit('submit-mr-white-guess', { text: 'wrongguess' })
+      mwClient?.socket.emit('submit-mr-white-guess', { guess: 'wrongguess' })
       await waitForRoomState(host, s => s.gamePhase !== 'MR_WHITE_GUESS', 5000)
     } else if (host.roomState.gamePhase === 'CLUE') {
       await playCluePhase(clients, host)
@@ -217,6 +219,7 @@ describe('Phase 25 — Minimum-player gating', () => {
 
     it('assigns Joy Fool with 4 players (minPlayers=3)', async () => {
       await readyAndStart(clients, host, { joyFool: true, duelists: false })
+      await sleep(200)
       const jf = clients.filter(c => c.secret?.specialRole === 'joyFool')
       assert.strictEqual(jf.length, 1, 'Expected exactly 1 Joy Fool')
     })
@@ -244,6 +247,7 @@ describe('Phase 25 — Minimum-player gating', () => {
 
     it('assigns exactly 2 Duelists with 5 players', async () => {
       await readyAndStart(clients, host, { joyFool: false, duelists: true })
+      await sleep(200)
       const duel = clients.filter(c => c.secret?.specialRole === 'duelists')
       assert.strictEqual(duel.length, 2)
     })
@@ -528,7 +532,8 @@ describe('Combined Joy Fool + Duelists', () => {
     })
     after(() => disconnectClients(clients))
 
-    it('exactly 1 Joy Fool + 2 Duelists, no overlap', () => {
+    it('exactly 1 Joy Fool + 2 Duelists, no overlap', async () => {
+      await sleep(200)
       const jf = clients.filter(c => c.secret?.specialRole === 'joyFool')
       const duel = clients.filter(c => c.secret?.specialRole === 'duelists')
       assert.strictEqual(jf.length, 1)
