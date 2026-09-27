@@ -385,22 +385,34 @@ function advanceTurn(room) {
 
 function assignWords(room) {
   let category = room.category
-  let pairs = []
   if (category === 'random') {
-    pairs = Object.values(WORD_PAIRS).flat()
+    const validCategories = Object.entries(WORD_PAIRS)
+      .filter(([, pairs]) => Array.isArray(pairs) && pairs.length > 0)
+
+    if (validCategories.length === 0) return
+
+    const [selectedCategory, selectedPairs] =
+      validCategories[Math.floor(Math.random() * validCategories.length)]
+
+    const pair =
+      selectedPairs[Math.floor(Math.random() * selectedPairs.length)]
+
+    room.wordPair = {
+      ...pair,
+      category: selectedCategory
+    }
   } else {
     if (!category || !WORD_PAIRS[category]) {
       category = Object.keys(WORD_PAIRS)[0] || 'open-file'
     }
-    pairs = WORD_PAIRS[category]
+    const pairs = WORD_PAIRS[category]
+    if (!pairs || pairs.length === 0) return
+
+    const pairIndex = Math.floor(Math.random() * pairs.length)
+    const pair = pairs[pairIndex]
+
+    room.wordPair = { ...pair, category }
   }
-  
-  if (!pairs || pairs.length === 0) return
-
-  const pairIndex = Math.floor(Math.random() * pairs.length)
-  const pair = pairs[pairIndex]
-
-  room.wordPair = { ...pair, category }
 }
 
 // Single source of truth for a player's secret word by role.
