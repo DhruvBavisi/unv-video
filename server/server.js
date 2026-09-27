@@ -1530,6 +1530,81 @@ ELIMINATION RESULT=`, room.eliminationResult)
     broadcastRoom(room)
     callback?.({ success: true })
   })
+
+  socket.on('host-kick-player', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_KICK_SELF' })
+    
+    const targetIndex = room.players.findIndex(p => p.id === targetId)
+    if (targetIndex === -1) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+
+    const targetPlayer = room.players[targetIndex]
+
+    // Remove from active game structures
+    room.turnOrder = (room.turnOrder || []).filter(id => id !== targetId)
+    room.submittedCluePlayerIds = (room.submittedCluePlayerIds || []).filter(id => id !== targetId)
+    
+    if (room.votes && room.votes[targetId]) {
+      delete room.votes[targetId]
+    }
+    for (const voterId in room.votes) {
+      if (room.votes[voterId] === targetId) delete room.votes[voterId]
+    }
+    room.lockedVotes = (room.lockedVotes || []).filter(id => id !== targetId)
+
+    if (room.currentTurnPlayerId === targetId) {
+      // Advance turn if the kicked player was currently playing
+      // Since turnIndex is currently at the kicked player, we can just point to the next player
+      // or rather, because we removed them from turnOrder, the next player is now at turnIndex
+      if (room.turnIndex < room.turnOrder.length) {
+        room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+      } else {
+        startVotePhase(room)
+      }
+    } else {
+      // Adjust turnIndex if the kicked player was before the current player
+      const originalIndex = room.turnOrder.findIndex(id => id === targetId) // Note: already removed above, this is wrong.
+      // Better way: we don't know where they were. We should just re-find the current player's index.
+      if (room.currentTurnPlayerId) {
+        const newIndex = room.turnOrder.indexOf(room.currentTurnPlayerId)
+        if (newIndex !== -1) room.turnIndex = newIndex
+      }
+    }
+
+    // Completely remove target from room
+    room.players.splice(targetIndex, 1)
+
+    // Check win condition if active
+    if (room.status === 'ACTIVE' && room.gamePhase !== 'RESULT') {
+      evaluateWinCondition(room)
+    }
+
+    const targetSocketId = sessionSockets.get(targetId)
+    if (targetSocketId) {
+      const targetSocket = io.sockets.sockets.get(targetSocketId)
+      if (targetSocket) {
+        targetSocket.emit('player-kicked')
+        targetSocket.leave(currentRoomId)
+      }
+      sessionSockets.delete(targetId)
+    }
+
+    // Adjust config if in lobby
+    if (room.status === 'LOBBY') {
+      const newTotal = Math.max(3, room.players.length)
+      const defConfig = getDefaultConfig(newTotal)
+      room.configuration.totalPlayers = defConfig.totalPlayers
+      room.configuration.undercover = defConfig.undercover
+      room.configuration.mrWhite = defConfig.mrWhite
+      room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+    }
+
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
 })
 
 const PORT = process.env.PORT || 3001

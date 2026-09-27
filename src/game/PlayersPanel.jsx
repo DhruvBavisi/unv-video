@@ -12,12 +12,13 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-export default function PlayersPanel({ state, onClose, buttonRect }) {
+export default function PlayersPanel({ state, onClose, buttonRect, onKick }) {
   const { players, roomId } = state
   const [copied, setCopied] = useState(false)
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const panelRef = useRef(null)
   const overlayRef = useRef(null)
+  const host = state.hostId === state.sessionId
 
   // Compute origin transform from button rect to panel center
   const getOriginVars = useCallback(() => {
@@ -82,6 +83,16 @@ export default function PlayersPanel({ state, onClose, buttonRect }) {
         className={`player-card ${statusClass} ${isDisconnected ? 'player-card--disconnected' : ''}`}
         style={{ animationDelay: `${index * 30}ms` }}
       >
+        {host && p.id !== state.sessionId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onKick && onKick(p); }}
+            style={{ position: 'absolute', top: 4, right: 4, background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', padding: 0 }}
+            aria-label={`Remove ${p.name}`}
+            title="Remove Player"
+          >
+            &times;
+          </button>
+        )}
         {isDisconnected && <span className="player-card__disconnected-badge">!</span>}
         {p.eliminated && p.role ? (
           <img src={getRoleImage(p.role)} alt={p.role} className="player-card__avatar" />

@@ -683,12 +683,23 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   )
 }
 
-function PlayerListItem({ player, index }) {
+function PlayerListItem({ player, index, host, onKick }) {
   return (
     <article className="online-player" style={{ animationDelay: `${index * 50}ms` }}>
       <span className="online-player__index">Player {String(index + 1).padStart(2, '0')}</span>
       <span className="online-player__name">{player.name}</span>
       <span className="online-player__meta">
+        {host && !player.isHost && (
+          <button 
+            className="online-player__kick-btn"
+            onClick={() => onKick(player)}
+            aria-label={`Remove ${player.name}`}
+            title="Remove Player"
+            style={{ cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 4px', fontSize: '1.2rem', display: 'inline-flex', alignItems: 'center' }}
+          >
+            &times;
+          </button>
+        )}
         {player.isHost && <span className="online-player__badge">HOST</span>}
         <span className={`online-player__status online-player__status--${player.status?.toLowerCase()}`}>
           {player.status}
@@ -698,7 +709,7 @@ function PlayerListItem({ player, index }) {
   )
 }
 
-function PlayerList({ players, settings }) {
+function PlayerList({ players, settings, host, onKick }) {
   return (
     <div className="player-list">
       <div className="player-list__header">
@@ -709,7 +720,7 @@ function PlayerList({ players, settings }) {
       </div>
       <div className="player-list__body">
         {players.map((player, index) => (
-          <PlayerListItem key={player.id} player={player} index={index} />
+          <PlayerListItem key={player.id} player={player} index={index} host={host} onKick={onKick} />
         ))}
         {players.length === 0 && (
           <div className="player-list__empty">No investigators yet.</div>
@@ -730,9 +741,24 @@ export default function OnlineGame({ onExit }) {
   const [menuBtnRect, setMenuBtnRect] = useState(null)
   const [sourceRect, setSourceRect] = useState(null)
   const [localElimination, setLocalElimination] = useState(null)
+  const [kickTarget, setKickTarget] = useState(null)
   const socketRef = useRef(null)
   const playersBtnRef = useRef(null)
   const menuBtnRef = useRef(null)
+
+  const handleKickRequest = useCallback((player) => {
+    setKickTarget(player)
+  }, [])
+
+  const confirmKick = useCallback(() => {
+    if (!socketRef.current || !kickTarget) return
+    socketRef.current.emit('host-kick-player', { targetId: kickTarget.id }, (res) => {
+      if (res?.error) {
+        dispatch({ type: 'SET_ERROR', error: res.error })
+      }
+    })
+    setKickTarget(null)
+  }, [kickTarget])
 
   useEffect(() => {
     if (state.eliminationResult) {
@@ -984,7 +1010,7 @@ export default function OnlineGame({ onExit }) {
         </header>
         <div className="online-lobby-grid">
           <div className="online-lobby__players">
-            <PlayerList players={state.players} settings={state.configuration} />
+            <PlayerList players={state.players} settings={state.configuration} host={host} onKick={handleKickRequest} />
             {!host && (
               <Button variant="primary" className="online-ready-btn" onClick={handleToggleReady}>
                 {me?.status === PLAYER_STATUS.READY ? 'Mark not ready' : 'Mark ready'}
@@ -1085,7 +1111,7 @@ export default function OnlineGame({ onExit }) {
         {content}
         <ErrorState>{state.error}</ErrorState>
       </div>
-      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} />}
+      {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} onKick={handleKickRequest} />}
       {showGameMenu && (
         <GameMenu 
           state={state} 
@@ -1104,6 +1130,17 @@ export default function OnlineGame({ onExit }) {
           onConfirm={confirmLeave}
           onCancel={() => setShowLeaveConfirm(false)}
         />
+      )}
+      {kickTarget && (
+        <div style={{ zIndex: 999999, position: 'relative' }}>
+          <ConfirmDialog
+            title="REMOVE PLAYER?"
+            message={`Remove "${kickTarget.name}" from this room?`}
+            confirmLabel="Remove Player"
+            onConfirm={confirmKick}
+            onCancel={() => setKickTarget(null)}
+          />
+        </div>
       )}
         {localElimination && (
           <EliminationOverlay 

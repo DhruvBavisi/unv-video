@@ -272,6 +272,20 @@ export function gameReducer(state, action) {
         error: 'Your session expired. Please start again.',
       }
     }
+    case 'PLAYER_KICKED': {
+      clearIdentity()
+      const { sessionId: freshId } = ensureIdentity()
+      return {
+        ...state,
+        sessionId: freshId,
+        roomId: '',
+        hostId: null,
+        players: [],
+        phase: GAME_PHASES.ONLINE_SETUP,
+        membershipState: MEMBERSHIP.NONE,
+        error: 'You were removed from the room by the host.',
+      }
+    }
     case 'CONNECTION_CHANGE': return { ...state, connectionState: action.state }
     case 'JOIN_FAILED': return { ...state, error: action.error, membershipState: MEMBERSHIP.NONE }
     case 'ROLE_ASSIGNED': {
@@ -312,6 +326,11 @@ export function initSocket(sid) {
     socket.on('leave-confirmed', () => {
       console.log('[ROOM] leave-confirmed received')
       dispatchRef?.({ type: 'LEAVE_CONFIRMED' })
+    })
+
+    socket.on('player-kicked', () => {
+      console.log('[ROOM] player-kicked received')
+      dispatchRef?.({ type: 'PLAYER_KICKED' })
     })
 
     socket.on('session-reconnected', (room) => {
