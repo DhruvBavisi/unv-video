@@ -317,6 +317,11 @@ function evaluateWinCondition(room) {
     }
     onGameEnd(room, { winner: room.winner })
     return true
+  } else if (civilians === undercovers + mrWhites && undercovers > 0) {
+    room.gamePhase = 'RESULT'
+    room.winner = 'UNDERCOVER'
+    onGameEnd(room, { winner: room.winner })
+    return true
   } else if (undercovers === 0 && mrWhites === 0) {
     room.gamePhase = 'RESULT'
     room.winner = 'CIVILIAN'
