@@ -151,6 +151,27 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
     })
   }
 
+  const handleSkipClueRound = async () => {
+    if (loading || isConfirmExiting) return
+    if (!socketRef.current || !socketRef.current.connected) {
+      dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
+      return
+    }
+    setLoading(true)
+    setTransitionAction('skip-clue-round')
+    setIsConfirmExiting(true)
+
+    socketRef.current.emit('host-skip-clue-round', (res) => {
+      if (res?.error) {
+        setLoading(false)
+        setIsConfirmExiting(false)
+        setTransitionAction(null)
+        setConfirmState(null)
+        dispatch({ type: 'SET_ERROR', error: res.error })
+      }
+    })
+  }
+
   const handleConfirmExited = useCallback(() => {
     setConfirmState(null)
     setIsConfirmExiting(false)
@@ -167,8 +188,12 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
       if (state.phase === 'ROOM_LOBBY' && state.gameStatus === 'SETUP') {
         setServerStateMet(true)
       }
+    } else if (transitionAction === 'skip-clue-round') {
+      if (state.gamePhase === 'VOTE' || state.phase === 'VOTE_PHASE') {
+        setServerStateMet(true)
+      }
     }
-  }, [state.phase, state.gameStatus, transitionAction])
+  }, [state.phase, state.gamePhase, state.gameStatus, transitionAction])
 
   // When BOTH confirm exited AND server state met, settle and close GameMenu
   useEffect(() => {
@@ -217,6 +242,15 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
           <div className="players-panel-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px 16px' }}>
             {host ? (
               <>
+                {state.gamePhase === 'CLUE' && (
+                  <Button 
+                    onClick={() => setConfirmState('skip-clue-round')} 
+                    disabled={loading || transitionAction}
+                    style={{ fontSize: '1.2rem', padding: '16px' }}
+                  >
+                    Skip Clue Round
+                  </Button>
+                )}
                 {!isResultPhase && (
                   <Button 
                     variant="primary" 
@@ -273,6 +307,19 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
           message={'The current game will end.\nYou can change the game settings before\nstarting a new investigation.'}
           confirmLabel="Back to Lobby"
           onConfirm={handleBackToLobby}
+          onCancel={() => setConfirmState(null)}
+          isExiting={isConfirmExiting}
+          onExited={handleConfirmExited}
+          disabled={isConfirmExiting}
+        />
+      )}
+
+      {confirmState === 'skip-clue-round' && (
+        <ConfirmDialog
+          title="SKIP CLUE ROUND?"
+          message={'The remaining players will not give clues this round.\nThe game will move directly to voting.'}
+          confirmLabel="Skip Clue Round"
+          onConfirm={handleSkipClueRound}
           onCancel={() => setConfirmState(null)}
           isExiting={isConfirmExiting}
           onExited={handleConfirmExited}

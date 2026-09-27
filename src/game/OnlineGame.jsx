@@ -1040,11 +1040,14 @@ export default function OnlineGame({ onExit }) {
       <header className="online-topbar">
         <button onClick={handleExit} aria-label="Return to landing page">Undercover</button>
         <span>Case File #001</span>
-        <div style={{ justifySelf: 'end', display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div style={{ justifySelf: 'end', display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
+            {state.connectionState}
+          </span>
           <button 
             id="players-navbar-button" 
             ref={playersBtnRef}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '25px', height: '25px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
             aria-label="Players"
             onClick={() => {
               const rect = playersBtnRef.current?.getBoundingClientRect()
@@ -1052,7 +1055,7 @@ export default function OnlineGame({ onExit }) {
               setShowPlayers(true)
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
               <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -1062,7 +1065,7 @@ export default function OnlineGame({ onExit }) {
           
           <button 
             ref={menuBtnRef}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '25px', height: '20px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
             aria-label="Game Menu"
             onClick={() => {
               const rect = menuBtnRef.current?.getBoundingClientRect()
@@ -1070,15 +1073,12 @@ export default function OnlineGame({ onExit }) {
               setShowGameMenu(true)
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
-            {state.connectionState}
-          </span>
         </div>
       </header>
       <div className="online-game__content">

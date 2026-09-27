@@ -1182,7 +1182,7 @@ video {
   
   .online-topbar__status {
     font-size: 0;
-    width: 1.2rem;
+    width: 20px;
   }
   
   .online-topbar__status::after {

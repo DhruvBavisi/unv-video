@@ -441,6 +441,14 @@ export function emitStartCluePhase(socket) {
   socket.emit('start-clue-phase')
 }
 
+export function emitHostSkipClueRound(socket) {
+  return new Promise((resolve) => {
+    socket.emit('host-skip-clue-round', (response) => {
+      resolve(response)
+    })
+  })
+}
+
 export function emitSelectVote(socket, targetId) {
   return new Promise((resolve) => {
     socket.emit('select-vote', { targetId }, (response) => {
