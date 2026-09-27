@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useReducer } from 'react'
+import { createPortal } from 'react-dom'
 import Button from '../components/Button.jsx'
 import { WORD_CATEGORIES } from '../data/wordCategories.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
@@ -401,48 +402,99 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [handleClose])
 
+  // Prevent background scroll jump on open/close
+  useEffect(() => {
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    const prevOverflow = document.body.style.overflow
+    const prevPaddingRight = document.body.style.paddingRight
+    const scrollY = window.scrollY
+
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`
+    }
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.body.style.paddingRight = prevPaddingRight
+      if (window.scrollY !== scrollY) {
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [])
+
   const isClosing = animationState === 'closing'
 
   const style = originRect && !isClosing ? {
-    transformOrigin: `${originRect.left + originRect.width/2}px ${originRect.top + originRect.height/2}px`,
+    transformOrigin: `${originRect.left + originRect.width / 2}px ${originRect.top + originRect.height / 2}px`,
   } : exitStyle
 
   const handleAnimationEnd = (e) => {
-    if (animationState === 'closing' && e.animationName === 'srm-fade-out') {
+    if (animationState === 'closing' && (e.animationName === 'srm-fade-out' || e.animationName === 'srm-pop-flip-out')) {
       onClose()
     }
   }
 
-  return (
+  const modalContent = (
     <div 
       className={`special-role-modal-overlay ${isClosing ? 'special-role-modal-overlay--closing' : ''}`} 
       onClick={handleClose}
       onAnimationEnd={handleAnimationEnd}
     >
       <div className="special-role-modal-wrapper" onClick={e => e.stopPropagation()}>
-        <div ref={modalRef} className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} style={style}>
-          <button className="special-role-modal__close" onClick={handleClose} aria-label="Close modal">✕</button>
-          
-          <div className="special-role-modal__avatar-frame">
-            {role.avatar && <img src={role.avatar} alt={role.name} />}
+        <div 
+          ref={modalRef} 
+          className={`special-role-modal ${isClosing ? 'special-role-modal--closing' : 'special-role-modal--opening'}`} 
+          style={style}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="special-role-modal-title"
+        >
+          <div className="special-role-modal__dossier-header">
+            <span className="special-role-modal__stamp">CLASSIFIED DOSSIER // EYES ONLY</span>
+            <button 
+              type="button"
+              className="special-role-modal__close" 
+              onClick={handleClose} 
+              aria-label="Close dossier modal"
+            >
+              ✕
+            </button>
           </div>
           
-          <h2 className="special-role-modal__title">{role.name}</h2>
+          <div className="special-role-modal__avatar-frame">
+            {role.avatar ? (
+              <img src={role.avatar} alt={role.name} />
+            ) : (
+              <div className="special-role-modal__insignia" aria-hidden="true">
+                <span className="special-role-modal__insignia-symbol">◈</span>
+              </div>
+            )}
+          </div>
+          
+          <h2 id="special-role-modal-title" className="special-role-modal__title">{role.name}</h2>
+          <div className="special-role-modal__divider" aria-hidden="true" />
           <p className="special-role-modal__desc">{role.description}</p>
           
           <div className="special-role-modal__rules">
+            <div className="special-role-modal__rules-label">FIELD DIRECTIVES</div>
             <ul>
               {role.rules.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
           </div>
           
           <div className="special-role-modal__meta">
-            Minimum players: {role.minPlayers}
+            <span className="special-role-modal__meta-dot" aria-hidden="true">●</span>
+            <span>MINIMUM CLEARANCE: {role.minPlayers} INVESTIGATORS</span>
           </div>
         </div>
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(modalContent, document.body)
 }
 
 function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers }) {
@@ -459,16 +511,38 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   
   const handleInfo = (e, role) => {
     e.stopPropagation()
-    const rect = e.currentTarget.closest('.special-role-card').getBoundingClientRect()
+    const card = e.currentTarget.closest('.special-role-card')
+    const rect = card ? card.getBoundingClientRect() : null
     setActiveRect(rect)
     setActiveRoleInfo(role)
   }
 
+  const activeRolesCount = SPECIAL_ROLES.filter(r => configuration?.specialRoles?.[r.key]).length
+
   return (
     <div className="special-roles-section">
-      <button className="special-roles-header" onClick={() => setExpanded(!expanded)}>
-        <span>Special Roles</span>
-        <span>{expanded ? '▲' : '▼'}</span>
+      <button 
+        type="button" 
+        className={`special-roles-header ${expanded ? 'special-roles-header--open' : ''}`} 
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+      >
+        <div className="special-roles-header__meta">
+          <span className="special-roles-header__kicker">DOSSIER PROTOCOL // CLASSIFIED</span>
+          <span className="special-roles-header__title">SPECIAL ROLES</span>
+        </div>
+        <div className="special-roles-header__badge-group">
+          {activeRolesCount > 0 && (
+            <span className="special-roles-header__active-badge">
+              {activeRolesCount} ACTIVE
+            </span>
+          )}
+          <span className="special-roles-header__chevron" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </div>
       </button>
       
       <div className={`special-roles-dropdown-wrapper ${expanded ? 'special-roles-dropdown-wrapper--open' : ''}`}>
@@ -480,15 +554,35 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
               const unavailable = !canEnable
               
               return (
-                <div key={role.key} className={`special-role-card ${unavailable ? 'special-role-card--disabled' : ''}`}>
-                  <div className="special-role-card__main">
-                    <span className="special-role-card__name">{role.name}</span>
-                    {unavailable && <span className="special-role-card__req">Unavailable — requires {role.minPlayers} players</span>}
+                <div 
+                  key={role.key} 
+                  className={`special-role-card ${unavailable ? 'special-role-card--disabled' : ''} ${enabled ? 'special-role-card--enabled' : ''}`}
+                >
+                  <div className="special-role-card__leading">
+                    <div className="special-role-card__marker" aria-hidden="true">
+                      <span className="special-role-card__marker-symbol">◈</span>
+                    </div>
+                    <div className="special-role-card__main">
+                      <span className="special-role-card__name">{role.name}</span>
+                      {unavailable ? (
+                        <span className="special-role-card__req">LOCKED &bull; REQUIRES {role.minPlayers} INVESTIGATORS</span>
+                      ) : (
+                        <span className="special-role-card__avail">AVAILABLE &bull; MIN {role.minPlayers} PLAYERS</span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="special-role-card__actions">
-                    <button type="button" className="special-role-card__info-btn" onClick={(e) => handleInfo(e, role)}>i</button>
-                    <div className="config-field--toggle" style={{ margin: 0, padding: 0 }}>
+                    <button 
+                      type="button" 
+                      className="special-role-card__info-btn" 
+                      onClick={(e) => handleInfo(e, role)}
+                      aria-label={`Role dossier briefing: ${role.name}`}
+                      title={`Role dossier briefing: ${role.name}`}
+                    >
+                      <span className="special-role-card__info-glyph" aria-hidden="true">i</span>
+                    </button>
+                    <div className="config-field--toggle" style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', boxShadow: 'none' }}>
                       <button
                         type="button"
                         role="switch"
