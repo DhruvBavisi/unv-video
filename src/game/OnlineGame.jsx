@@ -20,6 +20,7 @@ import CluePhase from './CluePhase.jsx'
 import ResultPhase from './ResultPhase.jsx'
 import PlayersPanel from './PlayersPanel.jsx'
 import EliminationOverlay from './EliminationOverlay.jsx'
+import GameMenu from './GameMenu.jsx'
 import { readIdentity } from './identity.js'
 
 function ErrorState({ children }) {
@@ -563,11 +564,14 @@ export default function OnlineGame({ onExit }) {
   const [joining, setJoining] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showPlayers, setShowPlayers] = useState(false)
+  const [showGameMenu, setShowGameMenu] = useState(false)
   const [playersBtnRect, setPlayersBtnRect] = useState(null)
+  const [menuBtnRect, setMenuBtnRect] = useState(null)
   const [sourceRect, setSourceRect] = useState(null)
   const [localElimination, setLocalElimination] = useState(null)
   const socketRef = useRef(null)
   const playersBtnRef = useRef(null)
+  const menuBtnRef = useRef(null)
 
   useEffect(() => {
     if (state.eliminationResult) {
@@ -879,13 +883,38 @@ export default function OnlineGame({ onExit }) {
           <button 
             id="players-navbar-button" 
             ref={playersBtnRef}
-            style={{ fontSize: '0.62rem', letterSpacing: '0.25em', color: 'var(--text-primary)' }} 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+            aria-label="Players"
             onClick={() => {
               const rect = playersBtnRef.current?.getBoundingClientRect()
               if (rect) setPlayersBtnRect(rect)
               setShowPlayers(true)
             }}
-          >Players</button>
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </button>
+          
+          <button 
+            ref={menuBtnRef}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+            aria-label="Game Menu"
+            onClick={() => {
+              const rect = menuBtnRef.current?.getBoundingClientRect()
+              if (rect) setMenuBtnRect(rect)
+              setShowGameMenu(true)
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
           <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
             {state.connectionState}
           </span>
@@ -896,6 +925,16 @@ export default function OnlineGame({ onExit }) {
         <ErrorState>{state.error}</ErrorState>
       </div>
       {showPlayers && <PlayersPanel state={state} onClose={() => setShowPlayers(false)} buttonRect={playersBtnRect} />}
+      {showGameMenu && (
+        <GameMenu 
+          state={state} 
+          socketRef={socketRef} 
+          dispatch={dispatch} 
+          onClose={() => setShowGameMenu(false)} 
+          buttonRect={menuBtnRect} 
+          onLeaveConfirm={handleLeaveRoom}
+        />
+      )}
       {showLeaveConfirm && (
         <ConfirmDialog
           title="Leave room?"

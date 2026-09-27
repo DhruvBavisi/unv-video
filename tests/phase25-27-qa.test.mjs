@@ -153,7 +153,10 @@ async function playToResult(clients, host) {
 }
 
 async function playAgainAll(clients, host) {
-  for (const c of clients) c.socket.emit('play-again')
+  for (const c of clients) {
+    c.secret = null
+    c.socket.emit('play-again')
+  }
   await waitForRoomState(host, s => s.status === 'LOBBY', 5000)
 }
 
@@ -440,8 +443,8 @@ describe('Phase 27 — Duelist reconnect privacy', { timeout: 15000 }, () => {
     const d = duelists[0]
     const savedToken = d.resumeToken
     d.socket.disconnect()
-    await sleep(300)
-
+    
+    // Server grace period takes a moment, but we can reconnect immediately
     const { io: ioLib } = await import('socket.io-client')
     const URL = process.env.TEST_URL || 'http://localhost:3005'
     const newSocket = ioLib(URL, { transports: ['websocket'], reconnection: false })
@@ -450,13 +453,13 @@ describe('Phase 27 — Duelist reconnect privacy', { timeout: 15000 }, () => {
       newSocket.on('connect_error', rej)
     })
 
-    let reconnectedState = null
-    let rolePayload = null
-    newSocket.on('session-reconnected', state => { reconnectedState = state })
-    newSocket.on('role-assigned', payload => { rolePayload = payload })
+    const statePromise = waitForEvent(newSocket, 'session-reconnected')
+    const rolePromise = waitForEvent(newSocket, 'role-assigned')
 
     newSocket.emit('register', { sessionId: d.sessionId, resumeToken: savedToken, roomId: host.roomId })
-    await sleep(500)
+    
+    const reconnectedState = await statePromise
+    const rolePayload = await rolePromise
 
     assert.ok(reconnectedState, 'No session-reconnected received')
     for (const p of reconnectedState.players) {
@@ -480,11 +483,12 @@ describe('Phase 27 — Duelist reconnect privacy', { timeout: 15000 }, () => {
       imposter.on('connect_error', rej)
     })
 
-    let expiredReceived = false
-    imposter.on('session-expired', () => { expiredReceived = true })
+    const expiredPromise = waitForEvent(imposter, 'session-expired')
     imposter.emit('register', { sessionId: duelists[1].sessionId, resumeToken: 'fake', roomId: host.roomId })
-    await sleep(500)
-    assert.ok(expiredReceived, 'Impersonation not rejected')
+    
+    await expiredPromise
+    // If we reach here without timeout error, it was received
+    assert.ok(true, 'Impersonation rejected successfully')
     imposter.disconnect()
   })
 })

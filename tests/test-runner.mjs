@@ -9,7 +9,9 @@ async function runTests() {
   const args = process.argv.slice(2)
   const testsToRun = args.length > 0 ? args : [
     'tests/phase14-clue-chat.test.mjs',
-    'tests/phase25-27-qa.test.mjs'
+    'tests/phase25-27-qa.test.mjs',
+    'tests/invalid-config.test.mjs',
+    'tests/game-menu.test.mjs'
   ]
 
   console.log(`Starting server for tests...`)

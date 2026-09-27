@@ -129,6 +129,7 @@ function getPublicRoomState(room) {
   return {
     roomId: room.id,
     hostId: room.hostId,
+    gameVersion: room.gameVersion || 0,
     status: room.status,
     round: room.round,
     phase: room.phase,
@@ -565,6 +566,7 @@ io.on('connection', (socket) => {
       },
       category: 'open-file',
       specialRoleOutcomes: [],
+      gameVersion: 0,
     }
 
     rooms.set(roomId, room)
@@ -810,6 +812,140 @@ io.on('connection', (socket) => {
     if (typeof category !== 'string') return
     room.category = category
     broadcastRoom(room)
+  })
+
+  socket.on('host-new-game', (_, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status === 'LOBBY' || room.gamePhase === 'RESULT') return callback?.({ success: false, error: 'INVALID_PHASE' })
+
+    room.gameVersion++
+
+    room.status = 'ACTIVE'
+    room.phase = 'ACTIVE'
+    room.gamePhase = null
+    room.round = 1
+    room.clues = []
+    room.chat = []
+    room.votes = {}
+    room.lockedVotes = []
+    room.voteResult = null
+    room.specialRoleOutcomes = []
+    room.eliminationResult = null
+    room.mrWhiteGuesserId = null
+    room.mrWhiteLiveGuess = ''
+    room.pendingMrWhiteElimination = null
+    room.turnOrder = []
+    room.currentTurnPlayerId = null
+    room.turnIndex = 0
+    room.submittedCluePlayerIds = []
+
+    assignWords(room)
+
+    const { totalPlayers, undercover, mrWhite } = room.configuration
+    const rolePool = []
+    for (let i = 0; i < mrWhite; i++) rolePool.push('MR_WHITE')
+    for (let i = 0; i < undercover; i++) rolePool.push('UNDERCOVER')
+    for (let i = 0; i < totalPlayers - undercover - mrWhite; i++) rolePool.push('CIVILIAN')
+    for (let i = rolePool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rolePool[i], rolePool[j]] = [rolePool[j], rolePool[i]]
+    }
+
+    room.players.forEach((p, i) => {
+      p.role = rolePool[i]
+      p.status = 'PLAYING'
+      p.eliminated = false
+      p.spectator = false
+      p.specialRole = null
+      p.specialRoleData = {}
+      p.points = 0
+      p.playAgain = false
+      p.continueAck = false
+    })
+
+    const enabledSpecialRoles = Object.keys(room.configuration.specialRoles || {})
+      .filter((k) => room.configuration.specialRoles[k])
+      .map((k) => SPECIAL_ROLES.find((r) => r.key === k))
+      .filter(Boolean)
+      .sort((a, b) => (a.priority || 0) - (b.priority || 0))
+
+    for (const roleDef of enabledSpecialRoles) {
+      if (room.players.length >= roleDef.minPlayers && roleDef.assign) {
+        roleDef.assign(room)
+      }
+    }
+
+    room.players.forEach((p) => {
+      const pSocketId = sessionSockets.get(p.id)
+      if (pSocketId) {
+        const pSocket = io.sockets.sockets.get(pSocketId)
+        if (pSocket) {
+          const word = wordForRole(p.role, room.wordPair)
+          const roleToReveal = (room.configuration.revealRoles || p.role === 'MR_WHITE') ? p.role : null
+          pSocket.emit('role-assigned', { role: roleToReveal, word, specialRole: p.specialRole || null })
+        }
+      }
+    })
+
+    startCluePhase(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('host-return-to-lobby', (_, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status === 'LOBBY') return callback?.({ success: false, error: 'INVALID_PHASE' })
+
+    room.gameVersion++
+
+    const newTotal = Math.max(3, room.players.length)
+    const defConfig = getDefaultConfig(newTotal)
+    room.configuration.totalPlayers = defConfig.totalPlayers
+    room.configuration.undercover = defConfig.undercover
+    room.configuration.mrWhite = defConfig.mrWhite
+    room.configuration.civilians = newTotal - defConfig.undercover - defConfig.mrWhite
+
+    room.status = 'LOBBY'
+    room.phase = 'LOBBY'
+    room.gamePhase = 'LOBBY'
+    room.winner = null
+    room.round = 1
+    room.wordPair = null
+    room.clues = []
+    room.votes = {}
+    room.lockedVotes = []
+    room.voteResult = null
+    room.eliminationResult = null
+    room.mrWhiteGuesserId = null
+    room.mrWhiteLiveGuess = ''
+    room.pendingMrWhiteElimination = null
+    room.chat = []
+    room.turnOrder = []
+    room.currentTurnPlayerId = null
+    room.turnIndex = 0
+    room.submittedCluePlayerIds = []
+    room.specialRoleOutcomes = []
+
+    room.players.forEach(p => {
+      p.status = p.isHost ? 'READY' : 'JOINED'
+      p.eliminated = false
+      p.spectator = false
+      p.role = null
+      p.word = null
+      p.specialRole = null
+      p.specialRoleData = {}
+      p.points = 0
+      p.playAgain = false
+      p.continueAck = false
+    })
+
+    broadcastRoom(room)
+    callback?.({ success: true })
   })
 
   socket.on('start-game', () => {
@@ -1150,8 +1286,9 @@ ELIMINATION RESULT=`, room.eliminationResult)
           const isMrWhite = eliminatedPlayer.role === 'MR_WHITE'
           const delay = isMrWhite ? 5000 : 6500
           
+          const version = room.gameVersion
           setTimeout(() => {
-            advanceFromElimination(room.id)
+            advanceFromElimination(room.id, version)
           }, delay)
         }
       } else {
@@ -1241,17 +1378,19 @@ ELIMINATION RESULT=`, room.eliminationResult)
       
       broadcastRoom(room)
 
+      const version = room.gameVersion
       setTimeout(() => {
-        advanceAfterMrWhiteWrongGuess(room.id)
+        advanceAfterMrWhiteWrongGuess(room.id, version)
       }, 1800)
     }
     
     callback?.({ success: true })
   })
 
-  function advanceAfterMrWhiteWrongGuess(roomId) {
+  function advanceAfterMrWhiteWrongGuess(roomId, expectedVersion) {
     const room = rooms.get(roomId)
     if (!room) return
+    if (expectedVersion !== undefined && room.gameVersion !== expectedVersion) return
     room.eliminationResult = null
     room.pendingMrWhiteElimination = null
 
@@ -1273,9 +1412,10 @@ ELIMINATION RESULT=`, room.eliminationResult)
   }
 
   // Auto-advances from ELIMINATION phase. Called via timeout.
-  function advanceFromElimination(roomId) {
+  function advanceFromElimination(roomId, expectedVersion) {
     const room = rooms.get(roomId)
     if (!room || room.gamePhase !== 'ELIMINATION') return
+    if (expectedVersion !== undefined && room.gameVersion !== expectedVersion) return
     
     const eliminatedId = room.eliminationResult?.playerId
     const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
