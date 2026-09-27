@@ -5,15 +5,33 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
+function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel, isExiting, onExited, disabled }) {
+  const [localMountState, setLocalMountState] = useState(isExiting ? 'EXITING' : 'ENTERING')
+
+  useEffect(() => {
+    if (isExiting) {
+      setLocalMountState('EXITING')
+      const timer = setTimeout(() => {
+        if (onExited) onExited()
+      }, 250) // Match CSS animation duration
+      return () => clearTimeout(timer)
+    } else {
+      const timer = setTimeout(() => setLocalMountState('OPEN'), 240)
+      return () => clearTimeout(timer)
+    }
+  }, [isExiting, onExited])
+
+  const overlayClass = `confirm-overlay ${localMountState === 'EXITING' ? 'confirm-overlay--exiting' : ''}`
+  const dialogClass = `confirm-dialog ${localMountState === 'EXITING' ? 'confirm-dialog--exiting' : ''}`
+
   return (
-    <div className="confirm-overlay" onClick={onCancel} style={{ zIndex: 100000 }}>
-      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+    <div className={overlayClass} onClick={!disabled ? onCancel : undefined} style={{ zIndex: 100000 }}>
+      <div className={dialogClass} onClick={(e) => e.stopPropagation()}>
         <h2>{title}</h2>
         <p style={{ whiteSpace: 'pre-wrap' }}>{message}</p>
         <div className="confirm-dialog__actions">
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm}>{confirmLabel}</Button>
+          <Button onClick={onCancel} disabled={disabled}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm} disabled={disabled}>{confirmLabel}</Button>
         </div>
       </div>
     </div>
@@ -23,7 +41,14 @@ function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
 export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRect, onLeaveConfirm }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const [confirmState, setConfirmState] = useState(null)
+  
+  // Transition orchestrator states
   const [loading, setLoading] = useState(false)
+  const [isConfirmExiting, setIsConfirmExiting] = useState(false)
+  const [transitionAction, setTransitionAction] = useState(null)
+  const [serverStateMet, setServerStateMet] = useState(false)
+  const [confirmExited, setConfirmExited] = useState(false)
+
   const panelRef = useRef(null)
   const overlayRef = useRef(null)
 
@@ -35,13 +60,10 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
     if (!buttonRect) return {}
     const vw = window.innerWidth
     const vh = window.innerHeight
-    // Button center
     const bx = buttonRect.left + buttonRect.width / 2
     const by = buttonRect.top + buttonRect.height / 2
-    // Panel center (viewport center)
     const px = vw / 2
     const py = vh / 2
-    // Translation needed to move from center to button
     const tx = bx - px
     const ty = by - py
     return {
@@ -70,55 +92,93 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
   }, [animState])
 
   const handleOverlayClick = useCallback((e) => {
-    if (e.target === overlayRef.current && !confirmState) {
+    if (e.target === overlayRef.current && !confirmState && !loading && !transitionAction) {
       handleClose()
     }
-  }, [handleClose, confirmState])
+  }, [handleClose, confirmState, loading, transitionAction])
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
+        if (loading || isConfirmExiting || transitionAction) return
         if (confirmState) setConfirmState(null)
         else handleClose()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [confirmState, handleClose])
+  }, [confirmState, handleClose, loading, isConfirmExiting, transitionAction])
 
   const handleNewGame = async () => {
-    if (loading) return
+    if (loading || isConfirmExiting) return
     if (!socketRef.current || !socketRef.current.connected) {
       dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
       return
     }
     setLoading(true)
+    setTransitionAction('new-game')
+    setIsConfirmExiting(true)
+
     socketRef.current.emit('host-new-game', (res) => {
-      setLoading(false)
       if (res.error) {
+        setLoading(false)
+        setIsConfirmExiting(false)
+        setTransitionAction(null)
+        setConfirmState(null)
         dispatch({ type: 'SET_ERROR', error: res.error })
-      } else {
-        handleClose()
       }
     })
   }
 
   const handleBackToLobby = async () => {
-    if (loading) return
+    if (loading || isConfirmExiting) return
     if (!socketRef.current || !socketRef.current.connected) {
       dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
       return
     }
     setLoading(true)
+    setTransitionAction('back-to-lobby')
+    setIsConfirmExiting(true)
+
     socketRef.current.emit('host-return-to-lobby', (res) => {
-      setLoading(false)
       if (res.error) {
+        setLoading(false)
+        setIsConfirmExiting(false)
+        setTransitionAction(null)
+        setConfirmState(null)
         dispatch({ type: 'SET_ERROR', error: res.error })
-      } else {
-        handleClose()
       }
     })
   }
+
+  const handleConfirmExited = useCallback(() => {
+    setConfirmState(null)
+    setIsConfirmExiting(false)
+    setConfirmExited(true)
+  }, [])
+
+  // Monitor for server state update
+  useEffect(() => {
+    if (transitionAction === 'new-game') {
+      if (state.phase === 'CLUE_PHASE' || state.gameStatus === 'ACTIVE') {
+        setServerStateMet(true)
+      }
+    } else if (transitionAction === 'back-to-lobby') {
+      if (state.phase === 'ROOM_LOBBY' && state.gameStatus === 'SETUP') {
+        setServerStateMet(true)
+      }
+    }
+  }, [state.phase, state.gameStatus, transitionAction])
+
+  // When BOTH confirm exited AND server state met, settle and close GameMenu
+  useEffect(() => {
+    if (transitionAction && confirmExited && serverStateMet) {
+      const settleTimer = setTimeout(() => {
+        handleClose()
+      }, 150)
+      return () => clearTimeout(settleTimer)
+    }
+  }, [transitionAction, confirmExited, serverStateMet, handleClose])
 
   const flyVars = getOriginVars()
   const overlayClass = `players-panel-overlay ${
@@ -146,7 +206,12 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
         >
           <header className="players-panel-header">
             <h2>Game Menu</h2>
-            <button className="players-panel-close" onClick={handleClose} aria-label="Close menu">&times;</button>
+            <button 
+              className="players-panel-close" 
+              onClick={handleClose} 
+              aria-label="Close menu"
+              disabled={loading || transitionAction}
+            >&times;</button>
           </header>
 
           <div className="players-panel-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px 16px' }}>
@@ -156,7 +221,7 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
                   <Button 
                     variant="primary" 
                     onClick={() => setConfirmState('new-game')} 
-                    disabled={loading}
+                    disabled={loading || transitionAction}
                     style={{ fontSize: '1.2rem', padding: '16px' }}
                   >
                     ↻ New Game
@@ -164,7 +229,7 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
                 )}
                 <Button 
                   onClick={() => setConfirmState('back-to-lobby')} 
-                  disabled={loading}
+                  disabled={loading || transitionAction}
                   style={{ fontSize: '1.2rem', padding: '16px' }}
                 >
                   ⌂ Back to Lobby
@@ -177,14 +242,14 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
                   handleClose()
                   onLeaveConfirm()
                 }}
-                disabled={loading}
+                disabled={loading || transitionAction}
                 style={{ fontSize: '1.2rem', padding: '16px' }}
               >
                 Leave Game
               </Button>
             )}
             <hr style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '8px 0' }} />
-            <Button onClick={handleClose} disabled={loading}>Close</Button>
+            <Button onClick={handleClose} disabled={loading || transitionAction}>Close</Button>
           </div>
         </div>
       </div>
@@ -196,6 +261,9 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
           confirmLabel="Start New Game"
           onConfirm={handleNewGame}
           onCancel={() => setConfirmState(null)}
+          isExiting={isConfirmExiting}
+          onExited={handleConfirmExited}
+          disabled={isConfirmExiting}
         />
       )}
       
@@ -206,6 +274,9 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
           confirmLabel="Back to Lobby"
           onConfirm={handleBackToLobby}
           onCancel={() => setConfirmState(null)}
+          isExiting={isConfirmExiting}
+          onExited={handleConfirmExited}
+          disabled={isConfirmExiting}
         />
       )}
     </>
