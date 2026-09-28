@@ -108,66 +108,6 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
         )}
       </div>
 
-      {(() => {
-        const scoredPlayers = [...gamePlayers]
-          .filter(p => (p.points !== 0) || (p.scoreBreakdown && p.scoreBreakdown.length > 0))
-          .sort((a, b) => (b.points || 0) - (a.points || 0))
-          
-        if (scoredPlayers.length === 0) return null
-
-        return (
-          <div className="anim-item anim-word" style={{ marginBottom: '32px' }}>
-            <div className="result-section-title" style={{ marginBottom: '12px' }}>Final Scores</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {scoredPlayers.map((p) => {
-                const roleName = p.role ? p.role.replace('_', ' ') : 'UNKNOWN'
-                const specialRoleName = p.specialRole ? p.specialRole.replace(/([A-Z])/g, ' $1').trim().toUpperCase() : null
-                const fullRoleName = specialRoleName ? `${roleName} • ${specialRoleName}` : roleName
-
-                return (
-                  <div key={p.id} style={{
-                    background: 'rgba(30, 32, 40, 0.6)',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(212, 175, 55, 0.15)',
-                    padding: '12px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '1.05rem', fontWeight: '500', color: 'var(--text-primary)' }}>{p.name}</span>
-                        <span style={{ fontSize: '0.75rem', fontFamily: "'Bebas Neue', 'Oswald', sans-serif", color: getRoleColor(p.role), letterSpacing: '0.05em' }}>{fullRoleName}</span>
-                      </div>
-                    </div>
-
-                    {p.scoreBreakdown && p.scoreBreakdown.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                        {p.scoreBreakdown.map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                            <span style={{ width: '40px', fontWeight: 'bold', color: item.amount > 0 ? '#d4af37' : '#9E3A3A' }}>
-                              {item.amount > 0 ? '+' : '−'}{Math.abs(item.amount)}
-                            </span>
-                            <span>{item.reason}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0 8px 0' }} />
-                    
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span style={{ width: '40px', fontSize: '1.1rem', fontWeight: 'bold', color: p.points > 0 ? '#d4af37' : (p.points < 0 ? '#9E3A3A' : 'var(--text-primary)') }}>
-                        {p.points > 0 ? '+' : (p.points < 0 ? '−' : '')}{Math.abs(p.points || 0)}
-                      </span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>TOTAL</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })()}
 
       {wordPair && (
         <div className="anim-item anim-word" style={{ marginBottom: '32px' }}>
@@ -184,6 +124,18 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
           </div>
         </div>
       )}
+
+      {(() => {
+        const maxScore = gamePlayers.length > 0 ? Math.max(...gamePlayers.map(p => p.points || 0)) : 0
+        return (
+          <div className="anim-item anim-word" style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <div className="result-section-title" style={{ marginBottom: '8px' }}>Top Score</div>
+            <div style={{ fontSize: '2rem', fontFamily: "'Bebas Neue', 'Oswald', sans-serif", fontWeight: 'bold', color: '#d4af37', letterSpacing: '0.05em' }}>
+              {maxScore > 0 ? `+${maxScore}` : (maxScore < 0 ? `−${Math.abs(maxScore)}` : '0')} PTS
+            </div>
+          </div>
+        )
+      })()}
 
       {state.specialRoleOutcomes && state.specialRoleOutcomes.length > 0 && (
         <div className="anim-item anim-role" style={{ marginBottom: '32px' }}>
@@ -255,6 +207,9 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <div style={{ fontSize: '1.2rem', fontFamily: "'Bebas Neue', 'Oswald', sans-serif", color: (p.points || 0) > 0 ? '#d4af37' : ((p.points || 0) < 0 ? '#9E3A3A' : 'var(--text-secondary)'), letterSpacing: '0.05em' }}>
+                    {(p.points || 0) > 0 ? `+${p.points}` : ((p.points || 0) < 0 ? `−${Math.abs(p.points)}` : '0')}
+                  </div>
                   {p.eliminated && (
                     <div style={{ fontSize: '0.7rem', color: '#9E3A3A', fontWeight: 'bold', marginLeft: '12px' }}>
                       ELIMINATED
