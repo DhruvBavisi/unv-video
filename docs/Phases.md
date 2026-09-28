@@ -440,6 +440,13 @@ First role that changes elimination flow (cascading elimination).
 - ASSUMPTION: if the cascade eliminates a second Lover who is also mid-guess-eligible (`mw`), both get independent guess opportunities sequentially (consistent with "every eliminated Mr. White gets a guess"). Confirm this ordering before building.
 - Minimum 5 active players (per source).
 
+**Implementation Note:**
+- Server-authoritative assignment added to `server.js` start-game hook.
+- Added `lovers` hook inside `specialRolesHooks.js` `onElimination` which returns any cascaded eliminations (the partner).
+- Modified `server.js` elimination logic to atomically process the primary elimination and any cascaded eliminations together.
+- Added `mrWhiteQueue` to queue up multiple Mr. White guess opportunities in the event that both Lovers are eliminated and both are Mr. White. `advanceFromElimination` handles shifting the next Mr. White guesser if needed.
+- Integrated the Lovers Reveal outcome into the existing `specialRoleOutcomes` array to display precisely after the first elimination.
+
 ## PHASE 29 — The Revenger
 Elimination-triggered secondary elimination, this time player-chosen rather than automatic.
 

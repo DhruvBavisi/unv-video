@@ -17,7 +17,9 @@ export function onElimination(room, eliminatedPlayerId) {
   const isFirstElimination = eliminatedCount === 1;
 
   const eliminatedPlayer = room.players.find(p => p.id === eliminatedPlayerId);
-  if (!eliminatedPlayer) return;
+  if (!eliminatedPlayer) return [];
+  
+  const cascadedEliminations = [];
 
   if (eliminatedPlayer.specialRole === 'joyFool' && isFirstElimination) {
     if (!eliminatedPlayer.specialRoleData.joyFoolResolved) {
@@ -51,8 +53,37 @@ export function onElimination(room, eliminatedPlayerId) {
           message: `Duelists\n${eliminatedPlayer.name} — eliminated — −2 pts\n${partner.name} — survived the duel — +2 pts`
         });
       }
+      }
     }
   }
+
+  if (eliminatedPlayer.specialRole === 'lovers') {
+    if (!eliminatedPlayer.specialRoleData.resolved) {
+      const partner = room.players.find(p => p.id === eliminatedPlayer.specialRoleData.partnerId);
+      if (partner && !partner.eliminated) {
+        partner.eliminated = true;
+        partner.spectator = true;
+        
+        eliminatedPlayer.specialRoleData.resolved = true;
+        partner.specialRoleData.resolved = true;
+        
+        if (!room.specialRoleOutcomes) room.specialRoleOutcomes = [];
+        room.specialRoleOutcomes.push({
+          role: 'lovers',
+          loverId: eliminatedPlayer.specialRoleData.loverId,
+          firstEliminatedId: eliminatedPlayer.id,
+          firstEliminatedName: eliminatedPlayer.name,
+          secondEliminatedId: partner.id,
+          secondEliminatedName: partner.name,
+          message: `LOVERS REVEALED\n${eliminatedPlayer.name} ❤️ ${partner.name}`
+        });
+        
+        cascadedEliminations.push(partner);
+      }
+    }
+  }
+
+  return cascadedEliminations;
 }
 
 export function onGameEnd(room, result) {

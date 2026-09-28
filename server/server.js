@@ -1065,6 +1065,20 @@ io.on('connection', (socket) => {
       }
     }
 
+    const loversMeta = SPECIAL_ROLES.find(r => r.key === 'lovers')
+    if (specialRolesConfig.lovers === true || specialRolesConfig.lovers?.enabled === true) {
+      if (room.players.length >= loversMeta.minPlayers) {
+        const lovers = assignRole('lovers', 2)
+        if (lovers.length === 2) {
+          const loverId = crypto.randomUUID()
+          lovers[0].specialRoleData = { loverId, partnerId: lovers[1].id, resolved: false }
+          lovers[1].specialRoleData = { loverId, partnerId: lovers[0].id, resolved: false }
+        } else {
+          lovers.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
+        }
+      }
+    }
+
     room.players.forEach((p) => {
       const word = wordForRole(p.role, room.wordPair)
 
@@ -1300,7 +1314,10 @@ io.on('connection', (socket) => {
         if (eliminatedPlayer) {
           eliminatedPlayer.eliminated = true
           eliminatedPlayer.spectator = true
-          onElimination(room, eliminatedId)
+          const cascaded = onElimination(room, eliminatedId) || []
+          
+          const newlyEliminated = [eliminatedPlayer, ...cascaded]
+          room.mrWhiteQueue = newlyEliminated.filter(p => p.role === 'MR_WHITE').map(p => p.id)
           
           room.voteResult = { tie: false, eliminated: eliminatedId }
           room.gamePhase = 'ELIMINATION'
@@ -1447,6 +1464,12 @@ ELIMINATION RESULT=`, room.eliminationResult)
     room.pendingMrWhiteElimination = null
 
     if (!evaluateWinCondition(room)) {
+      if (room.mrWhiteQueue && room.mrWhiteQueue.length > 0) {
+        room.gamePhase = 'ELIMINATION'
+        advanceFromElimination(roomId, expectedVersion)
+        return
+      }
+
       // Next round preparation
       room.round++
       room.gamePhase = 'CLUE'
@@ -1473,20 +1496,26 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
     if (!eliminatedPlayer) return
     
-    if (eliminatedPlayer.role === 'MR_WHITE') {
-      console.log('[ELIMINATION MR_WHITE_GUESS]', { roomId: room.id, player: eliminatedId })
-      // Keep eliminationResult so clients render the guess UI inside the overlay
-      room.eliminationResult = {
-        ...room.eliminationResult,
-        isMrWhiteGuessing: true,
+    if (room.mrWhiteQueue && room.mrWhiteQueue.length > 0) {
+      const mrWhiteId = room.mrWhiteQueue.shift()
+      const mrWhitePlayer = room.players.find((p) => p.id === mrWhiteId)
+      if (mrWhitePlayer) {
+        console.log('[ELIMINATION MR_WHITE_GUESS]', { roomId: room.id, player: mrWhiteId })
+        room.eliminationResult = {
+          ...room.eliminationResult,
+          playerId: mrWhiteId,
+          playerName: mrWhitePlayer.name,
+          role: 'MR_WHITE',
+          isMrWhiteGuessing: true,
+        }
+        room.pendingMrWhiteElimination = room.eliminationResult
+        room.gamePhase = 'MR_WHITE_GUESS'
+        room.mrWhiteGuesserId = mrWhiteId
+        room.mrWhiteLiveGuess = ''
+        room.mrWhiteGuessSubmitted = false
+        room.votes = {}
+        room.lockedVotes = []
       }
-      room.pendingMrWhiteElimination = room.eliminationResult
-      room.gamePhase = 'MR_WHITE_GUESS'
-      room.mrWhiteGuesserId = eliminatedId
-      room.mrWhiteLiveGuess = ''
-      room.mrWhiteGuessSubmitted = false
-      room.votes = {}
-      room.lockedVotes = []
     } else {
       if (!evaluateWinCondition(room)) {
         const active = getActivePlayers(room)
