@@ -725,7 +725,7 @@ const MOBILE_TRIGGER_CHARACTER_LAYOUT = {
 const MOBILE_PANEL_CHARACTER_LAYOUT = {
   boomerang: { scale: 1.2, translateY: 5, translateX: 0 },
   duelists: { scale: 1.2, translateY: 5, translateX: 0 },
-  falafelVendor: { scale: 1.2, translateY: 5, translateX: 0 },
+  falafelVendor: { scale: 1.3, translateY: 5, translateX: 0 },
   ghost: { scale: 1.5, translateY: 15, translateX: 0 },
   goddessOfJustice: { scale: 1.1, translateY: 0, translateX: 0 },
   joyFool: { scale: 1.2, translateY: 5, translateX: 0 },
@@ -949,12 +949,6 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
           <div className={`players-panel special-roles-mobile-panel ${animState === 'ENTERING' ? 'players-panel--entering' : animState === 'EXITING' ? 'players-panel--exiting' : 'players-panel--open'}`} style={{ ...getOriginVars(), maxWidth: 'none', width: '100vw', height: '100dvh', maxHeight: 'none', borderRadius: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
             <header className="special-roles-mobile-panel__header">
               <h2 className="special-roles-mobile-panel__title">Special Roles</h2>
-              <button className="players-panel-close" onClick={handleMobileClose} aria-label="Close special roles" style={{ position: 'static' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
             </header>
             <div className="special-roles-mobile-panel__content">
               {SPECIAL_ROLES.map(role => {
@@ -1005,25 +999,29 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                     <div className="special-role-mobile-row__info">
                       <div className="special-role-mobile-row__name-group">
                         <span className="special-role-mobile-row__name">{role.name}</span>
+                        <div className="special-role-mobile-row__action">
+                          <div className={`special-role-mobile-checkbox ${enabled ? 'special-role-mobile-checkbox--checked' : ''}`}>
+                            {enabled && (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <span className="special-role-mobile-row__desc">
-                        {role.description}
+                        {role.mobileDescription || role.description} (available from {role.minPlayers} players)
                       </span>
-                      {unavailable && <span className="special-role-mobile-row__req">Requires {role.minPlayers} players</span>}
-                    </div>
-                    <div className="special-role-mobile-row__action">
-                      <div className={`special-role-mobile-checkbox ${enabled ? 'special-role-mobile-checkbox--checked' : ''}`}>
-                        {enabled && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </div>
                     </div>
                   </label>
                 )
               })}
             </div>
+            <button className="special-roles-mobile-panel__close-bottom" onClick={handleMobileClose} aria-label="Confirm special roles">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
           </div>
         </div>,
         document.body

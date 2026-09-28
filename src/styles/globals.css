@@ -4868,9 +4868,9 @@ input, select, textarea, button { font-size: 16px; }
   position: relative;
   width: 100%;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -4878,8 +4878,8 @@ input, select, textarea, button { font-size: 16px; }
   padding: 8px 24px;
   transition: transform 150ms ease, background 150ms ease;
   overflow: hidden;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .special-roles-header-mobile__label {
@@ -4988,7 +4988,7 @@ input, select, textarea, button { font-size: 16px; }
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(100px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5000,11 +5000,11 @@ input, select, textarea, button { font-size: 16px; }
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  padding: 14px 12px;
+  padding: 16px 14px;
   gap: 16px;
   cursor: pointer;
   transition: background 200ms ease, border-color 200ms ease;
-  min-height: 105px;
+  min-height: 155px;
   position: relative;
   overflow: hidden;
 }
@@ -5038,13 +5038,16 @@ input, select, textarea, button { font-size: 16px; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 4px;
+  padding-bottom: 12px;
   gap: 6px;
 }
 
 .special-role-mobile-row__name-group {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
@@ -5089,12 +5092,11 @@ input, select, textarea, button { font-size: 16px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-left: 4px;
 }
 
 .special-role-mobile-checkbox {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border-radius: 6px;
   border: 2px solid rgba(255, 255, 255, 0.25);
   display: flex;
@@ -5104,9 +5106,28 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 .special-role-mobile-checkbox--checked {
-  background: transparent;
+  background: #fff;
   border-color: #fff;
+  color: var(--active-role-bg, var(--accent));
+}
+
+.special-roles-mobile-panel__close-bottom {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(to right, #0ea5e9, #06b6d4);
   color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.4);
+  cursor: pointer;
+  z-index: 20;
 }
 
 /* Final Polish for Mobile Trigger and Gold Box Removal */
@@ -5123,10 +5144,10 @@ input, select, textarea, button { font-size: 16px; }
   .special-roles-header-mobile__inner {
     padding: 10px 30px 8px !important;
     background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
     flex-direction: column !important;
   }
 
