@@ -13,6 +13,8 @@ export default defineConfig({
         name: 'UNDERCOVER',
         short_name: 'UNDERCOVER',
         description: 'A classified investigation file brought to life as a cinematic game. WHO CAN YOU TRUST?',
+        id: '/',
+        scope: '/',
         start_url: '/',
         display: 'standalone',
         background_color: '#0b0c0d',
@@ -20,9 +22,15 @@ export default defineConfig({
         icons: [
           {
             src: '/images/investigation-room/Game-logo.png',
-            sizes: '192x192 512x512',
+            sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/images/investigation-room/Game-logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       }

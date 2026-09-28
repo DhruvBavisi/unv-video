@@ -95,11 +95,18 @@ function ActionMenu({ menu, onClose, onKick, onMakeHost }) {
   )
 }
 
+function isStandalone() {
+  return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+}
+
 function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, joining }) {
   const savedSession = requiresRoomId ? readIdentity() : null
   const [name, setName] = useState('')
   const [room, setRoom] = useState(roomId || '')
   const [showQRScanner, setShowQRScanner] = useState(false)
+  const [pasteError, setPasteError] = useState('')
+  const [showHint, setShowHint] = useState(requiresRoomId && !!roomId && !isStandalone())
+  const [copied, setCopied] = useState(false)
 
   const isRejoin = requiresRoomId && savedSession && savedSession.roomId && savedSession.roomId === room.trim().toUpperCase() && savedSession.playerName
 
@@ -139,11 +146,38 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
           disabled={loading || joining}
         />
       </label>
+      {showHint && (
+        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', marginBottom: '16px', position: 'relative' }}>
+          <button type="button" onClick={() => setShowHint(false)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}>
+            ✕
+          </button>
+          <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', paddingRight: '20px' }}>
+            Using the home-screen app? Copy the code, open the app, and paste it.
+          </p>
+          <Button 
+            onClick={() => {
+              try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(room)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }
+              } catch (e) {
+                // Ignore silently
+              }
+            }} 
+            style={{ padding: '6px 12px', fontSize: '0.9rem', width: 'auto' }}
+          >
+            {copied ? 'Copied' : 'Copy room code'}
+          </Button>
+        </div>
+      )}
       {requiresRoomId && (
         <label>
           Room ID
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input
+              id="room-id-input"
               value={room}
               onChange={(e) => setRoom(e.target.value.toUpperCase())}
               placeholder="X7K9P2"
@@ -162,7 +196,47 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
             </button>
+            {isStandalone() && (
+              <button
+                type="button"
+                className="room-copy"
+                style={{ minWidth: '48px', height: '100%', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={async () => {
+                  try {
+                    setPasteError('')
+                    if (!navigator.clipboard || !navigator.clipboard.readText) return
+                    const text = await navigator.clipboard.readText()
+                    if (!text) return
+                    
+                    let extracted = text.trim()
+                    try {
+                      const url = new URL(extracted)
+                      const r = url.searchParams.get('room')
+                      if (r) extracted = r
+                    } catch (e) {}
+                    
+                    extracted = extracted.toUpperCase()
+                    if (/^[A-Z0-9]{6}$/i.test(extracted)) {
+                      setRoom(extracted)
+                    } else {
+                      setPasteError('Invalid code in clipboard')
+                    }
+                  } catch (e) {
+                    // silently fail on denial or error
+                  }
+                }}
+                aria-label="Paste Room Code"
+                title="Paste Room Code"
+                disabled={loading || joining}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+              </button>
+            )}
           </div>
+          {pasteError && <p style={{ color: 'var(--alert)', fontSize: '0.8rem', marginTop: '4px', marginBottom: '0' }}>{pasteError}</p>}
         </label>
       )}
       {joining && (

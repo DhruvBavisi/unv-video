@@ -10,6 +10,8 @@ export default function QRScannerModal({ onClose, onScan }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const overlayRef = useRef(null)
 
+  const [cameraError, setCameraError] = useState(false)
+
   useEffect(() => {
     if (animState !== ANIM_ENTERING) return
     const timer = setTimeout(() => setAnimState(ANIM_OPEN), 500)
@@ -59,6 +61,19 @@ export default function QRScannerModal({ onClose, onScan }) {
     }
   }
 
+  const handleError = (error) => {
+    setCameraError(true)
+  }
+
+  // Fallback timeout in case no error is thrown but no stream is available
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // We can't know for sure if stream is active via yudiel scanner easily,
+      // but if an error occurred we'd know. We'll rely on handleError for permissions.
+    }, 4000)
+    return () => clearTimeout(timer)
+  }, [])
+
   const animClass = animState === ANIM_ENTERING ? 'players-panel--entering' : animState === ANIM_EXITING ? 'players-panel--exiting' : 'players-panel--open'
   const overlayClass = animState === ANIM_ENTERING ? 'players-panel-overlay--entering' : animState === ANIM_EXITING ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'
 
@@ -74,12 +89,35 @@ export default function QRScannerModal({ onClose, onScan }) {
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', marginBottom: '8px', letterSpacing: '0.1em' }}>SCAN QR</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.9rem' }}>Point camera at the investigation code</p>
         
-        <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
-          <Scanner 
-            onScan={handleScan} 
-            formats={['qr_code']} 
-            styles={{ container: { width: '100%', height: '100%' } }} 
-          />
+        <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {cameraError ? (
+            <div style={{ padding: '16px', textAlign: 'center' }}>
+              <p style={{ color: 'var(--alert)', marginBottom: '16px' }}>Camera unavailable in the app. Enter or paste the room code instead.</p>
+              <button 
+                type="button" 
+                onClick={() => {
+                  handleClose()
+                  if (onClose) {
+                    setTimeout(() => {
+                      const input = document.getElementById('room-id-input')
+                      if (input) input.focus()
+                    }, 500)
+                  }
+                }}
+                style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Use Code
+              </button>
+            </div>
+          ) : (
+            <Scanner 
+              onScan={handleScan} 
+              onError={handleError}
+              formats={['qr_code']} 
+              styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }} 
+              components={{ audio: false, finder: false }}
+            />
+          )}
         </div>
       </div>
     </div>,
