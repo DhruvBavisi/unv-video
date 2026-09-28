@@ -902,13 +902,27 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
             </header>
             <div className="special-roles-mobile-panel__content">
               {SPECIAL_ROLES.map(role => {
+                const MOBILE_ROLE_COLORS = {
+                  joyFool: '#8b5cf6', // purple
+                  boomerang: '#f43f5e', // coral/red
+                  goddessOfJustice: '#22c55e', // bright green
+                  ghost: '#3b82f6', // bright blue
+                  lovers: '#ec4899', // pink/magenta
+                  mrMeme: '#6366f1', // slate/royal blue
+                  falafelVendor: '#eab308', // golden yellow
+                  revenger: '#06b6d4', // cyan/turquoise
+                  duelists: '#f97316' // warm peach/orange
+                }
                 const enabled = configuration.specialRoles?.[role.key]
                 const canEnable = totalPlayers >= role.minPlayers
                 const unavailable = !canEnable
+                const activeColor = MOBILE_ROLE_COLORS[role.key] || 'var(--accent)'
+                
                 return (
                   <label 
                     key={role.key} 
                     className={`special-role-mobile-row ${unavailable ? 'special-role-mobile-row--disabled' : ''} ${enabled ? 'special-role-mobile-row--active' : ''}`}
+                    style={enabled ? { backgroundColor: activeColor, borderColor: activeColor, '--active-role-bg': activeColor } : {}}
                     onClick={(e) => {
                       if (e.target.closest('button')) return;
                       e.preventDefault();
@@ -916,24 +930,11 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                     }}
                   >
                     <div className="special-role-mobile-row__art-container">
-                      {role.avatar && <img src={role.avatar} alt="" className="special-role-mobile-row__art" />}
+                      {role.avatar && <img src={role.avatar.replace('.png', '-bg.png')} alt="" className="special-role-mobile-row__art" />}
                     </div>
                     <div className="special-role-mobile-row__info">
                       <div className="special-role-mobile-row__name-group">
                         <span className="special-role-mobile-row__name">{role.name}</span>
-                        <button 
-                          type="button" 
-                          className="special-role-info-btn special-role-mobile-row__info-btn" 
-                          onClick={(e) => handleInfo(e, role)}
-                          aria-label={`View ${role.name} details`}
-                          title={`View ${role.name} details`}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="16" x2="12" y2="12" />
-                            <line x1="12" y1="8" x2="12.01" y2="8" />
-                          </svg>
-                        </button>
                       </div>
                       <span className="special-role-mobile-row__desc">
                         {role.description}

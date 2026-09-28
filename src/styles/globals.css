@@ -3838,7 +3838,6 @@ input, select, textarea, button { font-size: 16px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
   background: rgba(11,12,13,0);
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
@@ -5091,4 +5090,30 @@ input, select, textarea, button { font-size: 16px; }
   background: var(--accent);
   border-color: var(--accent);
   color: var(--bg);
+}
+
+/* Final Polish for Mobile Trigger and Gold Box Removal */
+@media (max-width: 768px) {
+  .special-roles-section,
+  .special-roles-section--expanded {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  
+  .special-roles-header-mobile__inner {
+    padding: 6px 20px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  .special-roles-header-mobile__art {
+    max-height: 85px !important; 
+    opacity: 1 !important;
+    width: 100% !important;
+    object-fit: contain !important;
+  }
 }
