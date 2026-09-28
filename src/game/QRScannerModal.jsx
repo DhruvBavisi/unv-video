@@ -9,8 +9,10 @@ const ANIM_EXITING = 'EXITING'
 export default function QRScannerModal({ onClose, onScan }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const overlayRef = useRef(null)
+  const containerRef = useRef(null)
 
   const [cameraError, setCameraError] = useState(false)
+  const [scannerKey, setScannerKey] = useState(0)
 
   useEffect(() => {
     if (animState !== ANIM_ENTERING) return
@@ -72,22 +74,25 @@ export default function QRScannerModal({ onClose, onScan }) {
   useEffect(() => {
     if (cameraError) return
     
-    const startTime = Date.now()
+    let elapsed = 0
     const pollInterval = setInterval(() => {
-      const video = document.querySelector('video')
+      if (document.visibilityState !== 'visible') return
+      
+      const video = containerRef.current?.querySelector('video')
       if (video && video.videoWidth > 0 && video.readyState >= 2) {
         clearInterval(pollInterval)
         return
       }
       
-      if (Date.now() - startTime >= 4000) {
+      elapsed += 500
+      if (elapsed >= 12000) {
         setCameraError(true)
         clearInterval(pollInterval)
       }
     }, 500)
     
     return () => clearInterval(pollInterval)
-  }, [cameraError])
+  }, [cameraError, scannerKey])
 
   const animClass = animState === ANIM_ENTERING ? 'players-panel--entering' : animState === ANIM_EXITING ? 'players-panel--exiting' : 'players-panel--open'
   const overlayClass = animState === ANIM_ENTERING ? 'players-panel-overlay--entering' : animState === ANIM_EXITING ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'
@@ -104,10 +109,10 @@ export default function QRScannerModal({ onClose, onScan }) {
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', marginBottom: '8px', letterSpacing: '0.1em' }}>SCAN QR</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.9rem' }}>Point camera at the investigation code</p>
         
-        <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div ref={containerRef} style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
           {cameraError ? (
-            <div style={{ padding: '16px', textAlign: 'center' }}>
-              <p style={{ color: 'var(--danger)', marginBottom: '16px' }}>Camera unavailable. Enter or paste the room code instead.</p>
+            <div style={{ padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ color: 'var(--danger)', margin: '0 0 8px 0' }}>Camera unavailable. Enter or paste the room code instead.</p>
               <button 
                 type="button" 
                 onClick={() => handleClose(true)}
@@ -115,9 +120,17 @@ export default function QRScannerModal({ onClose, onScan }) {
               >
                 Use Code
               </button>
+              <button 
+                type="button" 
+                onClick={() => { setCameraError(false); setScannerKey(k => k + 1); }}
+                style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', padding: '8px 24px', fontSize: '1rem', cursor: 'pointer' }}
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <Scanner 
+              key={scannerKey}
               onScan={handleScan} 
               onError={handleError}
               formats={['qr_code']} 
@@ -126,6 +139,16 @@ export default function QRScannerModal({ onClose, onScan }) {
             />
           )}
         </div>
+        
+        {!cameraError && (
+          <button 
+            type="button" 
+            onClick={() => handleClose(true)}
+            style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', padding: '16px', marginTop: '8px', fontSize: '1rem', cursor: 'pointer' }}
+          >
+            Enter code instead
+          </button>
+        )}
       </div>
     </div>,
     document.body

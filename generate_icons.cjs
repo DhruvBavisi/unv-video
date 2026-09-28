@@ -17,12 +17,17 @@ async function run() {
   ];
 
   for (const { size, name } of sizes) {
-    await sharp(input)
+    let img = sharp(input)
       .resize(size, size, {
         fit: 'contain',
         background: '#0b0c0d'
-      })
-      .toFile(path.join(outDir, name));
+      });
+      
+    if (size === 512) {
+      img = img.png({ compressionLevel: 9, palette: true });
+    }
+    
+    await img.toFile(path.join(outDir, name));
     console.log(`Generated ${name}`);
   }
 }
