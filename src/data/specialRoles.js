@@ -8,7 +8,7 @@ export const SPECIAL_ROLES = [
       "The Joy Fool receives a +4 point bonus if eliminated in the first elimination of the investigation.",
       "Does not know who the Undercovers or Mr. White are."
     ],
-    avatar: null
+    avatar: '/images/characters/joyfool.png'
   },
   {
     key: "duelists",
@@ -20,7 +20,7 @@ export const SPECIAL_ROLES = [
       "If a Duelist is eliminated first, the eliminated player loses 2 points, and the surviving Duelist gains 2 points.",
       "The duel resolves only once."
     ],
-    avatar: null
+    avatar: '/images/characters/duelist.png'
   },
   {
     key: "lovers",
@@ -31,7 +31,7 @@ export const SPECIAL_ROLES = [
       "Assigned to exactly two players.",
       "If one Lover is eliminated, the other Lover is immediately eliminated from a broken heart."
     ],
-    avatar: null
+    avatar: '/images/characters/lovers.png'
   },
   {
     key: "revenger",
@@ -41,7 +41,7 @@ export const SPECIAL_ROLES = [
     rules: [
       "If eliminated by vote, the Revenger can choose to eliminate one other player along with them."
     ],
-    avatar: null
+    avatar: '/images/characters/revenger.png'
   },
   {
     key: "boomerang",
@@ -51,7 +51,7 @@ export const SPECIAL_ROLES = [
     rules: [
       "The first time they would be eliminated, they survive and another random player is eliminated instead."
     ],
-    avatar: null
+    avatar: '/images/characters/boomerang.png'
   },
   {
     key: "goddessOfJustice",
@@ -61,7 +61,7 @@ export const SPECIAL_ROLES = [
     rules: [
       "Once per investigation, can reveal the true role of any eliminated player."
     ],
-    avatar: null
+    avatar: '/images/characters/goddessofjustice.png'
   },
   {
     key: "ghost",
@@ -71,7 +71,7 @@ export const SPECIAL_ROLES = [
     rules: [
       "Can continue to communicate with the remaining players after being eliminated."
     ],
-    avatar: null
+    avatar: '/images/characters/ghost.png'
   },
   {
     key: "falafelVendor",
@@ -82,7 +82,7 @@ export const SPECIAL_ROLES = [
       "Can give a falafel to one player per round.",
       "The player eating the falafel cannot speak for the remainder of the round."
     ],
-    avatar: null
+    avatar: '/images/characters/falafalvendor.png'
   },
   {
     key: "mrMeme",
@@ -92,6 +92,6 @@ export const SPECIAL_ROLES = [
     rules: [
       "Must only communicate using memes, emojis, or internet slang."
     ],
-    avatar: null
+    avatar: '/images/characters/mrmeme.png'
   }
 ];

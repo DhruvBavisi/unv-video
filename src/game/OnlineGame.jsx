@@ -736,7 +736,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
     <div className={`special-roles-section ${expanded ? 'special-roles-section--expanded' : ''}`}>
       <button 
         type="button" 
-        className="special-roles-header" 
+        className="special-roles-header special-roles-header--desktop" 
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
       >
@@ -762,6 +762,20 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
           </span>
         </div>
       </button>
+
+      <button
+        type="button"
+        className="special-roles-header-mobile"
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+      >
+        <div className="special-roles-header-mobile__inner">
+          <img src="/images/characters/allcharacters-grey.png" alt="Special Roles" className="special-roles-header-mobile__art" />
+          {activeRolesCount > 0 && (
+            <div className="special-roles-header-mobile__badge">{activeRolesCount}</div>
+          )}
+        </div>
+      </button>
       
       <div className={`special-roles-dropdown-wrapper ${expanded ? 'special-roles-dropdown-wrapper--open' : ''}`}>
         <div className="special-roles-list-inner">
@@ -777,9 +791,9 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                   className={`special-role-row special-role-card ${unavailable ? 'special-role-row--disabled special-role-card--disabled' : ''} ${enabled ? 'special-role-row--active special-role-card--enabled' : ''}`}
                 >
                   <div className="special-role-row__leading">
-                    <span className="special-role-row__avatar-badge" aria-hidden="true">
+                    <span className={`special-role-row__avatar-badge ${role.avatar ? 'special-role-row__avatar-badge--has-art' : ''}`} aria-hidden="true">
                       {role.avatar ? (
-                        <img src={role.avatar} alt="" />
+                        <img src={role.avatar} alt="" className="special-role-row__art" />
                       ) : (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
