@@ -54,7 +54,8 @@ The UI should always tell the player what phase they are in and what action is e
 ## Online Lobby & Configuration Controls
 Visual language:
 - classified case header
-- Room ID displayed clearly
+- Room ID displayed clearly with explicit [Copy] and [QR] sharing actions. The actions must use crisp iconography matching the application's clean aesthetic.
+- The QR Code displays in an animated floating panel extending from the trigger button, avoiding a full-page redirect.
 - player roster as investigation participants with responsive status badges ("READY", "JOINED", "HOST")
 - host controls presented as a case configuration panel
 - word category dropdown formatted with a sharp rectangular geometry (`border-radius: 0; appearance: none;`) on smaller devices matching Noir aesthetics

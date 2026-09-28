@@ -26,5 +26,8 @@ The Online Mode rules are based on the approved role distribution and gameplay d
 - Eliminated and mid-game-joining players become spectators.
 - Mid-game joiners enter the lobby automatically at the next round.
 - Players can reconnect using the same Room ID.
+- Players can join via deep link (e.g. `/?room=ABC123`).
+- Players can share the room via QR code or direct copy from the lobby.
+- Installed PWA supports Android and iOS Home Screen native app experience.
 - Play Again reuses the same Room ID.
 - Pass & Play is deferred.

@@ -22,6 +22,7 @@ import ResultPhase from './ResultPhase.jsx'
 import PlayersPanel from './PlayersPanel.jsx'
 import EliminationOverlay from './EliminationOverlay.jsx'
 import GameMenu from './GameMenu.jsx'
+import QRModal from './QRModal.jsx'
 import { readIdentity } from './identity.js'
 
 function ErrorState({ children }) {
@@ -821,6 +822,8 @@ export default function OnlineGame({ onExit }) {
   const [kickTarget, setKickTarget] = useState(null)
   const [makeHostTarget, setMakeHostTarget] = useState(null)
   const [actionMenu, setActionMenu] = useState(null)
+  const [showQR, setShowQR] = useState(false)
+  const [qrBtnRect, setQrBtnRect] = useState(null)
   const socketRef = useRef(null)
   const playersBtnRef = useRef(null)
   const menuBtnRef = useRef(null)
@@ -890,6 +893,16 @@ export default function OnlineGame({ onExit }) {
     return () => {
     }
   }, [state.sessionId])
+
+  // Auto-open Join Room if room param is present on startup
+  useEffect(() => {
+    if (state.phase === GAME_PHASES.MODE_SELECTION || state.phase === GAME_PHASES.ONLINE_SETUP) {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('room')) {
+        dispatch({ type: 'OPEN_JOIN' })
+      }
+    }
+  }, [state.phase])
 
   // Safety timeout: if we're stuck in RESTORING_SESSION for too long,
   // fall back to the normal flow. The server should respond with either
@@ -1085,25 +1098,77 @@ export default function OnlineGame({ onExit }) {
       />
     )
   } else if (activePhase === GAME_PHASES.JOIN_ROOM) {
+    const params = new URLSearchParams(window.location.search)
+    const roomParam = params.get('room') || ''
+    
     content = (
       <RoomForm
         title="Join room"
         requiresRoomId
-        onBack={() => dispatch({ type: 'SELECT_ONLINE' })}
+        roomId={roomParam}
+        onBack={() => {
+          if (roomParam) {
+            window.history.replaceState({}, '', window.location.pathname)
+          }
+          dispatch({ type: 'SELECT_ONLINE' })
+        }}
         onSubmit={(name, roomId) => handleJoinRoom(name, roomId)}
         loading={loading}
         joining={joining}
       />
     )
   } else if (activePhase === GAME_PHASES.ROOM_LOBBY) {
+    const getJoinUrl = () => {
+      const origin = import.meta.env.PROD ? 'https://investigation-room.vercel.app' : window.location.origin
+      return `${origin}/?room=${state.roomId}`
+    }
+
+    const handleCopyUrl = (e) => {
+      const url = getJoinUrl()
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url)
+      } else {
+        // fallback
+        const textArea = document.createElement("textarea")
+        textArea.value = url
+        document.body.appendChild(textArea)
+        textArea.select()
+        try { document.execCommand('copy') } catch (err) {}
+        document.body.removeChild(textArea)
+      }
+    }
+
+    const handleCopyRoomIdClick = () => {
+      navigator.clipboard.writeText(state.roomId).then(() => {
+        dispatch({ type: 'COPY_ROOM' })
+        setTimeout(() => dispatch({ type: 'UPDATE_FIELD', field: 'copied', value: false }), 2000)
+      })
+    }
+
+    const handleQROpen = (e) => {
+      setQrBtnRect(e.currentTarget.getBoundingClientRect())
+      setShowQR(true)
+    }
+
     content = (
       <section className="online-panel online-panel--lobby">
         <header className="online-room-head">
           <span className="online-kicker">Online investigation</span>
-          <h1>Room <b>{state.roomId}</b></h1>
-          <button className="room-copy" onClick={handleCopyRoomId}>
-            {state.copied ? 'Copied' : 'Copy room ID'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', width: '100%', marginBottom: '16px' }}>
+            <h1 style={{ margin: 0 }}>Room <b>{state.roomId}</b></h1>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="room-copy" style={{ minWidth: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleCopyRoomIdClick} aria-label="Copy Room ID" title="Copy Room ID">
+                {state.copied ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                )}
+              </button>
+              <button className="room-copy" style={{ minWidth: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleQROpen} aria-label="Show QR Code" title="Share via QR Code">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
+              </button>
+            </div>
+          </div>
         </header>
         <div className="online-lobby-grid">
           <div className="online-lobby__players">
@@ -1272,6 +1337,14 @@ export default function OnlineGame({ onExit }) {
             socketRef={socketRef}
           />
         )}
+      {showQR && (
+        <QRModal 
+          joinUrl={import.meta.env.PROD ? `https://investigation-room.vercel.app/?room=${state.roomId}` : `${window.location.origin}/?room=${state.roomId}`} 
+          roomId={state.roomId} 
+          onClose={() => setShowQR(false)} 
+          buttonRect={qrBtnRect} 
+        />
+      )}
     </main>
   )
 }

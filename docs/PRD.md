@@ -101,7 +101,7 @@ The host controls:
 
 `Reveal Roles` defaults to OFF. Only the host can change it, and it becomes locked when the investigation starts. Non-hosts may view the setting but cannot modify it.
 
-The room ID is reusable.
+The room ID is reusable. Any joined player can share the room via deep link join URL (`/?room=<ROOM_ID>`) or QR code, directly from the lobby. The application supports an installable PWA experience for native-like access on mobile devices.
 
 ### 3. Private Assignment
 When the investigation starts, every active player is assigned a private authoritative role and the appropriate word information.

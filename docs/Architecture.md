@@ -301,6 +301,20 @@ On reconnect:
 4. restore current phase and action availability
 5. reject stale/duplicate actions
 
+## Room Sharing & Deep Linking Architecture
+The application supports joining via direct URL: `/?room=<ROOM_ID>`.
+- The URL parameter is intercepted on startup during `MODE_SELECTION` or `ONLINE_SETUP`.
+- If present, the app bypasses manual room entry and opens the `JOIN_ROOM` form with the Room ID pre-filled.
+- It does **not** automatically join the socket room; user confirmation (entering a name) is still required.
+- The same URL is used for QR code generation using `qrcode.react`, allowing any joined player to share the room directly from the Lobby.
+- The `/?room=` path preserves the SPA routing and does not create a separate application architecture.
+
+## Progressive Web App (PWA) Architecture
+Configured via `vite-plugin-pwa` to act as an installable application:
+- Provides a Web App Manifest and Service Worker.
+- Uses `standalone` display mode and matches the dark theme (`#0b0c0d`).
+- The deep link architecture (`/?room=ABC123`) is supported natively inside the installed Android PWA and iOS Home Screen web app, maintaining the exact same routing and Reconnection Architecture without breaking standalone constraints.
+
 ## Same-Room Play Again
 Game result → player chooses Play Again → same Room ID lobby → reset previous investigation state → new roles/word pair → new investigation.
 

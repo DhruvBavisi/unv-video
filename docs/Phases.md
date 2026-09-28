@@ -109,6 +109,8 @@ Requirements:
 - The host can start the investigation when the room satisfies the minimum/valid configuration.
 - Players who click Play Again return to the same room/lobby rather than creating a new room.
 - A room can be reused for another investigation after Game Over.
+- Any joined player can share the room via a direct join URL deep link (`/?room=<ROOM_ID>`) or QR code.
+- The application supports an installable PWA experience.
 
 ## PHASE 13 — Secure Role & Word Assignment
 After the investigation starts (directly into Clue Phase):

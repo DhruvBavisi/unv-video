@@ -1,9 +1,33 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   envPrefix: ['VITE', 'SOCKET'],
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      manifest: {
+        name: 'UNDERCOVER',
+        short_name: 'UNDERCOVER',
+        description: 'A classified investigation file brought to life as a cinematic game. WHO CAN YOU TRUST?',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#0b0c0d',
+        theme_color: '#0b0c0d',
+        icons: [
+          {
+            src: '/images/investigation-room/Game-logo.png',
+            sizes: '192x192 512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      }
+    })
+  ],
   server: {
     proxy: {
       '/socket.io': {
