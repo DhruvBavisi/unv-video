@@ -3441,7 +3441,7 @@ input, select, textarea, button { font-size: 16px; }
 
 .vote-candidate--selected .vote-candidate__avatar {
   background: var(--accent);
-  color: var(--bg-primary);
+  color: var(--bg);
 }
 
 .vote-candidate__name {
@@ -4819,3 +4819,33 @@ input, select, textarea, button { font-size: 16px; }
   color: #ff6b6b;
 }
 
+.join-hint {
+  background: var(--surface);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  position: relative;
+  border: 1px solid rgba(169, 166, 158, 0.1);
+}
+
+.join-hint__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.join-hint__close:hover {
+  color: var(--text-primary);
+}
+
+.join-hint__text {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding-right: 20px;
+}

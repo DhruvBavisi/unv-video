@@ -20,12 +20,15 @@ export default function QRScannerModal({ onClose, onScan }) {
 
   useEffect(() => {
     if (animState !== ANIM_EXITING) return
-    const timer = setTimeout(() => onClose(), 480)
+    const timer = setTimeout(() => onClose(shouldFocusOnClose.current), 480)
     return () => clearTimeout(timer)
   }, [animState, onClose])
 
-  const handleClose = useCallback(() => {
+  const shouldFocusOnClose = useRef(false)
+
+  const handleClose = useCallback((focusInput = false) => {
     if (animState === ANIM_EXITING) return
+    if (focusInput === true) shouldFocusOnClose.current = true
     setAnimState(ANIM_EXITING)
   }, [animState])
 
@@ -67,12 +70,24 @@ export default function QRScannerModal({ onClose, onScan }) {
 
   // Fallback timeout in case no error is thrown but no stream is available
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // We can't know for sure if stream is active via yudiel scanner easily,
-      // but if an error occurred we'd know. We'll rely on handleError for permissions.
-    }, 4000)
-    return () => clearTimeout(timer)
-  }, [])
+    if (cameraError) return
+    
+    const startTime = Date.now()
+    const pollInterval = setInterval(() => {
+      const video = document.querySelector('video')
+      if (video && video.videoWidth > 0 && video.readyState >= 2) {
+        clearInterval(pollInterval)
+        return
+      }
+      
+      if (Date.now() - startTime >= 4000) {
+        setCameraError(true)
+        clearInterval(pollInterval)
+      }
+    }, 500)
+    
+    return () => clearInterval(pollInterval)
+  }, [cameraError])
 
   const animClass = animState === ANIM_ENTERING ? 'players-panel--entering' : animState === ANIM_EXITING ? 'players-panel--exiting' : 'players-panel--open'
   const overlayClass = animState === ANIM_ENTERING ? 'players-panel-overlay--entering' : animState === ANIM_EXITING ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'
@@ -92,19 +107,11 @@ export default function QRScannerModal({ onClose, onScan }) {
         <div style={{ width: '100%', aspectRatio: '1/1', background: '#000', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {cameraError ? (
             <div style={{ padding: '16px', textAlign: 'center' }}>
-              <p style={{ color: 'var(--alert)', marginBottom: '16px' }}>Camera unavailable in the app. Enter or paste the room code instead.</p>
+              <p style={{ color: 'var(--danger)', marginBottom: '16px' }}>Camera unavailable. Enter or paste the room code instead.</p>
               <button 
                 type="button" 
-                onClick={() => {
-                  handleClose()
-                  if (onClose) {
-                    setTimeout(() => {
-                      const input = document.getElementById('room-id-input')
-                      if (input) input.focus()
-                    }, 500)
-                  }
-                }}
-                style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
+                onClick={() => handleClose(true)}
+                style={{ background: 'var(--text-primary)', color: 'var(--bg)', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
               >
                 Use Code
               </button>
@@ -115,7 +122,7 @@ export default function QRScannerModal({ onClose, onScan }) {
               onError={handleError}
               formats={['qr_code']} 
               styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }} 
-              components={{ audio: false, finder: false }}
+              components={{ audio: false }}
             />
           )}
         </div>

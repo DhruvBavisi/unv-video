@@ -104,11 +104,20 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
   const [name, setName] = useState('')
   const [room, setRoom] = useState(roomId || '')
   const [showQRScanner, setShowQRScanner] = useState(false)
+  const [focusInputOnClose, setFocusInputOnClose] = useState(false)
   const [pasteError, setPasteError] = useState('')
   const [showHint, setShowHint] = useState(requiresRoomId && !!roomId && !isStandalone())
   const [copied, setCopied] = useState(false)
 
   const isRejoin = requiresRoomId && savedSession && savedSession.roomId && savedSession.roomId === room.trim().toUpperCase() && savedSession.playerName
+
+  useEffect(() => {
+    if (!showQRScanner && focusInputOnClose) {
+      const input = document.getElementById('room-id-input')
+      if (input) input.focus()
+      setFocusInputOnClose(false)
+    }
+  }, [showQRScanner, focusInputOnClose])
 
   if (isRejoin) {
     return (
@@ -147,18 +156,18 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
         />
       </label>
       {showHint && (
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', marginBottom: '16px', position: 'relative' }}>
-          <button type="button" onClick={() => setShowHint(false)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}>
+        <div className="join-hint">
+          <button type="button" onClick={() => setShowHint(false)} className="join-hint__close">
             ✕
           </button>
-          <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', paddingRight: '20px' }}>
+          <p className="join-hint__text">
             Using the home-screen app? Copy the code, open the app, and paste it.
           </p>
           <Button 
-            onClick={() => {
+            onClick={async () => {
               try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                  navigator.clipboard.writeText(room)
+                  await navigator.clipboard.writeText(room)
                   setCopied(true)
                   setTimeout(() => setCopied(false), 2000)
                 }
@@ -166,7 +175,7 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
                 // Ignore silently
               }
             }} 
-            style={{ padding: '6px 12px', fontSize: '0.9rem', width: 'auto' }}
+            style={{ padding: '6px 12px', fontSize: '1rem', width: 'auto' }}
           >
             {copied ? 'Copied' : 'Copy room code'}
           </Button>
@@ -179,7 +188,7 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
             <input
               id="room-id-input"
               value={room}
-              onChange={(e) => setRoom(e.target.value.toUpperCase())}
+              onChange={(e) => { setRoom(e.target.value.toUpperCase()); setPasteError(''); }}
               placeholder="X7K9P2"
               maxLength="6"
               disabled={loading || joining}
@@ -236,7 +245,7 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
               </button>
             )}
           </div>
-          {pasteError && <p style={{ color: 'var(--alert)', fontSize: '0.8rem', marginTop: '4px', marginBottom: '0' }}>{pasteError}</p>}
+          {pasteError && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: '4px', marginBottom: '0' }}>{pasteError}</p>}
         </label>
       )}
       {joining && (
@@ -250,7 +259,10 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
       </div>
       {showQRScanner && (
         <QRScannerModal 
-          onClose={() => setShowQRScanner(false)} 
+          onClose={(focusInput) => {
+            setShowQRScanner(false)
+            if (focusInput) setFocusInputOnClose(true)
+          }} 
           onScan={(scannedRoom) => setRoom(scannedRoom)} 
         />
       )}
