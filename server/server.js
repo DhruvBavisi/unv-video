@@ -1352,8 +1352,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
           broadcastRoom(room)
           
-          const isMrWhite = eliminatedPlayer.role === 'MR_WHITE'
-          const delay = isMrWhite ? 5000 : 6500
+          const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
+          const delay = hasMrWhite ? 5000 : 6500
           
           const version = room.gameVersion
           setTimeout(() => {

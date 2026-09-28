@@ -461,6 +461,22 @@ export default function EliminationOverlay({
                 </div>
               </div>
             )}
+
+            {eliminationResult?.specialRoleOutcomes?.some(o => o.role === 'lovers' && (o.firstEliminatedId === eliminationResult.playerId || o.secondEliminatedId === eliminationResult.playerId)) && (
+              <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '12px 24px', background: 'linear-gradient(145deg, rgba(30, 32, 40, 0.7), rgba(20, 22, 28, 0.6))', border: '1px solid rgba(236, 72, 153, 0.25)', borderRadius: '6px', textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#ec4899', display: 'block', marginBottom: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 'bold' }}>LOVERS REVEALED</span>
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#9E3A3A', fontWeight: 'bold' }}>{eliminationResult.specialRoleOutcomes.find(o => o.role === 'lovers' && (o.firstEliminatedId === eliminationResult.playerId || o.secondEliminatedId === eliminationResult.playerId)).firstEliminatedName}</div>
+                  </div>
+                  <div style={{ fontSize: '1.2rem', color: '#ec4899' }}>❤️</div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#9E3A3A', fontWeight: 'bold' }}>{eliminationResult.specialRoleOutcomes.find(o => o.role === 'lovers' && (o.firstEliminatedId === eliminationResult.playerId || o.secondEliminatedId === eliminationResult.playerId)).secondEliminatedName}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Both are eliminated</div>
+              </div>
+            )}
           </div>
         )}
 

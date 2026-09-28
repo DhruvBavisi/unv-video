@@ -53,7 +53,6 @@ export function onElimination(room, eliminatedPlayerId) {
           message: `Duelists\n${eliminatedPlayer.name} — eliminated — −2 pts\n${partner.name} — survived the duel — +2 pts`
         });
       }
-      }
     }
   }
 
