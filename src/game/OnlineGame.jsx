@@ -714,6 +714,11 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   const [expanded, setExpanded] = useState(false)
   const [activeRoleInfo, setActiveRoleInfo] = useState(null)
   const [activeRect, setActiveRect] = useState(null)
+
+  // Mobile Full-Screen Panel State
+  const [mobileExpanded, setMobileExpanded] = useState(false)
+  const [animState, setAnimState] = useState('')
+  const [triggerRect, setTriggerRect] = useState(null)
   
   const handleToggle = (key) => {
     if (!host) return
@@ -729,6 +734,44 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
     setActiveRect(rect)
     setActiveRoleInfo(role)
   }
+
+  const handleMobileOpen = (e) => {
+    setTriggerRect(e.currentTarget.getBoundingClientRect())
+    setAnimState('ENTERING')
+    setMobileExpanded(true)
+  }
+
+  const handleMobileClose = () => {
+    setAnimState('EXITING')
+  }
+
+  useEffect(() => {
+    if (animState === 'ENTERING') {
+      const timer = setTimeout(() => setAnimState('OPEN'), 500)
+      return () => clearTimeout(timer)
+    }
+    if (animState === 'EXITING') {
+      const timer = setTimeout(() => {
+        setAnimState('')
+        setMobileExpanded(false)
+      }, 480)
+      return () => clearTimeout(timer)
+    }
+  }, [animState])
+
+  const getOriginVars = useCallback(() => {
+    if (!triggerRect) return {}
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const bx = triggerRect.left + triggerRect.width / 2
+    const by = triggerRect.top + triggerRect.height / 2
+    const px = vw / 2
+    const py = vh / 2
+    return {
+      '--fly-tx': `${bx - px}px`,
+      '--fly-ty': `${by - py}px`,
+    }
+  }, [triggerRect])
 
   const activeRolesCount = SPECIAL_ROLES.filter(r => configuration?.specialRoles?.[r.key]).length
 
@@ -766,8 +809,8 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
       <button
         type="button"
         className="special-roles-header-mobile"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
+        onClick={handleMobileOpen}
+        aria-expanded={mobileExpanded}
       >
         <div className="special-roles-header-mobile__inner">
           <img src="/images/characters/allcharacters-grey.png" alt="Special Roles" className="special-roles-header-mobile__art" />
@@ -845,6 +888,76 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
         </div>
       </div>
       
+      {mobileExpanded && createPortal(
+        <div className={`players-panel-overlay ${animState === 'ENTERING' ? 'players-panel-overlay--entering' : animState === 'EXITING' ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'}`} style={{ zIndex: 1000000 }}>
+          <div className={`players-panel special-roles-mobile-panel ${animState === 'ENTERING' ? 'players-panel--entering' : animState === 'EXITING' ? 'players-panel--exiting' : 'players-panel--open'}`} style={{ ...getOriginVars(), maxWidth: 'none', width: '100vw', height: '100dvh', maxHeight: 'none', borderRadius: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+            <header className="special-roles-mobile-panel__header">
+              <h2 className="special-roles-mobile-panel__title">Special Roles</h2>
+              <button className="players-panel-close" onClick={handleMobileClose} aria-label="Close special roles" style={{ position: 'static' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </header>
+            <div className="special-roles-mobile-panel__content">
+              {SPECIAL_ROLES.map(role => {
+                const enabled = configuration.specialRoles?.[role.key]
+                const canEnable = totalPlayers >= role.minPlayers
+                const unavailable = !canEnable
+                return (
+                  <label 
+                    key={role.key} 
+                    className={`special-role-mobile-row ${unavailable ? 'special-role-mobile-row--disabled' : ''} ${enabled ? 'special-role-mobile-row--active' : ''}`}
+                    onClick={(e) => {
+                      if (e.target.closest('button')) return;
+                      e.preventDefault();
+                      if (!unavailable && host) handleToggle(role.key);
+                    }}
+                  >
+                    <div className="special-role-mobile-row__art-container">
+                      {role.avatar && <img src={role.avatar} alt="" className="special-role-mobile-row__art" />}
+                    </div>
+                    <div className="special-role-mobile-row__info">
+                      <div className="special-role-mobile-row__name-group">
+                        <span className="special-role-mobile-row__name">{role.name}</span>
+                        <button 
+                          type="button" 
+                          className="special-role-info-btn special-role-mobile-row__info-btn" 
+                          onClick={(e) => handleInfo(e, role)}
+                          aria-label={`View ${role.name} details`}
+                          title={`View ${role.name} details`}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                          </svg>
+                        </button>
+                      </div>
+                      <span className="special-role-mobile-row__desc">
+                        {role.description}
+                      </span>
+                      {unavailable && <span className="special-role-mobile-row__req">Requires {role.minPlayers} players</span>}
+                    </div>
+                    <div className="special-role-mobile-row__action">
+                      <div className={`special-role-mobile-checkbox ${enabled ? 'special-role-mobile-checkbox--checked' : ''}`}>
+                        {enabled && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {activeRoleInfo && (
         <SpecialRoleInfoModal 
           role={activeRoleInfo} 
