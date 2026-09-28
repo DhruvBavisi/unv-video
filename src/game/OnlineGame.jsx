@@ -719,7 +719,7 @@ const MOBILE_TRIGGER_CHARACTER_LAYOUT = {
   joyFool: { scale: 1.2, translateY: -4, translateX: -10 },
   lovers: { scale: 0.65, translateY: -18, translateX: -7 },
   mrMeme: { scale: 1, translateY: -5, translateX: 10 },
-  revenger: { scale: 0.9, translateY: -11, translateX: -5.5 }
+  revenger: { scale: 0.9, translateY: -11, translateX: -4.5 }
 }
 
 function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers }) {
