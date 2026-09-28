@@ -110,7 +110,7 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
 
 
       {wordPair && (
-        <div className="anim-item anim-word" style={{ marginBottom: '32px' }}>
+        <div className="anim-item anim-word">
           <div className="result-section-title" style={{ marginBottom: '12px' }}>Word Pair</div>
           <div className="result-words">
             <div className="result-word-card" style={{ backgroundColor: 'rgba(74, 222, 128, 0.15)', borderColor: 'rgba(74, 222, 128, 0.4)' }}>
@@ -126,12 +126,31 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
       )}
 
       {(() => {
-        const maxScore = gamePlayers.length > 0 ? Math.max(...gamePlayers.map(p => p.points || 0)) : 0
+        if (gamePlayers.length === 0) return null;
+        const maxScore = Math.max(...gamePlayers.map(p => p.points || 0));
+        const topScorers = gamePlayers.filter(p => (p.points || 0) === maxScore);
+        const topScorerNames = topScorers.map(p => p.name).join(', ');
+
         return (
-          <div className="anim-item anim-word" style={{ marginBottom: '32px', textAlign: 'center' }}>
-            <div className="result-section-title" style={{ marginBottom: '8px' }}>Top Score</div>
-            <div style={{ fontSize: '2rem', fontFamily: "'Bebas Neue', 'Oswald', sans-serif", fontWeight: 'bold', color: '#d4af37', letterSpacing: '0.05em' }}>
-              {maxScore > 0 ? `+${maxScore}` : (maxScore < 0 ? `−${Math.abs(maxScore)}` : '0')} PTS
+          <div className="anim-item anim-word">
+            <div className="result-words">
+              <div className="result-word-card" style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(4px)',
+                maxWidth: '400px', 
+                width: '100%'
+              }}>
+                <div className="result-word-label" style={{ color: 'var(--text-secondary)' }}>Top Scorer</div>
+                <div className="result-word-value" style={{ color: 'var(--text-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {topScorerNames}
+                  </span>
+                  <span style={{ fontSize: '1.2rem', color: '#d4af37' }}>
+                    {maxScore > 0 ? `+${maxScore}` : (maxScore < 0 ? `−${Math.abs(maxScore)}` : '0')}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )
