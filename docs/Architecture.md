@@ -303,11 +303,12 @@ On reconnect:
 
 ## Room Sharing & Deep Linking Architecture
 The application supports joining via direct URL: `/?room=<ROOM_ID>`.
-- The URL parameter is intercepted on startup during `MODE_SELECTION` or `ONLINE_SETUP`.
+- The URL parameter is intercepted on startup directly in `App.jsx`, bypassing the cinematic landing page and opening the `OnlineGame` container.
 - If present, the app bypasses manual room entry and opens the `JOIN_ROOM` form with the Room ID pre-filled.
 - It does **not** automatically join the socket room; user confirmation (entering a name) is still required.
 - The same URL is used for QR code generation using `qrcode.react`, allowing any joined player to share the room directly from the Lobby.
-- The `/?room=` path preserves the SPA routing and does not create a separate application architecture.
+- Users can scan a QR code directly from the `JOIN_ROOM` screen using the `@yudiel/react-qr-scanner` integration.
+- The `/?room=` path preserves the SPA routing and does not create a separate application architecture. Backing out of the join form cleanly strips the query parameter using `window.history.replaceState`.
 
 ## Progressive Web App (PWA) Architecture
 Configured via `vite-plugin-pwa` to act as an installable application:

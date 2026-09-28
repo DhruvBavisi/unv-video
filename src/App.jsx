@@ -28,6 +28,12 @@ function getInitialGameView() {
   if (resumeToken && roomId) {
     return 'game'
   }
+  
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('room')) {
+    return 'game'
+  }
+  
   return 'landing'
 }
 

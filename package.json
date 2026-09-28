@@ -15,6 +15,7 @@
     "test:phases25-27": "node tests/test-runner.mjs tests/phase25-27-qa.test.mjs"
   },
   "dependencies": {
+    "@yudiel/react-qr-scanner": "^2.6.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "gsap": "^3.15.0",

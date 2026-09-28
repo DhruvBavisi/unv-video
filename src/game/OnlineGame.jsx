@@ -23,6 +23,7 @@ import PlayersPanel from './PlayersPanel.jsx'
 import EliminationOverlay from './EliminationOverlay.jsx'
 import GameMenu from './GameMenu.jsx'
 import QRModal from './QRModal.jsx'
+import QRScannerModal from './QRScannerModal.jsx'
 import { readIdentity } from './identity.js'
 
 function ErrorState({ children }) {
@@ -98,6 +99,7 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
   const savedSession = requiresRoomId ? readIdentity() : null
   const [name, setName] = useState('')
   const [room, setRoom] = useState(roomId || '')
+  const [showQRScanner, setShowQRScanner] = useState(false)
 
   const isRejoin = requiresRoomId && savedSession && savedSession.roomId && savedSession.roomId === room.trim().toUpperCase() && savedSession.playerName
 
@@ -140,13 +142,27 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
       {requiresRoomId && (
         <label>
           Room ID
-          <input
-            value={room}
-            onChange={(e) => setRoom(e.target.value.toUpperCase())}
-            placeholder="X7K9P2"
-            maxLength="6"
-            disabled={loading || joining}
-          />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              value={room}
+              onChange={(e) => setRoom(e.target.value.toUpperCase())}
+              placeholder="X7K9P2"
+              maxLength="6"
+              disabled={loading || joining}
+              style={{ flex: 1, margin: 0 }}
+            />
+            <button
+              type="button"
+              className="room-copy"
+              style={{ minWidth: '48px', height: '100%', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={() => setShowQRScanner(true)}
+              aria-label="Scan QR Code"
+              title="Scan QR Code"
+              disabled={loading || joining}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" /></svg>
+            </button>
+          </div>
         </label>
       )}
       {joining && (
@@ -158,6 +174,12 @@ function RoomForm({ title, roomId, requiresRoomId, onSubmit, onBack, loading, jo
         </Button>
         <Button onClick={onBack} disabled={loading || joining}>Back</Button>
       </div>
+      {showQRScanner && (
+        <QRScannerModal 
+          onClose={() => setShowQRScanner(false)} 
+          onScan={(scannedRoom) => setRoom(scannedRoom)} 
+        />
+      )}
     </section>
   )
 }

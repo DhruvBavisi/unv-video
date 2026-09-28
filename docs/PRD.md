@@ -88,7 +88,7 @@ The setting is configured in the lobby and locked when the investigation starts.
 `Enter Name → Room/Lobby → Role + Word Assignment → Clues/Chat → Random Clue Sequence → Voting → Elimination → Mr. White Guess if eliminated → Win Check → Next Round → Repeat → Game Over`
 
 ### 1. Enter / Join
-The user enters their name and joins or creates a Room ID.
+The user enters their name and joins or creates a Room ID. They may join by manually typing the Room ID, entering via a deep link URL, or using the in-app QR scanner to scan another player's generated room code.
 
 ### 2. Lobby / Host Configuration
 The host controls:
