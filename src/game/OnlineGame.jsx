@@ -817,16 +817,39 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
             {SPECIAL_ROLES.map(role => {
               const enabled = configuration.specialRoles?.[role.key]
               const triggerAsset = role.avatar ? role.avatar.replace('.png', '-bg.png') : ''
+              
+              const MOBILE_TRIGGER_LAYOUT = {
+                boomerang: { scale: 1.236, translateY: 10.222 },
+                duelists: { scale: 1.266, translateY: 9.375 },
+                falafelVendor: { scale: 1.38, translateY: 10.667 },
+                ghost: { scale: 1.786, translateY: 25.333 },
+                goddessOfJustice: { scale: 1.112, translateY: 3.132 },
+                joyFool: { scale: 1.334, translateY: 12.304 },
+                lovers: { scale: 1.049, translateY: 2.536 },
+                mrMeme: { scale: 1.388, translateY: 14.318 },
+                revenger: { scale: 1.136, translateY: 5.778 }
+              }
+              const layout = MOBILE_TRIGGER_LAYOUT[role.key] || { scale: 1, translateY: 0 }
+
               return (
                 <div key={role.key} className="mobile-trigger-char">
                   {triggerAsset && (
-                    <>
+                    <div 
+                      className="mobile-trigger-char__wrapper"
+                      style={{
+                        transform: `scale(${layout.scale}) translateY(${layout.translateY}%)`,
+                        transformOrigin: 'bottom center',
+                        width: '100%',
+                        height: '100%',
+                        position: 'relative'
+                      }}
+                    >
                       <img src={triggerAsset} alt="" className="mobile-trigger-char__color" />
                       <div 
                         className={`mobile-trigger-char__mask ${enabled ? 'mobile-trigger-char__mask--hidden' : ''}`}
                         style={{ WebkitMaskImage: `url(${triggerAsset})`, maskImage: `url(${triggerAsset})` }}
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               )
