@@ -718,8 +718,20 @@ const MOBILE_TRIGGER_CHARACTER_LAYOUT = {
   goddessOfJustice: { scale: 0.9, translateY: -12, translateX: -1 },
   joyFool: { scale: 1.2, translateY: -4, translateX: -10 },
   lovers: { scale: 0.65, translateY: -18, translateX: -7 },
-  mrMeme: { scale: 1, translateY: -5, translateX: 10 },
+  mrMeme: { scale: 1, translateY: -5, translateX: 12 },
   revenger: { scale: 0.9, translateY: -11, translateX: -4.5 }
+}
+
+const MOBILE_PANEL_CHARACTER_LAYOUT = {
+  boomerang: { scale: 1.2, translateY: 5, translateX: 0 },
+  duelists: { scale: 1.2, translateY: 5, translateX: 0 },
+  falafelVendor: { scale: 1.2, translateY: 5, translateX: 0 },
+  ghost: { scale: 1.5, translateY: 15, translateX: 0 },
+  goddessOfJustice: { scale: 1.1, translateY: 0, translateX: 0 },
+  joyFool: { scale: 1.2, translateY: 5, translateX: 0 },
+  lovers: { scale: 1.0, translateY: 0, translateX: 0 },
+  mrMeme: { scale: 1.2, translateY: 5, translateX: 0 },
+  revenger: { scale: 1.1, translateY: 0, translateX: 0 }
 }
 
 function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers }) {
@@ -825,6 +837,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
         aria-expanded={mobileExpanded}
       >
         <div className="special-roles-header-mobile__inner">
+          <div className="special-roles-header-mobile__label">ADD SPECIAL ROLE</div>
           <div className="special-roles-header-mobile__characters">
             {SPECIAL_ROLES.map(role => {
               const enabled = configuration.specialRoles?.[role.key]
@@ -960,12 +973,16 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                 const canEnable = totalPlayers >= role.minPlayers
                 const unavailable = !canEnable
                 const activeColor = MOBILE_ROLE_COLORS[role.key] || 'var(--accent)'
+                const panelLayout = MOBILE_PANEL_CHARACTER_LAYOUT[role.key] || { scale: 1, translateY: 0, translateX: 0 }
                 
                 return (
                   <label 
                     key={role.key} 
                     className={`special-role-mobile-row ${unavailable ? 'special-role-mobile-row--disabled' : ''} ${enabled ? 'special-role-mobile-row--active' : ''}`}
-                    style={enabled ? { backgroundColor: activeColor, borderColor: activeColor, '--active-role-bg': activeColor } : {}}
+                    style={{
+                      '--active-role-bg': activeColor,
+                      ...(enabled ? { backgroundColor: activeColor, borderColor: activeColor } : {})
+                    }}
                     onClick={(e) => {
                       if (e.target.closest('button')) return;
                       e.preventDefault();
@@ -973,7 +990,17 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                     }}
                   >
                     <div className="special-role-mobile-row__art-container">
-                      {role.avatar && <img src={role.avatar.replace('.png', '-bg.png')} alt="" className="special-role-mobile-row__art" />}
+                      {role.avatar && (
+                        <img 
+                          src={role.avatar.replace('.png', '-bg.png')} 
+                          alt="" 
+                          className="special-role-mobile-row__art"
+                          style={{
+                            transform: `translateX(${panelLayout.translateX}px) scale(${panelLayout.scale}) translateY(${panelLayout.translateY}%)`,
+                            transformOrigin: 'bottom center'
+                          }}
+                        />
+                      )}
                     </div>
                     <div className="special-role-mobile-row__info">
                       <div className="special-role-mobile-row__name-group">

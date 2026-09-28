@@ -4210,6 +4210,8 @@ input, select, textarea, button { font-size: 16px; }
   border: 1px solid rgba(181, 138, 82, 0.28);
   border-radius: 6px;
   background: rgba(28, 29, 31, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   transition: border-color 200ms ease;
@@ -4227,6 +4229,8 @@ input, select, textarea, button { font-size: 16px; }
   justify-content: space-between;
   padding: 14px 18px;
   background: rgba(181, 138, 82, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: none;
   cursor: pointer;
   touch-action: manipulation;
@@ -4853,7 +4857,7 @@ input, select, textarea, button { font-size: 16px; }
   display: none;
   width: 100%;
   background: transparent;
-  padding: 6px 10px;
+  padding: 10px 15px;
   border: none;
   cursor: pointer;
   touch-action: manipulation;
@@ -4868,11 +4872,25 @@ input, select, textarea, button { font-size: 16px; }
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   padding: 8px 24px;
   transition: transform 150ms ease, background 150ms ease;
   overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.special-roles-header-mobile__label {
+  position: absolute;
+  top: 12px;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .special-roles-header-mobile:active .special-roles-header-mobile__inner {
@@ -5034,7 +5052,7 @@ input, select, textarea, button { font-size: 16px; }
   font-family: var(--font-body);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--active-role-bg, var(--accent));
   transition: color 200ms ease;
 }
 
@@ -5086,9 +5104,9 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 .special-role-mobile-checkbox--checked {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg);
+  background: transparent;
+  border-color: #fff;
+  color: #fff;
 }
 
 /* Final Polish for Mobile Trigger and Gold Box Removal */
@@ -5103,10 +5121,13 @@ input, select, textarea, button { font-size: 16px; }
   }
   
   .special-roles-header-mobile__inner {
-    padding: 6px 20px !important;
+    padding: 10px 30px 8px !important;
     background: rgba(255, 255, 255, 0.04) !important;
     border: 1px solid rgba(255, 255, 255, 0.06) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    flex-direction: column !important;
   }
 
   .special-roles-header-mobile__art {
