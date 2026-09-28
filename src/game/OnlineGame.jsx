@@ -725,7 +725,7 @@ const MOBILE_TRIGGER_CHARACTER_LAYOUT = {
 const MOBILE_PANEL_CHARACTER_LAYOUT = {
   boomerang: { scale: 1.2, translateY: 5, translateX: 0 },
   duelists: { scale: 1.2, translateY: 5, translateX: 0 },
-  falafelVendor: { scale: 1.3, translateY: 5, translateX: 0 },
+  falafelVendor: { scale: 1.5, translateY: 12, translateX: 0 },
   ghost: { scale: 1.5, translateY: 15, translateX: 0 },
   goddessOfJustice: { scale: 1.1, translateY: 0, translateX: 0 },
   joyFool: { scale: 1.2, translateY: 5, translateX: 0 },
@@ -739,10 +739,10 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
   const [activeRoleInfo, setActiveRoleInfo] = useState(null)
   const [activeRect, setActiveRect] = useState(null)
 
-  // Mobile Full-Screen Panel State
   const [mobileExpanded, setMobileExpanded] = useState(false)
   const [animState, setAnimState] = useState('')
   const [triggerRect, setTriggerRect] = useState(null)
+  const [highlightPulse, setHighlightPulse] = useState({})
   
   const handleToggle = (key) => {
     if (!host) return
@@ -972,7 +972,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                 return (
                   <label 
                     key={role.key} 
-                    className={`special-role-mobile-row ${unavailable ? 'special-role-mobile-row--disabled' : ''} ${enabled ? 'special-role-mobile-row--active' : ''}`}
+                    className={`special-role-mobile-row ${enabled ? 'special-role-mobile-row--active' : ''}`}
                     style={{
                       '--active-role-bg': activeColor,
                       ...(enabled ? { backgroundColor: activeColor, borderColor: activeColor } : {})
@@ -980,7 +980,11 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                     onClick={(e) => {
                       if (e.target.closest('button')) return;
                       e.preventDefault();
-                      if (!unavailable && host) handleToggle(role.key);
+                      if (unavailable) {
+                        setHighlightPulse(prev => ({ ...prev, [role.key]: Date.now() }));
+                      } else if (host) {
+                        handleToggle(role.key);
+                      }
                     }}
                   >
                     <div className="special-role-mobile-row__art-container">
@@ -1010,7 +1014,13 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                         </div>
                       </div>
                       <span className="special-role-mobile-row__desc">
-                        {role.mobileDescription || role.description} (available from {role.minPlayers} players)
+                        {role.mobileDescription || role.description}{' '}
+                        <span 
+                          key={highlightPulse[role.key]} 
+                          className={highlightPulse[role.key] ? 'special-role-mobile-row__req-pulse' : ''}
+                        >
+                          (available from {role.minPlayers} players)
+                        </span>
                       </span>
                     </div>
                   </label>

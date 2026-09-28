@@ -5009,10 +5009,7 @@ input, select, textarea, button { font-size: 16px; }
   overflow: hidden;
 }
 
-.special-role-mobile-row--disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+
 
 .special-role-mobile-row--active {
   background: rgba(181, 138, 82, 0.12); /* Subtle UNDERCOVER accent */
@@ -5081,11 +5078,15 @@ input, select, textarea, button { font-size: 16px; }
   color: rgba(255, 255, 255, 0.85);
 }
 
-.special-role-mobile-row__req {
-  font-size: 0.75rem;
-  color: var(--danger, #d9534f);
-  margin-top: 2px;
-  font-weight: 600;
+.special-role-mobile-row__req-pulse {
+  display: inline-block;
+  animation: reqHighlightPulse 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes reqHighlightPulse {
+  0% { transform: scale(1); color: inherit; }
+  15% { transform: scale(1.06); color: #fff; text-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+  100% { transform: scale(1); color: var(--text-secondary); text-shadow: none; }
 }
 
 .special-role-mobile-row__action {
