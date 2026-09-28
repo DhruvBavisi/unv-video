@@ -710,6 +710,18 @@ function SpecialRoleInfoModal({ role, onClose, originRect }) {
   return createPortal(modalContent, document.body)
 }
 
+const MOBILE_TRIGGER_CHARACTER_LAYOUT = {
+  boomerang: { scale: 1.05, translateY: -5, translateX: -5 },
+  duelists: { scale: 1.2, translateY: -6, translateX: -10 },
+  falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
+  ghost: { scale: 1, translateY: -10, translateX: 7 },
+  goddessOfJustice: { scale: 0.9, translateY: -12, translateX: -1 },
+  joyFool: { scale: 1.2, translateY: -4, translateX: -10 },
+  lovers: { scale: 0.65, translateY: -18, translateX: -7 },
+  mrMeme: { scale: 1, translateY: -5, translateX: 10 },
+  revenger: { scale: 0.9, translateY: -11, translateX: -5.5 }
+}
+
 function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers }) {
   const [expanded, setExpanded] = useState(false)
   const [activeRoleInfo, setActiveRoleInfo] = useState(null)
@@ -816,20 +828,13 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
           <div className="special-roles-header-mobile__characters">
             {SPECIAL_ROLES.map(role => {
               const enabled = configuration.specialRoles?.[role.key]
-              const triggerAsset = role.avatar ? role.avatar.replace('.png', '-bg.png') : ''
+              const triggerAsset = role.avatar
+              ? role.key === 'goddessOfJustice'
+                ? '/images/characters/goddessofjustics-bg-green.png'
+                : role.avatar.replace('.png', '-bg.png')
+              : ''
               
-              const MOBILE_TRIGGER_LAYOUT = {
-                boomerang: { scale: 1.236, translateY: 10.222 },
-                duelists: { scale: 1.266, translateY: 9.375 },
-                falafelVendor: { scale: 1.38, translateY: 10.667 },
-                ghost: { scale: 1.786, translateY: 25.333 },
-                goddessOfJustice: { scale: 1.112, translateY: 3.132 },
-                joyFool: { scale: 1.334, translateY: 12.304 },
-                lovers: { scale: 1.049, translateY: 2.536 },
-                mrMeme: { scale: 1.388, translateY: 14.318 },
-                revenger: { scale: 1.136, translateY: 5.778 }
-              }
-              const layout = MOBILE_TRIGGER_LAYOUT[role.key] || { scale: 1, translateY: 0 }
+              const layout = MOBILE_TRIGGER_CHARACTER_LAYOUT[role.key] || { scale: 1, translateY: 0, translateX: 0 }
 
               return (
                 <div key={role.key} className="mobile-trigger-char">
@@ -837,7 +842,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                     <div 
                       className="mobile-trigger-char__wrapper"
                       style={{
-                        transform: `scale(${layout.scale}) translateY(${layout.translateY}%)`,
+                        transform: `translateX(${layout.translateX || 0}px) scale(${layout.scale}) translateY(${layout.translateY}%)`,
                         transformOrigin: 'bottom center',
                         width: '100%',
                         height: '100%',
@@ -855,9 +860,6 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
               )
             })}
           </div>
-          {activeRolesCount > 0 && (
-            <div className="special-roles-header-mobile__badge">{activeRolesCount}</div>
-          )}
         </div>
       </button>
       
