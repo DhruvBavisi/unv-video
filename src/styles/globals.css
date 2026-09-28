@@ -1066,8 +1066,8 @@ video {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  margin: 24px 0 16px 0;
-  padding: 16px 20px;
+  margin: 10px 0 0 0;
+  padding: 10px 20px;
   border: 1px solid rgba(181, 138, 82, 0.3);
   background: rgba(181, 138, 82, 0.05);
   border-radius: 6px;
@@ -4207,7 +4207,6 @@ input, select, textarea, button { font-size: 16px; }
 
 /* Section Container */
 .special-roles-section {
-  margin-top: 20px;
   border: 1px solid rgba(181, 138, 82, 0.28);
   border-radius: 6px;
   background: rgba(28, 29, 31, 0.5);
@@ -4854,8 +4853,8 @@ input, select, textarea, button { font-size: 16px; }
   display: none;
   width: 100%;
   background: transparent;
+  padding: 6px 20px;
   border: none;
-  padding: 12px 18px;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
@@ -4864,7 +4863,7 @@ input, select, textarea, button { font-size: 16px; }
 .special-roles-header-mobile__inner {
   position: relative;
   width: 100%;
-  border-radius: 99px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
