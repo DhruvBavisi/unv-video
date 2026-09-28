@@ -6,6 +6,12 @@ export function onVoteTallied(room, tally) {
   // Hook for future special-role phase mechanics
 }
 
+function addScore(player, amount, reason) {
+  if (!player.scoreBreakdown) player.scoreBreakdown = [];
+  player.points = (player.points || 0) + amount;
+  player.scoreBreakdown.push({ reason, amount });
+}
+
 export function onElimination(room, eliminatedPlayerId) {
   const eliminatedCount = room.players.filter(p => p.eliminated).length;
   const isFirstElimination = eliminatedCount === 1;
@@ -15,7 +21,7 @@ export function onElimination(room, eliminatedPlayerId) {
 
   if (eliminatedPlayer.specialRole === 'joyFool' && isFirstElimination) {
     if (!eliminatedPlayer.specialRoleData.joyFoolResolved) {
-      eliminatedPlayer.points = (eliminatedPlayer.points || 0) + 4;
+      addScore(eliminatedPlayer, 4, 'Joy Fool');
       eliminatedPlayer.specialRoleData.joyFoolResolved = true;
       
       if (!room.specialRoleOutcomes) room.specialRoleOutcomes = [];
@@ -30,8 +36,8 @@ export function onElimination(room, eliminatedPlayerId) {
     if (!eliminatedPlayer.specialRoleData.resolved) {
       const partner = room.players.find(p => p.id === eliminatedPlayer.specialRoleData.partnerId);
       if (partner) {
-        eliminatedPlayer.points = (eliminatedPlayer.points || 0) - 2;
-        partner.points = (partner.points || 0) + 2;
+        addScore(eliminatedPlayer, -2, 'Duelist');
+        addScore(partner, 2, 'Duelist');
         
         eliminatedPlayer.specialRoleData.resolved = true;
         partner.specialRoleData.resolved = true;
@@ -50,5 +56,23 @@ export function onElimination(room, eliminatedPlayerId) {
 }
 
 export function onGameEnd(room, result) {
-  // Hook for future special-role phase mechanics
+  if (room.baseScoringResolved) return;
+  room.baseScoringResolved = true;
+
+  const { winner } = result;
+
+  room.players.forEach(p => {
+    if (p.spectator) return;
+    
+    if (winner === 'CIVILIAN' && p.role === 'CIVILIAN') {
+      addScore(p, 2, 'Victory');
+    } else if (winner === 'UNDERCOVER' && p.role === 'UNDERCOVER') {
+      addScore(p, 10, 'Victory');
+    } else if (winner === 'MR_WHITE' && p.role === 'MR_WHITE') {
+      addScore(p, 6, 'Victory');
+    } else if (winner === 'BOTH_IMPOSTERS') {
+      if (p.role === 'UNDERCOVER') addScore(p, 10, 'Victory');
+      if (p.role === 'MR_WHITE') addScore(p, 6, 'Victory');
+    }
+  });
 }

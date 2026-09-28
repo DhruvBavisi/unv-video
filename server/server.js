@@ -181,6 +181,7 @@ function getPublicRoomState(room) {
         return safeData;
       })(),
       points: room.gamePhase === 'RESULT' ? (p.points || 0) : 0,
+      scoreBreakdown: room.gamePhase === 'RESULT' ? (p.scoreBreakdown || []) : [],
       playAgain: !!p.playAgain,
       continueAck: !!p.continueAck,
     })),
@@ -766,6 +767,7 @@ io.on('connection', (socket) => {
       room.turnIndex = 0
       room.submittedCluePlayerIds = []
       room.specialRoleOutcomes = []
+      room.baseScoringResolved = false
 
       room.players.forEach(p => {
         if (!p.playAgain) {
@@ -778,6 +780,7 @@ io.on('connection', (socket) => {
         p.specialRole = null
         p.specialRoleData = {}
         p.points = 0
+        p.scoreBreakdown = []
         p.playAgain = false
         p.continueAck = false
       })
@@ -873,6 +876,7 @@ io.on('connection', (socket) => {
     room.turnIndex = 0
     room.submittedCluePlayerIds = []
     room.specialRoleOutcomes = []
+    room.baseScoringResolved = false
 
     room.players.forEach((p) => {
       p.eliminated = false
@@ -883,6 +887,7 @@ io.on('connection', (socket) => {
       p.specialRole = null
       p.specialRoleData = {}
       p.points = 0
+      p.scoreBreakdown = []
       p.playAgain = false
       p.continueAck = false
     })
@@ -960,6 +965,7 @@ io.on('connection', (socket) => {
     room.turnIndex = 0
     room.submittedCluePlayerIds = []
     room.specialRoleOutcomes = []
+    room.baseScoringResolved = false
 
     room.players.forEach(p => {
       p.status = p.isHost ? 'READY' : 'JOINED'
@@ -970,6 +976,7 @@ io.on('connection', (socket) => {
       p.specialRole = null
       p.specialRoleData = {}
       p.points = 0
+      p.scoreBreakdown = []
       p.playAgain = false
       p.continueAck = false
     })
@@ -996,6 +1003,7 @@ io.on('connection', (socket) => {
     room.lockedVotes = []
     room.voteResult = null
     room.specialRoleOutcomes = []
+    room.baseScoringResolved = false
 
     assignWords(room)
 
@@ -1017,6 +1025,7 @@ io.on('connection', (socket) => {
       p.specialRole = null
       p.specialRoleData = {}
       p.points = 0
+      p.scoreBreakdown = []
     })
 
     // Assign Special Roles
