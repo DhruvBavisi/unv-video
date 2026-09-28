@@ -813,7 +813,25 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
         aria-expanded={mobileExpanded}
       >
         <div className="special-roles-header-mobile__inner">
-          <img src="/images/characters/allcharacters-grey.png" alt="Special Roles" className="special-roles-header-mobile__art" />
+          <div className="special-roles-header-mobile__characters">
+            {SPECIAL_ROLES.map(role => {
+              const enabled = configuration.specialRoles?.[role.key]
+              const triggerAsset = role.avatar ? role.avatar.replace('.png', '-bg.png') : ''
+              return (
+                <div key={role.key} className="mobile-trigger-char">
+                  {triggerAsset && (
+                    <>
+                      <img src={triggerAsset} alt="" className="mobile-trigger-char__color" />
+                      <div 
+                        className={`mobile-trigger-char__mask ${enabled ? 'mobile-trigger-char__mask--hidden' : ''}`}
+                        style={{ WebkitMaskImage: `url(${triggerAsset})`, maskImage: `url(${triggerAsset})` }}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
           {activeRolesCount > 0 && (
             <div className="special-roles-header-mobile__badge">{activeRolesCount}</div>
           )}

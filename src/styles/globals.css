@@ -5116,3 +5116,52 @@ input, select, textarea, button { font-size: 16px; }
     object-fit: contain !important;
   }
 }
+
+/* Dynamic Character Lineup in Mobile Trigger */
+.special-roles-header-mobile__characters {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 75px;
+  max-width: 310px; 
+  margin: 0 auto;
+}
+
+.mobile-trigger-char {
+  position: relative;
+  height: 100%;
+  flex: 1 1 0;
+  margin: 0 -4%; /* Percentage overlap gracefully adjusts */
+  display: flex;
+  justify-content: center;
+}
+
+.mobile-trigger-char__color {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  opacity: 1; /* Override any inherited opacity */
+}
+
+.mobile-trigger-char__mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #97969C;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: bottom center;
+  mask-position: bottom center;
+  transition: opacity 250ms ease;
+  pointer-events: none;
+}
+
+.mobile-trigger-char__mask--hidden {
+  opacity: 0;
+}
