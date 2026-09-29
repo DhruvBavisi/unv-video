@@ -453,10 +453,17 @@ Elimination-triggered secondary elimination, this time player-chosen rather than
 - **Status: Implemented ✅** (Completed as part of Phase 28 requirements)
 
 - When enabled with ≥5 active players, assign the `revenger` trait to one active player (any alignment).
-- `onElimination`: if the eliminated player is the Revenger, immediately open a private "choose a target" action for that (now-eliminated) player, scoped to remaining active players, excluding self.
-- The Revenger's chosen target is eliminated immediately once submitted; then Mr. White-guess checks and win checks run against the resulting state (same ordering principle as Phase 28).
-- Define and enforce a timeout/default behavior if the Revenger disconnects or does not choose (reuse the reconnection/stale-action patterns from Phase 18/21) — ASSUMPTION: no target is eliminated if the Revenger fails to choose within the timeout; confirm before building.
-- Minimum 5 active players (per source).
+- `advanceFromElimination`: if the eliminated player is the Revenger (eliminated by vote), the game enters the `REVENGER_DECISION` state.
+- A private target selection UI is rendered on the Revenger's screen, scoped to remaining active players, excluding self. This natively uses `localSecret` to preserve privacy without leaking `revengerId` to other clients.
+- The Revenger's chosen target is eliminated immediately once submitted via `submit-revenger-decision`; then Mr. White-guess checks, Lovers cascades, and win checks run natively against the resulting state.
+- A server-authoritative 15-second timeout handles disconnects or no response. If the Revenger fails to choose, no target is eliminated and the game safely resumes.
+- Minimum 5 active players.
+
+**Implementation Note:**
+- Server-authoritative assignment added to `server.js` using the unified `assignSpecialRoles(room)` function.
+- `REVENGER_DECISION_PHASE` introduced in `gamePhases.js`.
+- The `VotingPanel` card-flip in `CluePhase.jsx` was adapted to conditionally render `RevengerPanel`.
+- Re-uses `onElimination` natively for the Revenger's target to seamlessly trigger downstream cascades.
 
 ## PHASE 30 — The Boomerang
 First role that changes vote-tallying itself rather than post-elimination effects.

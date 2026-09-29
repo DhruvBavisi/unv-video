@@ -1448,6 +1448,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       startedAt: Date.now()
     }
     room.gamePhase = 'ELIMINATION'
+    room.revengerId = null
     broadcastRoom(room)
     
     const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
@@ -1574,6 +1575,37 @@ ELIMINATION RESULT=`, room.eliminationResult)
     ) {
       room.gamePhase = 'REVENGER_DECISION'
       room.revengerId = eliminatedId
+      
+      const version = room.gameVersion
+      setTimeout(() => {
+        const currentRoom = rooms.get(roomId)
+        if (!currentRoom || currentRoom.gamePhase !== 'REVENGER_DECISION' || currentRoom.gameVersion !== version) return
+        
+        const revenger = currentRoom.players.find(p => p.id === eliminatedId)
+        if (revenger && revenger.specialRoleData) {
+          revenger.specialRoleData.decisionMade = true
+          revenger.specialRoleData.resolved = true
+        }
+        
+        currentRoom.revengerId = null
+        currentRoom.gamePhase = 'ELIMINATION'
+        
+        currentRoom.specialRoleOutcomes = currentRoom.specialRoleOutcomes || []
+        currentRoom.specialRoleOutcomes.push({
+          role: 'revenger',
+          revengerName: revenger?.name || 'Unknown',
+          targetName: 'no one',
+          message: `REVENGER\n${revenger?.name || 'The Revenger'} faded away without taking anyone down`
+        })
+        
+        broadcastRoom(currentRoom)
+        
+        const delay = (currentRoom.mrWhiteQueue && currentRoom.mrWhiteQueue.length > 0) ? 500 : 500
+        setTimeout(() => {
+          advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
+        }, delay)
+      }, 15000)
+      
       broadcastRoom(room)
       return
     }

@@ -598,18 +598,17 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   )
 }
 
-function RevengerPanel({ players, myPlayerId, revengerId, onSubmit, submitting }) {
+function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting }) {
   const [selectedTarget, setSelectedTarget] = useState(null)
   
   const activePlayers = players.filter(p => !p.eliminated && !p.spectator)
-  const isRevenger = myPlayerId === revengerId
   
   if (!isRevenger) {
     return (
       <div className="clue-panel__voting" style={{ justifyContent: 'center' }}>
         <div className="clue-panel__voting-header">
           <span className="online-kicker">Special Role Phase</span>
-          <h2 style={{ color: 'var(--accent, #a684ff)' }}>THE REVENGER</h2>
+          <h2>THE REVENGER</h2>
           <p className="clue-panel__voting-tie" style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Waiting for the Revenger's final strike...</p>
         </div>
       </div>
@@ -620,7 +619,7 @@ function RevengerPanel({ players, myPlayerId, revengerId, onSubmit, submitting }
     <div className="clue-panel__voting">
       <div className="clue-panel__voting-header">
         <span className="online-kicker">Special Role Phase</span>
-        <h2 style={{ color: 'var(--accent, #a684ff)' }}>REVENGER</h2>
+        <h2>THE REVENGER</h2>
         <p className="clue-panel__voting-tie" style={{ margin: '8px 0', fontSize: '0.85rem' }}>You have been eliminated.<br/>Choose one player to take down with you.</p>
       </div>
       <div className="clue-panel__order" style={{ flexGrow: 1, minHeight: 0 }}>
@@ -811,7 +810,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                   <RevengerPanel
                     players={players}
                     myPlayerId={sessionId}
-                    revengerId={state.revengerId}
+                    isRevenger={localSecret?.specialRole === 'revenger'}
                     onSubmit={handleRevengerSubmit}
                     submitting={submitting}
                   />

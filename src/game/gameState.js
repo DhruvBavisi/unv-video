@@ -71,6 +71,7 @@ function phaseFromRoom(room, { prevPhase, sessionId, becomingActive }) {
   const isVotePhase = room.phase === 'ACTIVE' && room.gamePhase === 'VOTE'
   const isElimination = room.phase === 'ACTIVE' && room.gamePhase === 'ELIMINATION'
   const isMrWhiteGuess = room.phase === 'ACTIVE' && room.gamePhase === 'MR_WHITE_GUESS'
+  const isRevengerDecision = room.phase === 'ACTIVE' && room.gamePhase === 'REVENGER_DECISION'
   const isResult = room.phase === 'ACTIVE' && room.gamePhase === 'RESULT'
 
   if (isCluePhase) return GAME_PHASES.CLUE_PHASE
@@ -78,6 +79,7 @@ function phaseFromRoom(room, { prevPhase, sessionId, becomingActive }) {
   if (isElimination) return GAME_PHASES.ELIMINATION_PHASE
   // MR_WHITE_GUESS keeps the overlay alive — render as ELIMINATION_PHASE
   if (isMrWhiteGuess) return GAME_PHASES.ELIMINATION_PHASE
+  if (isRevengerDecision) return GAME_PHASES.REVENGER_DECISION_PHASE
   if (isResult) return GAME_PHASES.RESULT_PHASE
   if (becomingActive && meInRoom) return GAME_PHASES.CLUE_PHASE
   if (meInRoom && isLobby) return GAME_PHASES.ROOM_LOBBY
