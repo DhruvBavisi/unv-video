@@ -35,13 +35,18 @@ export default function DrawingPhase({ room, onLeave }) {
   useEffect(() => {
     const socket = getSocket()
     
-    // Fetch initial state
-    socket.emit('draw:request-strokes', (res) => {
-      if (res && res.strokes) {
-        strokesRef.current = res.strokes
-        canvasRef.current?.redrawAll(strokesRef.current)
-      }
-    })
+    // Fetch initial state or re-fetch on reconnect
+    const fetchStrokes = () => {
+      socket.emit('draw:request-strokes', (res) => {
+        if (res && res.strokes) {
+          strokesRef.current = res.strokes
+          canvasRef.current?.redrawAll(strokesRef.current)
+        }
+      })
+    }
+    
+    fetchStrokes()
+    socket.on('connect', fetchStrokes)
 
     const handleIncomingStroke = (stroke) => {
       strokesRef.current.push(stroke)
@@ -64,6 +69,7 @@ export default function DrawingPhase({ room, onLeave }) {
     window.addEventListener('resize', handleResize)
 
     return () => {
+      socket.off('connect', fetchStrokes)
       socket.off('draw:stroke', handleIncomingStroke)
       socket.off('draw:clear-canvas', handleClear)
       window.removeEventListener('resize', handleResize)
