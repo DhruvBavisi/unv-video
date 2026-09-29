@@ -19,8 +19,21 @@ const ERROR_MESSAGES = {
   GAME_NOT_ACTIVE: 'Game is not active.',
 }
 
+const SPECIAL_ROLE_AVATAR_LAYOUT = {
+  boomerang: { scale: 1.05, translateY: -5, translateX: -5 },
+  duelists: { scale: 1.4, translateY: 10, translateX: 0 },
+  falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
+  ghost: { scale: 1, translateY: -10, translateX: 7 },
+  goddessOfJustice: { scale: 0.9, translateY: -12, translateX: 0 },
+  joyFool: { scale: 1.1, translateY: -0, translateX: 0,themeColor: '#5757ffff' },
+  lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },
+  mrMeme: { scale: 1, translateY: -5, translateX: 12 },
+  revenger: { scale: 0.9, translateY: -11, translateX: -4.5 }
+}
+
 function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isSpecialRoleInfoExpanded, setIsSpecialRoleInfoExpanded] = useState(false)
   const role = localSecret?.role
   const word = localSecret?.word
   const specialRoleKey = localSecret?.specialRole
@@ -60,21 +73,66 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
           </div>
         )}
         
-        {specialRoleMeta && (
-          <div className="clue-panel__secret clue-panel__special-role" style={{ marginTop: '16px' }}>
-            <span className="clue-panel__word-label">Special Role</span>
-            <div className="clue-panel__word-box" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+        {specialRoleMeta && (() => {
+          const layout = SPECIAL_ROLE_AVATAR_LAYOUT[specialRoleKey] || { scale: 1, translateY: 0, translateX: 0 }
+          return (
+            <div 
+              className="clue-panel__secret clue-panel__special-role" 
+              style={{ 
+                marginTop: '24px', 
+                '--role-accent': layout.themeColor || 'var(--accent, #a684ff)' 
+              }}
+            >
+              <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Special Role</span>
+              
+              {specialRoleMeta.avatar && (
+                <div 
+                  className="clue-panel__avatar" 
+                  style={{ 
+                    width: '84px', 
+                    height: '84px', 
+                    padding: 0, 
+                    marginBottom: '5px', 
+                    position: 'relative',
+                    background: layout.bgColor || 'var(--bg-secondary)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <img 
+                    src={specialRoleMeta.avatar} 
+                    alt={specialRoleMeta.name} 
+                    style={{ 
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      transform: `translateX(${layout.translateX}px) scale(${layout.scale}) translateY(${layout.translateY}%)` 
+                    }}
+                  />
+                </div>
+              )
+            }
+            
+            <h3 className="clue-panel__role-name" style={{ fontSize: '1.3rem', color: 'var(--role-accent)', margin: '0 0 12px 0' }}>
               {specialRoleMeta.name}
+            </h3>
+            
+            <div 
+              onClick={(e) => { e.stopPropagation(); setIsSpecialRoleInfoExpanded(!isSpecialRoleInfoExpanded); }}
+              style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', letterSpacing: '0.15em', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none' }}
+            >
+              VIEW ROLE INFO <span style={{ transform: isSpecialRoleInfoExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: '1rem', lineHeight: '0' }}>›</span>
             </div>
-            {specialRoleMeta.avatar && (
-              <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
-                <img src={specialRoleMeta.avatar.replace('.png', '-bg.png')} alt={specialRoleMeta.name} style={{ maxHeight: '90px', objectFit: 'contain' }} />
+            
+            {isSpecialRoleInfoExpanded && (
+              <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', fontSize: '0.75rem', lineHeight: '1.5', color: 'rgba(255, 255, 255, 0.85)', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+                {specialRoleMeta.description}
               </div>
             )}
           </div>
-        )}
+        )
+      })()}
 
-        <div className="clue-panel__identity-actions">
+      <div className="clue-panel__identity-actions">
           <Button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}>HIDE</Button>
         </div>
       </div>

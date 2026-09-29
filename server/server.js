@@ -342,6 +342,67 @@ function shuffle(array) {
   return result
 }
 
+function assignSpecialRoles(room) {
+  const specialRolesConfig = room.configuration.specialRoles || {}
+  let availablePlayers = [...room.players]
+
+  const assignRole = (roleKey, count) => {
+    const assigned = []
+    for (let i = 0; i < count; i++) {
+      if (availablePlayers.length === 0) break
+      
+      let rIndex = -1
+      // For local testing, ensure the host gets a special role if available
+      const hostIndex = availablePlayers.findIndex(p => p.id === room.hostId)
+      if (hostIndex !== -1) {
+        rIndex = hostIndex
+      } else {
+        rIndex = Math.floor(Math.random() * availablePlayers.length)
+      }
+      
+      const p = availablePlayers.splice(rIndex, 1)[0]
+      p.specialRole = roleKey
+      assigned.push(p)
+    }
+    return assigned
+  }
+
+  const joyFoolMeta = SPECIAL_ROLES.find(r => r.key === 'joyFool')
+  if (specialRolesConfig.joyFool === true || specialRolesConfig.joyFool?.enabled === true) {
+    if (room.players.length >= joyFoolMeta.minPlayers) {
+      assignRole('joyFool', 1)
+    }
+  }
+
+  const duelistsMeta = SPECIAL_ROLES.find(r => r.key === 'duelists')
+  if (specialRolesConfig.duelists === true || specialRolesConfig.duelists?.enabled === true) {
+    if (room.players.length >= duelistsMeta.minPlayers) {
+      const duelists = assignRole('duelists', 2)
+      if (duelists.length === 2) {
+        const duelId = crypto.randomUUID()
+        duelists[0].specialRoleData = { duelId, partnerId: duelists[1].id, partnerName: duelists[1].name, resolved: false }
+        duelists[1].specialRoleData = { duelId, partnerId: duelists[0].id, partnerName: duelists[0].name, resolved: false }
+      } else {
+        duelists.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
+      }
+    }
+  }
+
+  const loversMeta = SPECIAL_ROLES.find(r => r.key === 'lovers')
+  if (specialRolesConfig.lovers === true || specialRolesConfig.lovers?.enabled === true) {
+    if (room.players.length >= loversMeta.minPlayers) {
+      const lovers = assignRole('lovers', 2)
+      if (lovers.length === 2) {
+        const loverId = crypto.randomUUID()
+        lovers[0].specialRoleData = { loverId, partnerId: lovers[1].id, resolved: false }
+        lovers[1].specialRoleData = { loverId, partnerId: lovers[0].id, resolved: false }
+      } else {
+        lovers.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
+      }
+    }
+  }
+}
+
 function startCluePhase(room) {
   if (room.gamePhase === 'CLUE') return
   room.gamePhase = 'CLUE'
@@ -908,17 +969,7 @@ io.on('connection', (socket) => {
       p.role = rolePool[i]
     })
 
-    const enabledSpecialRoles = Object.keys(room.configuration.specialRoles || {})
-      .filter((k) => room.configuration.specialRoles[k])
-      .map((k) => SPECIAL_ROLES.find((r) => r.key === k))
-      .filter(Boolean)
-      .sort((a, b) => (a.priority || 0) - (b.priority || 0))
-
-    for (const roleDef of enabledSpecialRoles) {
-      if (room.players.length >= roleDef.minPlayers && roleDef.assign) {
-        roleDef.assign(room)
-      }
-    }
+    assignSpecialRoles(room)
 
     room.players.forEach((p) => {
       const pSocketId = sessionSockets.get(p.id)
@@ -1028,56 +1079,7 @@ io.on('connection', (socket) => {
       p.scoreBreakdown = []
     })
 
-    // Assign Special Roles
-    const specialRolesConfig = room.configuration.specialRoles || {}
-    let availablePlayers = [...room.players]
-
-    const assignRole = (roleKey, count) => {
-      const assigned = []
-      for (let i = 0; i < count; i++) {
-        if (availablePlayers.length === 0) break
-        const rIndex = Math.floor(Math.random() * availablePlayers.length)
-        const p = availablePlayers.splice(rIndex, 1)[0]
-        p.specialRole = roleKey
-        assigned.push(p)
-      }
-      return assigned
-    }
-
-    const joyFoolMeta = SPECIAL_ROLES.find(r => r.key === 'joyFool')
-    if (specialRolesConfig.joyFool === true || specialRolesConfig.joyFool?.enabled === true) {
-      if (room.players.length >= joyFoolMeta.minPlayers) {
-        assignRole('joyFool', 1)
-      }
-    }
-
-    const duelistsMeta = SPECIAL_ROLES.find(r => r.key === 'duelists')
-    if (specialRolesConfig.duelists === true || specialRolesConfig.duelists?.enabled === true) {
-      if (room.players.length >= duelistsMeta.minPlayers) {
-        const duelists = assignRole('duelists', 2)
-        if (duelists.length === 2) {
-          const duelId = crypto.randomUUID()
-          duelists[0].specialRoleData = { duelId, partnerId: duelists[1].id, partnerName: duelists[1].name, resolved: false }
-          duelists[1].specialRoleData = { duelId, partnerId: duelists[0].id, partnerName: duelists[0].name, resolved: false }
-        } else {
-          duelists.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
-        }
-      }
-    }
-
-    const loversMeta = SPECIAL_ROLES.find(r => r.key === 'lovers')
-    if (specialRolesConfig.lovers === true || specialRolesConfig.lovers?.enabled === true) {
-      if (room.players.length >= loversMeta.minPlayers) {
-        const lovers = assignRole('lovers', 2)
-        if (lovers.length === 2) {
-          const loverId = crypto.randomUUID()
-          lovers[0].specialRoleData = { loverId, partnerId: lovers[1].id, resolved: false }
-          lovers[1].specialRoleData = { loverId, partnerId: lovers[0].id, resolved: false }
-        } else {
-          lovers.forEach(p => { p.specialRole = null; availablePlayers.push(p); })
-        }
-      }
-    }
+    assignSpecialRoles(room)
 
     room.players.forEach((p) => {
       const word = wordForRole(p.role, room.wordPair)
