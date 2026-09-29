@@ -1,11 +1,10 @@
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 
-export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokesToRender, clearTrigger }) {
+const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   
   const isDrawing = useRef(false)
-  const currentPath = useRef([])
   const lastPos = useRef(null)
 
   const drawSegment = (ctx, start, end, c, s) => {
@@ -15,7 +14,6 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
     ctx.lineJoin = 'round'
     ctx.beginPath()
     ctx.moveTo(start.x, start.y)
-    // Add tiny epsilon if start === end so dot always renders
     if (start.x === end.x && start.y === end.y) {
       ctx.lineTo(end.x + 0.1, end.y)
     } else {
@@ -24,20 +22,45 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
     ctx.stroke()
   }
 
-  const redrawAll = useCallback(() => {
+  const liveDraw = (stroke) => {
+    const cvs = canvasRef.current
+    if (!cvs || !stroke || !stroke.points || stroke.points.length === 0) return
+    const ctx = cvs.getContext('2d')
+    const rect = cvs.getBoundingClientRect()
+    
+    const dpr = window.devicePixelRatio || 1
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.scale(dpr, dpr)
+    
+    const w = rect.width
+    const h = rect.height
+    let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
+    
+    if (stroke.points.length === 1) {
+      drawSegment(ctx, start, start, stroke.color, stroke.size)
+    } else {
+      for (let i = 1; i < stroke.points.length; i++) {
+        let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
+        drawSegment(ctx, start, end, stroke.color, stroke.size)
+        start = end
+      }
+    }
+  }
+
+  const redrawAll = (strokesToRender) => {
     const cvs = canvasRef.current
     if (!cvs) return
     const ctx = cvs.getContext('2d')
     const rect = cvs.getBoundingClientRect()
     
-    ctx.save()
+    const dpr = window.devicePixelRatio || 1
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvs.width, cvs.height)
-    ctx.restore()
+    ctx.scale(dpr, dpr)
 
     if (strokesToRender) {
       strokesToRender.forEach(stroke => {
-        if (stroke.points.length === 0) return
+        if (!stroke.points || stroke.points.length === 0) return
         const w = rect.width
         const h = rect.height
         let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
@@ -52,9 +75,20 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
         }
       })
     }
-  }, [strokesToRender])
+  }
 
-  // Resize canvas to match container exactly with devicePixelRatio
+  useImperativeHandle(ref, () => ({
+    redrawAll,
+    liveDraw,
+    clear: () => {
+      const cvs = canvasRef.current
+      if (!cvs) return
+      const ctx = cvs.getContext('2d')
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, cvs.width, cvs.height)
+    }
+  }))
+
   useEffect(() => {
     const resizeCanvas = () => {
       const cvs = canvasRef.current
@@ -67,36 +101,11 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
       cvs.height = rect.height * dpr
       cvs.style.width = `${rect.width}px`
       cvs.style.height = `${rect.height}px`
-      
-      const ctx = cvs.getContext('2d')
-      ctx.scale(dpr, dpr)
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      
-      redrawAll()
     }
-    
     window.addEventListener('resize', resizeCanvas)
     resizeCanvas()
     return () => window.removeEventListener('resize', resizeCanvas)
-  }, [redrawAll])
-
-  // Handle incoming strokes (both initial load and new ones)
-  useEffect(() => {
-    redrawAll()
-  }, [redrawAll])
-
-  // Clear canvas handler
-  useEffect(() => {
-    if (clearTrigger === 0) return
-    const cvs = canvasRef.current
-    if (!cvs) return
-    const ctx = cvs.getContext('2d')
-    ctx.save()
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.clearRect(0, 0, cvs.width, cvs.height)
-    ctx.restore()
-  }, [clearTrigger])
+  }, [])
 
   const getPos = (e) => {
     const cvs = canvasRef.current
@@ -110,14 +119,14 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
       clientY = e.clientY
     }
     return {
-      x: (clientX - rect.left), // normalized later for broadcast
+      x: (clientX - rect.left),
       y: (clientY - rect.top)
     }
   }
 
   const handleStart = (e) => {
     if (!isDrawer) return
-    if (e.cancelable) e.preventDefault() // Prevent scrolling
+    if (e.cancelable) e.preventDefault()
     isDrawing.current = true
     const pos = getPos(e)
     lastPos.current = pos
@@ -127,10 +136,9 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
     const nx = pos.x / rect.width
     const ny = pos.y / rect.height
     
-    currentPath.current = [{ x: nx, y: ny }]
-    
-    const ctx = cvs.getContext('2d')
-    drawSegment(ctx, pos, pos, color, size)
+    const stroke = { color, size, points: [{ x: nx, y: ny }] }
+    liveDraw(stroke)
+    if (onStroke) onStroke(stroke)
   }
 
   const handleMove = (e) => {
@@ -139,27 +147,23 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
     
     const pos = getPos(e)
     const cvs = canvasRef.current
-    const ctx = cvs.getContext('2d')
-    
-    drawSegment(ctx, lastPos.current, pos, color, size)
-    lastPos.current = pos
-    
     const rect = cvs.getBoundingClientRect()
-    currentPath.current.push({ x: pos.x / rect.width, y: pos.y / rect.height })
+    
+    const prevNx = lastPos.current.x / rect.width
+    const prevNy = lastPos.current.y / rect.height
+    const nx = pos.x / rect.width
+    const ny = pos.y / rect.height
+    
+    const stroke = { color, size, points: [{ x: prevNx, y: prevNy }, { x: nx, y: ny }] }
+    liveDraw(stroke)
+    
+    lastPos.current = pos
+    if (onStroke) onStroke(stroke)
   }
 
   const handleEnd = () => {
     if (!isDrawing.current || !isDrawer) return
     isDrawing.current = false
-    
-    if (currentPath.current.length > 0 && onStroke) {
-      onStroke({
-        color,
-        size,
-        points: currentPath.current
-      })
-    }
-    currentPath.current = []
   }
 
   return (
@@ -178,4 +182,6 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
       />
     </div>
   )
-}
+})
+
+export default DrawingCanvas

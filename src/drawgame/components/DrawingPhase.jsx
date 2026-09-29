@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getSocket } from '../../game/socket.js'
 import { ensureIdentity } from '../../game/identity.js'
 import PlayerStrip from './PlayerStrip.jsx'
@@ -12,8 +12,9 @@ export default function DrawingPhase({ room, onLeave }) {
   const [color, setColor] = useState(DRAW_COLORS[0].value)
   const [size, setSize] = useState(8)
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
-  const [strokesToRender, setStrokesToRender] = useState([])
-  const [clearTrigger, setClearTrigger] = useState(0)
+  
+  const strokesRef = useRef([])
+  const canvasRef = useRef(null)
   
   // Handle timer sync
   useEffect(() => {
@@ -35,41 +36,50 @@ export default function DrawingPhase({ room, onLeave }) {
     // Fetch initial state
     socket.emit('draw:request-strokes', (res) => {
       if (res && res.strokes) {
-        setStrokesToRender(res.strokes)
+        strokesRef.current = res.strokes
+        canvasRef.current?.redrawAll(strokesRef.current)
       }
     })
 
     const handleIncomingStroke = (stroke) => {
-      // For performance we render directly or via small state updates
-      // This implementation appends to history so resizing redrawns correctly
-      setStrokesToRender(prev => [...prev, stroke])
+      strokesRef.current.push(stroke)
+      canvasRef.current?.liveDraw(stroke)
     }
 
     const handleClear = () => {
-      setStrokesToRender([])
-      setClearTrigger(t => t + 1)
+      strokesRef.current = []
+      canvasRef.current?.clear()
     }
 
     socket.on('draw:stroke', handleIncomingStroke)
     socket.on('draw:clear-canvas', handleClear)
 
+    const handleResize = () => {
+      setTimeout(() => {
+        canvasRef.current?.redrawAll(strokesRef.current)
+      }, 0)
+    }
+    window.addEventListener('resize', handleResize)
+
     return () => {
       socket.off('draw:stroke', handleIncomingStroke)
       socket.off('draw:clear-canvas', handleClear)
+      window.removeEventListener('resize', handleResize)
     }
   }, [])
 
   const handleStroke = (strokeData) => {
     const socket = getSocket()
     socket.emit('draw:stroke', strokeData)
-    setStrokesToRender(prev => [...prev, strokeData])
+    strokesRef.current.push(strokeData)
+    // The drawer already imperatively drew this locally inside DrawingCanvas!
   }
 
   const handleClearCanvas = () => {
     const socket = getSocket()
     socket.emit('draw:clear-canvas')
-    setStrokesToRender([])
-    setClearTrigger(t => t + 1)
+    strokesRef.current = []
+    canvasRef.current?.clear()
   }
 
   // Formatting Drawer Text
@@ -119,12 +129,11 @@ export default function DrawingPhase({ room, onLeave }) {
       {/* CANVAS AREA */}
       <div style={{ flex: 1, position: 'relative', background: 'var(--sk-canvas)', cursor: isDrawer ? 'crosshair' : 'default', zIndex: 5 }}>
         <DrawingCanvas 
+          ref={canvasRef}
           color={color}
           size={size}
           isDrawer={isDrawer}
           onStroke={handleStroke}
-          strokesToRender={strokesToRender}
-          clearTrigger={clearTrigger}
         />
         
         {/* Visual boundary shadow */}
