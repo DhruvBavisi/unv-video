@@ -800,14 +800,7 @@ io.on('connection', (socket) => {
   function broadcastDrawRoomState(room) {
     // Sanitize state per player
     for (const p of room.players) {
-      const isDrawer = room.currentDrawerId === p.id
-      const safeRoom = {
-        ...room,
-        wordChoices: isDrawer ? room.wordChoices : undefined,
-        selectedWord: isDrawer ? room.selectedWord : undefined,
-        strokes: undefined // We won't send full strokes in room-state to save bandwidth, unless requested/reconnect
-      }
-      io.to(p.id).emit('draw:room-state', safeRoom)
+      io.to(p.id).emit('draw:room-state', getSafeStateForPlayer(room, p.id))
     }
   }
   
@@ -910,10 +903,11 @@ io.on('connection', (socket) => {
 
   function getSafeStateForPlayer(room, playerId) {
     const isDrawer = room.currentDrawerId === playerId
+    const isReveal = room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT'
     return {
       ...room,
       wordChoices: isDrawer ? room.wordChoices : undefined,
-      selectedWord: isDrawer ? room.selectedWord : undefined,
+      selectedWord: (isDrawer || isReveal) ? room.selectedWord : undefined,
       strokes: undefined
     }
   }
@@ -993,6 +987,43 @@ io.on('connection', (socket) => {
     broadcastDrawRoomState(room)
   })
 
+  function scheduleWordChoiceTimeout(room) {
+    // 15 seconds timeout
+    setTimeout(() => {
+      const currentRoom = drawRooms.get(room.id)
+      if (currentRoom && currentRoom.phase === 'WORD_CHOICE' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
+        // Auto-select the first word if timeout expires
+        const word = currentRoom.wordChoices[0]
+        if (!word) return
+        
+        currentRoom.selectedWord = word
+        currentRoom.phase = 'DRAWING'
+        currentRoom.roundStartedAt = Date.now()
+        currentRoom.roundEndsAt = Date.now() + (currentRoom.configuration.drawTimeSec * 1000)
+        currentRoom.strokes = []
+        currentRoom.guessedPlayerIds = []
+        
+        const drawerPlayer = currentRoom.players.find(p => p.id === currentRoom.currentDrawerId)
+        const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
+        currentRoom.chatMessages = [{
+          id: crypto.randomUUID(),
+          type: 'SYSTEM',
+          message: `${drawerName} is drawing.`
+        }]
+        
+        broadcastDrawRoomState(currentRoom)
+        
+        // Schedule round end
+        setTimeout(() => {
+          const checkRoom = drawRooms.get(room.id)
+          if (checkRoom && checkRoom.phase === 'DRAWING' && checkRoom.round === room.round && checkRoom.turnIndex === room.turnIndex) {
+            endDrawRound(checkRoom)
+          }
+        }, currentRoom.configuration.drawTimeSec * 1000)
+      }
+    }, 15000)
+  }
+
   socket.on('draw:start-game', () => {
     if (!currentSessionId) return
     let room = null
@@ -1026,6 +1057,12 @@ io.on('connection', (socket) => {
     room.wordChoices = generateWordChoices(room)
     room.selectedWord = null
     room.strokes = []
+    
+    // Clear canvas for all clients on new game
+    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+    
+    // Start word-choice timeout
+    scheduleWordChoiceTimeout(room)
     
     broadcastDrawRoomState(room)
   })
@@ -1071,6 +1108,9 @@ io.on('connection', (socket) => {
           currentRoom.strokes = []
           currentRoom.guessedPlayerIds = []
           currentRoom.turnScores = {}
+          
+          io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
+          scheduleWordChoiceTimeout(currentRoom)
           broadcastDrawRoomState(currentRoom)
         } else {
           // End of round
@@ -1095,6 +1135,9 @@ io.on('connection', (socket) => {
             currentRoom.strokes = []
             currentRoom.guessedPlayerIds = []
             currentRoom.turnScores = {}
+            
+            io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
+            scheduleWordChoiceTimeout(currentRoom)
             broadcastDrawRoomState(currentRoom)
           } else {
             // End of game
@@ -1333,6 +1376,8 @@ io.on('connection', (socket) => {
       p.score = 0
     })
 
+    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+    
     broadcastDrawRoomState(room)
     callback?.({ success: true })
   })

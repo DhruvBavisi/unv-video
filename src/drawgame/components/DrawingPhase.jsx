@@ -70,6 +70,16 @@ export default function DrawingPhase({ room, onLeave }) {
     }
   }, [])
 
+  // Defensive canvas clear on turn change
+  const currentTurnKey = `${room.round}-${room.turnIndex}-${room.currentDrawerId}`
+  useEffect(() => {
+    // Only clear if we aren't re-mounting into an existing drawing phase with existing strokes
+    if (room.phase === 'WORD_CHOICE' || room.strokes?.length === 0) {
+      strokesRef.current = []
+      canvasRef.current?.clear()
+    }
+  }, [currentTurnKey, room.phase, room.strokes?.length])
+
   const handleStroke = useCallback((strokeData) => {
     const socket = getSocket()
     socket.emit('draw:stroke', strokeData)
