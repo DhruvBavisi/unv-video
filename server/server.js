@@ -1049,6 +1049,15 @@ io.on('connection', (socket) => {
     room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
     room.strokes = [] // Clear canvas state
 
+    room.guessedPlayerIds = []
+    const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
+    const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
+    room.chatMessages = [{
+      id: crypto.randomUUID(),
+      type: 'SYSTEM',
+      message: `${drawerName} is drawing.`
+    }]
+
     broadcastDrawRoomState(room)
 
     // Schedule round end
@@ -1105,6 +1114,80 @@ io.on('connection', (socket) => {
 
     room.strokes = []
     io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+  })
+
+  function normalizeGuess(value) {
+    if (typeof value !== 'string') return ''
+    return value.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim()
+  }
+
+  socket.on('draw:guess', ({ message }) => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room || room.phase !== 'DRAWING') return
+    if (room.currentDrawerId === currentSessionId) return // Drawer can't guess
+
+    if (typeof message !== 'string') return
+    const trimmed = message.trim()
+    if (!trimmed || trimmed.length > 120) return
+
+    const player = room.players.find(p => p.id === currentSessionId)
+    if (!player) return
+
+    if (!room.chatMessages) room.chatMessages = []
+    if (!room.guessedPlayerIds) room.guessedPlayerIds = []
+
+    if (room.guessedPlayerIds.includes(currentSessionId)) {
+      return // Ignore guesses from players who already guessed correctly
+    }
+
+    const normGuess = normalizeGuess(trimmed)
+    const normTarget = normalizeGuess(room.selectedWord)
+
+    let msgType = 'CHAT'
+    
+    // Close guess logic
+    const isClose = (guess, target) => {
+      if (!guess || !target) return false
+      if (guess === target) return false
+      if (Math.abs(guess.length - target.length) > 2) return false
+      if (target.includes(guess) && target.length - guess.length <= 2) return true
+      if (guess.includes(target) && guess.length - target.length <= 2) return true
+      
+      let matches = 0
+      for(let i = 0; i < Math.min(guess.length, target.length); i++) {
+         if (guess[i] === target[i]) matches++
+      }
+      return matches >= target.length - 1 && target.length > 3
+    }
+
+    if (normGuess === normTarget) {
+      msgType = 'CORRECT'
+      room.guessedPlayerIds.push(currentSessionId)
+    } else if (isClose(normGuess, normTarget)) {
+      msgType = 'CLOSE'
+    }
+
+    const chatMsg = {
+      id: crypto.randomUUID(),
+      playerId: currentSessionId,
+      playerName: player.name,
+      type: msgType,
+      message: msgType === 'CHAT' ? trimmed : null
+    }
+
+    room.chatMessages.push(chatMsg)
+    if (room.chatMessages.length > 100) {
+      room.chatMessages.shift()
+    }
+
+    broadcastDrawRoomState(room)
   })
 
   socket.on('draw:request-strokes', (callback) => {
