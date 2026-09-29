@@ -930,7 +930,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:update-config', (config) => {
-    if (!currentSessionId) return
+    if (!currentSessionId || typeof config !== 'object') return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.hostId === currentSessionId) {
@@ -940,7 +940,28 @@ io.on('connection', (socket) => {
     }
     if (!room || room.status !== 'LOBBY') return
     
-    room.configuration = { ...room.configuration, ...config }
+    if (config.drawTimeSec !== undefined) {
+      room.configuration.drawTimeSec = Math.max(45, Math.min(120, parseInt(config.drawTimeSec) || 80))
+    }
+    if (config.rounds !== undefined) {
+      room.configuration.rounds = Math.max(1, Math.min(10, parseInt(config.rounds) || 3))
+    }
+    if (config.wordCount !== undefined) {
+      room.configuration.wordCount = Math.max(1, Math.min(5, parseInt(config.wordCount) || 3))
+    }
+    if (config.hints !== undefined) {
+      room.configuration.hints = Math.max(0, Math.min(3, parseInt(config.hints) || 2))
+    }
+    if (config.gameMode !== undefined && ['NORMAL', 'HIDDEN', 'COMBINATION'].includes(config.gameMode)) {
+      room.configuration.gameMode = config.gameMode
+    }
+    if (config.customWords !== undefined) {
+      room.configuration.customWords = String(config.customWords).substring(0, 5000)
+    }
+    if (config.useCustomOnly !== undefined) {
+      room.configuration.useCustomOnly = !!config.useCustomOnly
+    }
+    
     io.to(`draw:${room.id}`).emit('draw:room-state', room)
   })
 

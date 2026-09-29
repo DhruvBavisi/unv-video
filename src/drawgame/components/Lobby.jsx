@@ -5,7 +5,7 @@ function SegmentControl({ label, value, options, onChange, disabled }) {
   return (
     <div className="sk-setting-row">
       <span className="sk-setting-label">{label}</span>
-      <div className="sk-segments">
+      <div className="sk-segments" style={{ flexWrap: 'wrap' }}>
         {options.map(opt => {
           const isSelected = opt.value === value
           return (
@@ -29,7 +29,7 @@ function CustomWordsSettings({ room, isHost, onUpdateConfig }) {
   
   const handleTextChange = (e) => {
     if (!isHost) return
-    onUpdateConfig('customWords', e.target.value)
+    onUpdateConfig({ customWords: e.target.value })
   }
 
   const handleToggle = (e) => {
@@ -37,7 +37,7 @@ function CustomWordsSettings({ room, isHost, onUpdateConfig }) {
     if (!isHost) return
     const newVal = !useCustomOnly
     setUseCustomOnly(newVal)
-    onUpdateConfig('useCustomOnly', newVal)
+    onUpdateConfig({ useCustomOnly: newVal })
   }
 
   const wordsCount = room.configuration.customWords.split(',').filter(w => w.trim().length > 0).length
@@ -56,7 +56,7 @@ function CustomWordsSettings({ room, isHost, onUpdateConfig }) {
         </div>
       </div>
       
-      <div className="sk-custom-words-body" style={{ height: expanded ? '220px' : '0px', opacity: expanded ? 1 : 0, overflow: expanded ? 'visible' : 'hidden' }}>
+      <div className="sk-custom-words-body" style={{ height: expanded ? '240px' : '0px', opacity: expanded ? 1 : 0, overflow: expanded ? 'visible' : 'hidden' }}>
         <div className="sk-toggle" onClick={handleToggle}>
           <span className="sk-toggle-label">Use Custom Words Only</span>
           <div className={`sk-toggle-track ${useCustomOnly ? 'active' : ''}`}>
@@ -70,6 +70,9 @@ function CustomWordsSettings({ room, isHost, onUpdateConfig }) {
           onChange={handleTextChange}
           disabled={!isHost}
         />
+        <div style={{ fontSize: '0.8rem', color: 'var(--sk-muted)', marginTop: '8px', textAlign: 'center' }}>
+          Separate words with commas
+        </div>
       </div>
     </div>
   )
@@ -79,19 +82,32 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
   const { sessionId } = ensureIdentity()
   const isHost = room.hostId === sessionId
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
 
   const handleConfigChange = (key, value) => {
     if (!isHost) return
     onUpdateConfig({ [key]: value })
   }
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(room.id)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(room.id)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      setCopyFailed(true)
+      setTimeout(() => setCopyFailed(false), 2000)
+    }
   }
 
   const hostDisabled = !isHost
+
+  // A simple deterministic color mapping for players based on their ID character
+  const getAvatarColorClass = (id) => {
+    const charCode = id.charCodeAt(id.length - 1)
+    const num = (charCode % 4) + 1
+    return `sk-avatar--${num}`
+  }
 
   return (
     <div className="sk-view">
@@ -101,7 +117,7 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
         <div className="sk-bg-shape sk-bg-shape-3" />
       </div>
       
-      <div className="sk-header">
+      <div className="sk-header" style={{ paddingBottom: '12px' }}>
         <h1 className="sk-logo" style={{ fontSize: '2.4rem' }}>SKRIBBL</h1>
       </div>
 
@@ -112,7 +128,7 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
           <div className="sk-card-title" style={{ justifyContent: 'center', marginBottom: '12px' }}>ROOM CODE</div>
           <div className={`sk-code-box ${copied ? 'copied' : ''}`} onClick={handleCopyCode}>
             <div className="sk-code-val">{room.id}</div>
-            <div className="sk-code-hint">{copied ? 'COPIED!' : 'TAP TO COPY'}</div>
+            <div className="sk-code-hint">{copied ? 'COPIED!' : copyFailed ? 'COPY FAILED' : 'TAP TO COPY'}</div>
           </div>
         </div>
 
@@ -127,9 +143,8 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
               <div 
                 key={p.id} 
                 className="sk-player-row"
-                style={{ animationDelay: `${i * 80 + 200}ms` }}
               >
-                <div className={`sk-avatar sk-avatar--${(i % 4) + 1} ${p.isHost ? 'sk-avatar--host' : ''}`}>
+                <div className={`sk-avatar ${getAvatarColorClass(p.id)} ${p.isHost ? 'sk-avatar--host' : ''}`}>
                   {p.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="sk-player-name" style={{ opacity: p.isConnected ? 1 : 0.4 }}>
@@ -192,7 +207,8 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
             value={room.configuration.gameMode}
             options={[
               { label: 'Normal', value: 'NORMAL' },
-              { label: 'Hidden', value: 'HIDDEN' }
+              { label: 'Hidden', value: 'HIDDEN' },
+              { label: 'Combo', value: 'COMBINATION' }
             ]}
             onChange={(val) => handleConfigChange('gameMode', val)}
             disabled={hostDisabled}
@@ -201,7 +217,7 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
           <CustomWordsSettings 
             room={room}
             isHost={isHost}
-            onUpdateConfig={handleConfigChange}
+            onUpdateConfig={onUpdateConfig}
           />
         </div>
       </div>
