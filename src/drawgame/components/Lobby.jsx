@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ensureIdentity } from '../../game/identity.js'
+import { getSocket } from '../../game/socket.js'
 
 function SegmentControl({ label, value, options, onChange, disabled }) {
   return (

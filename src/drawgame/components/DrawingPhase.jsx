@@ -41,11 +41,12 @@ export default function DrawingPhase({ room, onLeave }) {
 
     const handleIncomingStroke = (stroke) => {
       // For performance we render directly or via small state updates
-      // This implementation passes array of 1 stroke to let canvas effect draw it
-      setStrokesToRender([stroke])
+      // This implementation appends to history so resizing redrawns correctly
+      setStrokesToRender(prev => [...prev, stroke])
     }
 
     const handleClear = () => {
+      setStrokesToRender([])
       setClearTrigger(t => t + 1)
     }
 
@@ -61,11 +62,13 @@ export default function DrawingPhase({ room, onLeave }) {
   const handleStroke = (strokeData) => {
     const socket = getSocket()
     socket.emit('draw:stroke', strokeData)
+    setStrokesToRender(prev => [...prev, strokeData])
   }
 
   const handleClearCanvas = () => {
     const socket = getSocket()
     socket.emit('draw:clear-canvas')
+    setStrokesToRender([])
     setClearTrigger(t => t + 1)
   }
 

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useCallback } from 'react'
 
 export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokesToRender, clearTrigger }) {
   const canvasRef = useRef(null)
@@ -7,6 +7,43 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
   const isDrawing = useRef(false)
   const currentPath = useRef([])
   const lastPos = useRef(null)
+
+  const drawSegment = (ctx, start, end, c, s) => {
+    ctx.strokeStyle = c
+    ctx.lineWidth = s
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+  }
+
+  const redrawAll = useCallback(() => {
+    const cvs = canvasRef.current
+    if (!cvs) return
+    const ctx = cvs.getContext('2d')
+    const rect = cvs.getBoundingClientRect()
+    
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, cvs.width, cvs.height)
+    ctx.restore()
+
+    if (strokesToRender) {
+      strokesToRender.forEach(stroke => {
+        if (stroke.points.length === 0) return
+        const w = rect.width
+        const h = rect.height
+        let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
+        for (let i = 1; i < stroke.points.length; i++) {
+          let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
+          drawSegment(ctx, start, end, stroke.color, stroke.size)
+          start = end
+        }
+      })
+    }
+  }, [strokesToRender])
 
   // Resize canvas to match container exactly with devicePixelRatio
   useEffect(() => {
@@ -26,44 +63,19 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
       ctx.scale(dpr, dpr)
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
+      
+      redrawAll()
     }
     
     window.addEventListener('resize', resizeCanvas)
     resizeCanvas()
     return () => window.removeEventListener('resize', resizeCanvas)
-  }, [])
-
-  const drawSegment = (ctx, start, end, c, s) => {
-    ctx.strokeStyle = c
-    ctx.lineWidth = s
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(start.x, start.y)
-    ctx.lineTo(end.x, end.y)
-    ctx.stroke()
-  }
+  }, [redrawAll])
 
   // Handle incoming strokes (both initial load and new ones)
   useEffect(() => {
-    if (!strokesToRender || strokesToRender.length === 0) return
-    const cvs = canvasRef.current
-    if (!cvs) return
-    const ctx = cvs.getContext('2d')
-    const rect = cvs.getBoundingClientRect()
-
-    strokesToRender.forEach(stroke => {
-      if (stroke.points.length === 0) return
-      const w = rect.width
-      const h = rect.height
-      let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
-      for (let i = 1; i < stroke.points.length; i++) {
-        let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
-        drawSegment(ctx, start, end, stroke.color, stroke.size)
-        start = end
-      }
-    })
-  }, [strokesToRender])
+    redrawAll()
+  }, [redrawAll])
 
   // Clear canvas handler
   useEffect(() => {

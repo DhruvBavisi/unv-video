@@ -855,6 +855,7 @@ io.on('connection', (socket) => {
     drawRooms.set(roomId, room)
     currentSessionId = sessionId
     socket.join(`draw:${roomId}`)
+    socket.join(sessionId) // Join private room for Skribbl direct messaging
     connectPlayer(socket, sessionId)
     callback?.({ room })
   })
@@ -875,6 +876,7 @@ io.on('connection', (socket) => {
       existing.name = trimmed
       currentSessionId = sessionId
       socket.join(`draw:${normalizedId}`)
+      socket.join(sessionId) // Join private room for Skribbl direct messaging
       connectPlayer(socket, sessionId)
       callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)
@@ -900,6 +902,7 @@ io.on('connection', (socket) => {
 
     currentSessionId = sessionId
     socket.join(`draw:${normalizedId}`)
+    socket.join(sessionId) // Join private room for Skribbl direct messaging
     connectPlayer(socket, sessionId)
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
     broadcastDrawRoomState(room)
@@ -935,6 +938,7 @@ io.on('connection', (socket) => {
       const wasHost = foundRoom.players[idx].isHost
       foundRoom.players.splice(idx, 1)
       socket.leave(`draw:${foundRoomId}`)
+      socket.leave(currentSessionId) // Cleanup private room
       
       if (foundRoom.players.length === 0) {
         drawRooms.delete(foundRoomId)
@@ -1007,8 +1011,15 @@ io.on('connection', (socket) => {
     room.round = 1
     room.totalRounds = room.configuration.rounds
     
-    // Deterministic shuffle using player IDs to sort
-    room.turnOrder = [...room.players].map(p => p.id).sort()
+    // Fisher-Yates shuffle using player IDs
+    const playerIds = [...room.players].map(p => p.id)
+    for (let i = playerIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const temp = playerIds[i]
+      playerIds[i] = playerIds[j]
+      playerIds[j] = temp
+    }
+    room.turnOrder = playerIds
     room.turnIndex = 0
     room.currentDrawerId = room.turnOrder[room.turnIndex]
     
