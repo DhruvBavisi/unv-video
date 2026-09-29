@@ -170,7 +170,9 @@ function getPublicRoomState(room) {
       eliminated: p.eliminated,
       spectator: p.spectator,
       role: (p.eliminated || room.gamePhase === 'RESULT') ? p.role : undefined,
-      specialRole: (p.eliminated || room.gamePhase === 'RESULT') ? p.specialRole : undefined,
+      specialRole: (p.eliminated || room.gamePhase === 'RESULT') ? 
+        ((room.gamePhase === 'REVENGER_DECISION' && room.revengerId === p.id) ? undefined : p.specialRole) 
+        : undefined,
       specialRoleData: (() => {
         if (room.gamePhase === 'RESULT') return p.specialRoleData;
         if (!p.specialRoleData) return {};
@@ -1582,12 +1584,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
       setTimeout(() => {
         const currentRoom = rooms.get(roomId)
         if (!currentRoom || currentRoom.gamePhase !== 'REVENGER_DECISION' || currentRoom.gameVersion !== version) return
+        if (currentRoom.revengerId !== eliminatedId) return
         
         const revenger = currentRoom.players.find(p => p.id === eliminatedId)
-        if (revenger && revenger.specialRoleData) {
-          revenger.specialRoleData.decisionMade = true
-          revenger.specialRoleData.resolved = true
-        }
+        if (!revenger || revenger.specialRoleData?.decisionMade) return
+        
+        revenger.specialRoleData.decisionMade = true
+        revenger.specialRoleData.resolved = true
         
         currentRoom.revengerId = null
         currentRoom.gamePhase = 'ELIMINATION'
@@ -1595,9 +1598,9 @@ ELIMINATION RESULT=`, room.eliminationResult)
         currentRoom.specialRoleOutcomes = currentRoom.specialRoleOutcomes || []
         currentRoom.specialRoleOutcomes.push({
           role: 'revenger',
-          revengerName: revenger?.name || 'Unknown',
+          revengerName: revenger.name,
           targetName: 'no one',
-          message: `REVENGER\n${revenger?.name || 'The Revenger'} faded away without taking anyone down`
+          message: `REVENGER\n${revenger.name} faded away without taking anyone down`
         })
         
         advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
