@@ -117,6 +117,8 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     }
   }
 
+  const currentStrokeRef = useRef(null)
+
   const handleStart = (e) => {
     if (!isDrawer) return
     if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId)
@@ -130,12 +132,13 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const ny = pos.y / rect.height
     
     const stroke = { color, size, tool, points: [{ x: nx, y: ny }] }
+    currentStrokeRef.current = stroke
     liveDraw(stroke)
-    if (onStroke) onStroke(stroke)
+    if (onStroke) onStroke(stroke, false)
   }
 
   const handleMove = (e) => {
-    if (!isDrawing.current || !isDrawer) return
+    if (!isDrawing.current || !isDrawer || !currentStrokeRef.current) return
     
     const pos = getPos(e)
     const cvs = canvasRef.current
@@ -146,11 +149,18 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const nx = pos.x / rect.width
     const ny = pos.y / rect.height
     
-    const stroke = { color, size, tool, points: [{ x: prevNx, y: prevNy }, { x: nx, y: ny }] }
-    liveDraw(stroke)
+    const point = { x: nx, y: ny }
+    currentStrokeRef.current.points.push(point)
     
+    const deltaStroke = { color, size, tool, points: [{ x: prevNx, y: prevNy }, point] }
+    liveDraw(deltaStroke)
     lastPos.current = pos
-    if (onStroke) onStroke(stroke)
+    if (onStroke) onStroke(deltaStroke, false)
+
+    if (currentStrokeRef.current.points.length >= 500) {
+      if (onStroke) onStroke(currentStrokeRef.current, true)
+      currentStrokeRef.current = { color, size, tool, points: [point] }
+    }
   }
 
   const handleEnd = (e) => {
@@ -159,6 +169,10 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       try { e.target.releasePointerCapture(e.pointerId) } catch (err) {}
     }
     isDrawing.current = false
+    if (onStroke && currentStrokeRef.current) {
+      onStroke(currentStrokeRef.current, true)
+    }
+    currentStrokeRef.current = null
   }
 
   return (

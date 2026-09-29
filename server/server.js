@@ -1345,7 +1345,9 @@ io.on('connection', (socket) => {
       }
     }
 
-    room.strokes.push(strokeData)
+    if (strokeData.isComplete !== false) {
+      room.strokes.push(strokeData)
+    }
     // Broadcast directly to room, skipping the drawer since they drew it locally
     socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
   })
@@ -1377,7 +1379,7 @@ io.on('connection', (socket) => {
     if (!room) return
 
     room.strokes = []
-    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+    socket.to(`draw:${room.id}`).emit('draw:clear-canvas')
   })
 
   function normalizeGuess(value) {

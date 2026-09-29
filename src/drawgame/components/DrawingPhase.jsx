@@ -50,8 +50,13 @@ export default function DrawingPhase({ room, onLeave }) {
     socket.on('connect', fetchStrokes)
 
     const handleIncomingStroke = (stroke) => {
-      strokesRef.current.push(stroke)
-      canvasRef.current?.liveDraw(stroke)
+      if (stroke.isComplete) {
+        strokesRef.current.push(stroke)
+        // Redraw to ensure pixel-perfect rendering of the full stroke
+        canvasRef.current?.redrawAll(strokesRef.current)
+      } else {
+        canvasRef.current?.liveDraw(stroke)
+      }
     }
 
     const handleClear = () => {
@@ -96,10 +101,12 @@ export default function DrawingPhase({ room, onLeave }) {
     }
   }, [currentTurnKey, room.phase, room.strokes?.length])
 
-  const handleStroke = useCallback((strokeData) => {
+  const handleStroke = useCallback((strokeData, isComplete = true) => {
     const socket = getSocket()
-    socket.emit('draw:stroke', strokeData)
-    strokesRef.current.push(strokeData)
+    socket.emit('draw:stroke', { ...strokeData, isComplete })
+    if (isComplete) {
+      strokesRef.current.push(strokeData)
+    }
     // The drawer already imperatively drew this locally inside DrawingCanvas!
   }, [])
 

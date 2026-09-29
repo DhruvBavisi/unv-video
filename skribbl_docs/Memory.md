@@ -345,19 +345,23 @@ Before a significant change:
 
 ## 21. Agent Log
 
-### YYYY-MM-DD
+### 2026-09-29
 
 **Completed**
-- 
+- Phase 7 — Canvas Foundation (Brush, Eraser, Clear, Undo, Color, Size).
+- Integrated `globalCompositeOperation` for eraser support.
+- Centralized tool state in DrawingPhase.
 
 **Decisions**
-- 
+- Extended `strokeData` schema to include `tool` ("brush" or "eraser").
+- Server supports `draw:undo` to pop the last stroke safely.
 
 **Problems**
-- 
+- None.
 
 **Tests**
-- 
+- Undercover 62/62 tests passing, no regressions.
+- Vite build completes cleanly.
 
 **Next**
--
+- Phase 8 — Real-Time Canvas Sync (partially present, requires formal verification).
