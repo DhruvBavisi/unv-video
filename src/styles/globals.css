@@ -5208,3 +5208,94 @@ input, select, textarea, button { font-size: 16px; }
 .mobile-trigger-char__mask--hidden {
   opacity: 0;
 }
+
+/* ============================================================
+   Mode Select & Skribbl Styles
+   ============================================================ */
+.mode-select {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: var(--bg);
+}
+
+.mode-select__header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.mode-select__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+}
+
+.mode-select__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.mode-select__card {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 8px;
+  flex: 1;
+  min-width: 280px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mode-select__card-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.mode-select__card-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.mode-select__btn {
+  width: 100%;
+}
+
+.skribbl-input, .skribbl-select {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 4px;
+  font-family: var(--font-body);
+  margin-bottom: 15px;
+}
+
+.skribbl-settings label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.skribbl-settings .skribbl-select {
+  width: auto;
+  min-width: 100px;
+  margin-bottom: 0;
+  padding: 8px;
+}

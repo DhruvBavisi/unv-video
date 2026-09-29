@@ -7,6 +7,8 @@ import Investigation from './sections/Investigation.jsx'
 import FinalCTA from './sections/FinalCTA.jsx'
 import OnlineGame from './game/OnlineGame.jsx'
 import GameEntryTransition from './game/GameEntryTransition.jsx'
+import ModeSelect from './components/ModeSelect.jsx'
+import SkribblApp from './drawgame/SkribblApp.jsx'
 import { readIdentity } from './game/identity.js'
 
 function Transition({ text }) {
@@ -26,12 +28,12 @@ function Transition({ text }) {
 function getInitialGameView() {
   const { resumeToken, roomId } = readIdentity()
   if (resumeToken && roomId) {
-    return 'game'
+    return 'undercover'
   }
   
   const params = new URLSearchParams(window.location.search)
   if (params.get('room')) {
-    return 'game'
+    return 'undercover'
   }
   
   return 'landing'
@@ -54,11 +56,24 @@ export default function App() {
   }
 
   if (gameView === 'transition') {
-    return <GameEntryTransition onComplete={() => setGameView('game')} />
+    return <GameEntryTransition onComplete={() => setGameView('mode-select')} />
   }
 
-  if (gameView === 'game') {
-    return <OnlineGame onExit={() => setGameView('landing')} />
+  if (gameView === 'mode-select') {
+    return (
+      <ModeSelect 
+        onSelectUndercover={() => setGameView('undercover')}
+        onSelectSkribbl={() => setGameView('skribbl')}
+      />
+    )
+  }
+
+  if (gameView === 'undercover') {
+    return <OnlineGame onExit={() => setGameView('mode-select')} />
+  }
+
+  if (gameView === 'skribbl') {
+    return <SkribblApp onExit={() => setGameView('mode-select')} />
   }
 
   return (

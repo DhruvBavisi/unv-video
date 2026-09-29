@@ -62,6 +62,7 @@ const io = new Server(httpServer, {
 })
 
 const rooms = new Map()
+const drawRooms = new Map()
 const sessionSockets = new Map()
 
 // How long a room whose players are all disconnected is kept before reap.
@@ -790,6 +791,157 @@ io.on('connection', (socket) => {
 
     callback?.({ success: true })
     socket.emit('leave-confirmed')
+  })
+
+  // ==========================================
+  // SKRIBBL / DRAWGAME EVENTS
+  // ==========================================
+  
+  socket.on('draw:create-room', ({ sessionId, playerName }, callback) => {
+    if (!sessionId || !playerName || typeof playerName !== 'string') {
+      return callback?.({ error: 'INVALID_NAME' })
+    }
+    const trimmed = playerName.trim()
+    
+    // Ensure player is not already in a draw room
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === sessionId)) {
+        return callback?.({ error: 'ALREADY_IN_DRAW_ROOM' })
+      }
+    }
+
+    let roomId = makeRoomId()
+    while (drawRooms.has(roomId) || rooms.has(roomId)) roomId = makeRoomId()
+
+    const room = {
+      id: roomId,
+      hostId: sessionId,
+      status: 'LOBBY',
+      phase: 'LOBBY',
+      players: [{
+        id: sessionId,
+        name: trimmed,
+        isHost: true,
+        isConnected: true,
+        spectator: false,
+        score: 0
+      }],
+      configuration: {
+        maxPlayers: 8,
+        drawTimeSec: 80,
+        rounds: 3,
+        wordCount: 3,
+        hints: 2,
+        gameMode: 'NORMAL',
+        customWords: '',
+        useCustomOnly: false
+      }
+    }
+
+    drawRooms.set(roomId, room)
+    currentSessionId = sessionId
+    socket.join(`draw:${roomId}`)
+    connectPlayer(socket, sessionId)
+    callback?.({ room })
+  })
+
+  socket.on('draw:join-room', ({ sessionId, roomId, playerName }, callback) => {
+    if (!sessionId || !playerName || typeof playerName !== 'string') {
+      return callback?.({ error: 'INVALID_NAME' })
+    }
+    const trimmed = playerName.trim()
+    const normalizedId = (roomId || '').trim().toUpperCase()
+
+    const room = drawRooms.get(normalizedId)
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+
+    const existing = room.players.find(p => p.id === sessionId)
+    if (existing) {
+      existing.isConnected = true
+      existing.name = trimmed
+      currentSessionId = sessionId
+      socket.join(`draw:${normalizedId}`)
+      connectPlayer(socket, sessionId)
+      callback?.({ room })
+      io.to(`draw:${normalizedId}`).emit('draw:room-state', room)
+      return
+    }
+
+    if (room.players.length >= room.configuration.maxPlayers) {
+      return callback?.({ error: 'ROOM_FULL' })
+    }
+
+    if (room.players.some(p => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      return callback?.({ error: 'NAME_TAKEN' })
+    }
+
+    room.players.push({
+      id: sessionId,
+      name: trimmed,
+      isHost: false,
+      isConnected: true,
+      spectator: room.status !== 'LOBBY',
+      score: 0
+    })
+
+    currentSessionId = sessionId
+    socket.join(`draw:${normalizedId}`)
+    connectPlayer(socket, sessionId)
+    callback?.({ room })
+    io.to(`draw:${normalizedId}`).emit('draw:room-state', room)
+  })
+
+  socket.on('draw:leave-room', (callback) => {
+    if (!currentSessionId) return callback?.({ error: 'NOT_IN_ROOM' })
+    
+    let foundRoomId = null
+    let foundRoom = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        foundRoomId = rid
+        foundRoom = dr
+        break
+      }
+    }
+
+    if (!foundRoom) return callback?.({ error: 'NOT_IN_ROOM' })
+
+    const idx = foundRoom.players.findIndex(p => p.id === currentSessionId)
+    if (idx !== -1) {
+      const wasHost = foundRoom.players[idx].isHost
+      foundRoom.players.splice(idx, 1)
+      socket.leave(`draw:${foundRoomId}`)
+      
+      if (foundRoom.players.length === 0) {
+        drawRooms.delete(foundRoomId)
+      } else if (wasHost) {
+        const nextHost = foundRoom.players.find(p => p.isConnected) || foundRoom.players[0]
+        if (nextHost) {
+          nextHost.isHost = true
+          foundRoom.hostId = nextHost.id
+        }
+        io.to(`draw:${foundRoomId}`).emit('draw:room-state', foundRoom)
+      } else {
+        io.to(`draw:${foundRoomId}`).emit('draw:room-state', foundRoom)
+      }
+    }
+    
+    callback?.({ success: true })
+  })
+
+  socket.on('draw:update-config', (config) => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.hostId === currentSessionId) {
+        room = dr
+        break
+      }
+    }
+    if (!room || room.status !== 'LOBBY') return
+    
+    room.configuration = { ...room.configuration, ...config }
+    io.to(`draw:${room.id}`).emit('draw:room-state', room)
   })
 
   socket.on('play-again', (callback) => {
