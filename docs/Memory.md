@@ -4,9 +4,9 @@
 > This is not the original requirements document.
 
 ## Current Phase
-**Phase 27 — The Duelists**
+**Phase 28 — The Revenger**
 
-The Duelists special role has been implemented with authoritative scoring (-2 / +2 points) triggering upon the first duelist's elimination. The Duelist Reveal UI has been integrated directly into the `EliminationOverlay.jsx`. The identities of the duelists are completely private until resolution, maintaining the required information barrier.
+The Revenger special role has been implemented with an authoritative `REVENGER_DECISION` game phase state. When a Revenger is eliminated by vote, the server pauses normal cascade and win-evaluation to allow the Revenger to choose one active player to eliminate. Once submitted, the targeted player enters the standard elimination pipeline natively (triggering normal Lovers cascades, Mr. White guess queues, etc.). The assignment logic was also refactored into a robust `assignSpecialRoles(room)` function which works securely for new games and ensures the host receives the role when testing locally.
 
 ## Landing Project Status
 The cinematic renders a **300-frame JPEG sequence** extracted across the 10-second timeline (`investigation-room-30fps`, frames 1–300). The source MP4 is genuinely 10.0 s / 24 fps / 240 frames (despite the "30fps" filename); the 300 frames are a 30 fps re-sample of the same 10 s visual timeline (frame n ↔ t = (n−1)/30 s).

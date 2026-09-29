@@ -401,6 +401,16 @@ function assignSpecialRoles(room) {
       }
     }
   }
+
+  const revengerMeta = SPECIAL_ROLES.find(r => r.key === 'revenger')
+  if (specialRolesConfig.revenger === true || specialRolesConfig.revenger?.enabled === true) {
+    if (room.players.length >= revengerMeta.minPlayers) {
+      const revengers = assignRole('revenger', 1)
+      if (revengers.length > 0) {
+        revengers[0].specialRoleData = { resolved: false, decisionMade: false }
+      }
+    }
+  }
 }
 
 function startCluePhase(room) {
@@ -1328,6 +1338,7 @@ io.on('connection', (socket) => {
             playerName: eliminatedPlayer.name,
             role: eliminatedPlayer.role,
             voteCount: maxVotes,
+            isVoteElimination: true,
             startedAt: Date.now(),
             specialRoleOutcomes: room.specialRoleOutcomes
           }
@@ -1388,6 +1399,64 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const sanitized = String(text || '').slice(0, 40)
     room.mrWhiteLiveGuess = sanitized
     io.to(currentRoomId).emit('mr-white-live-guess-update', { text: sanitized })
+    callback?.({ success: true })
+  })
+
+  // Revenger selects target to eliminate
+  socket.on('submit-revenger-decision', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'REVENGER_DECISION') return callback?.({ success: false })
+    
+    if (currentSessionId !== room.revengerId) return callback?.({ success: false, error: 'NOT_REVENGER' })
+    const revenger = room.players.find(p => p.id === currentSessionId)
+    if (!revenger || revenger.specialRole !== 'revenger') return callback?.({ success: false })
+    if (revenger.specialRoleData?.decisionMade) return callback?.({ success: false, error: 'ALREADY_DECIDED' })
+    
+    const target = room.players.find(p => p.id === targetId)
+    if (!target || target.eliminated || target.spectator || targetId === currentSessionId) {
+      return callback?.({ success: false, error: 'INVALID_TARGET' })
+    }
+    
+    revenger.specialRoleData.decisionMade = true
+    revenger.specialRoleData.resolved = true
+    
+    target.eliminated = true
+    target.spectator = true
+    
+    const cascadedPlayers = onElimination(room, target.id)
+    const newlyEliminated = [target, ...cascadedPlayers]
+    
+    if (!room.mrWhiteQueue) room.mrWhiteQueue = []
+    newlyEliminated.forEach(p => {
+      if (p.role === 'MR_WHITE') room.mrWhiteQueue.push(p.id)
+    })
+    
+    room.specialRoleOutcomes = room.specialRoleOutcomes || []
+    room.specialRoleOutcomes.push({
+      role: 'revenger',
+      revengerName: revenger.name,
+      targetName: target.name,
+      message: `REVENGER\n${revenger.name} took down ${target.name}`
+    })
+    
+    room.eliminationResult = {
+      playerId: target.id,
+      playerName: target.name,
+      role: target.role,
+      isRevengerElimination: true,
+      startedAt: Date.now()
+    }
+    room.gamePhase = 'ELIMINATION'
+    broadcastRoom(room)
+    
+    const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
+    const delay = hasMrWhite ? 5000 : 6500
+    const version = room.gameVersion
+    setTimeout(() => {
+      advanceFromElimination(room.id, version)
+    }, delay)
+    
     callback?.({ success: true })
   })
 
@@ -1497,6 +1566,17 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const eliminatedId = room.eliminationResult?.playerId
     const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
     if (!eliminatedPlayer) return
+    
+    if (
+      eliminatedPlayer.specialRole === 'revenger' && 
+      !eliminatedPlayer.specialRoleData?.decisionMade && 
+      room.eliminationResult?.isVoteElimination
+    ) {
+      room.gamePhase = 'REVENGER_DECISION'
+      room.revengerId = eliminatedId
+      broadcastRoom(room)
+      return
+    }
     
     if (room.mrWhiteQueue && room.mrWhiteQueue.length > 0) {
       const mrWhiteId = room.mrWhiteQueue.shift()

@@ -450,6 +450,8 @@ First role that changes elimination flow (cascading elimination).
 ## PHASE 29 — The Revenger
 Elimination-triggered secondary elimination, this time player-chosen rather than automatic.
 
+- **Status: Implemented ✅** (Completed as part of Phase 28 requirements)
+
 - When enabled with ≥5 active players, assign the `revenger` trait to one active player (any alignment).
 - `onElimination`: if the eliminated player is the Revenger, immediately open a private "choose a target" action for that (now-eliminated) player, scoped to remaining active players, excluding self.
 - The Revenger's chosen target is eliminated immediately once submitted; then Mr. White-guess checks and win checks run against the resulting state (same ordering principle as Phase 28).

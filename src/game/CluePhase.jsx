@@ -28,7 +28,7 @@ const SPECIAL_ROLE_AVATAR_LAYOUT = {
   joyFool: { scale: 1.1, translateY: -0, translateX: 0,themeColor: '#5757ffff' },
   lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },
   mrMeme: { scale: 1, translateY: -5, translateX: 12 },
-  revenger: { scale: 0.9, translateY: -11, translateX: -4.5 }
+  revenger: { scale: 1, translateY: 5, translateX: 1.5, bgColor: '#ffffff',themeColor: '#06B6D4' }
 }
 
 function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
@@ -598,6 +598,66 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   )
 }
 
+function RevengerPanel({ players, myPlayerId, revengerId, onSubmit, submitting }) {
+  const [selectedTarget, setSelectedTarget] = useState(null)
+  
+  const activePlayers = players.filter(p => !p.eliminated && !p.spectator)
+  const isRevenger = myPlayerId === revengerId
+  
+  if (!isRevenger) {
+    return (
+      <div className="clue-panel__voting" style={{ justifyContent: 'center' }}>
+        <div className="clue-panel__voting-header">
+          <span className="online-kicker">Special Role Phase</span>
+          <h2 style={{ color: 'var(--accent, #a684ff)' }}>THE REVENGER</h2>
+          <p className="clue-panel__voting-tie" style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Waiting for the Revenger's final strike...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="clue-panel__voting">
+      <div className="clue-panel__voting-header">
+        <span className="online-kicker">Special Role Phase</span>
+        <h2 style={{ color: 'var(--accent, #a684ff)' }}>REVENGER</h2>
+        <p className="clue-panel__voting-tie" style={{ margin: '8px 0', fontSize: '0.85rem' }}>You have been eliminated.<br/>Choose one player to take down with you.</p>
+      </div>
+      <div className="clue-panel__order" style={{ flexGrow: 1, minHeight: 0 }}>
+        <div className="clue-panel__voting-list" style={{ padding: '10px 14px', gap: '7px' }}>
+        {activePlayers.map((p, index) => {
+          const isMe = p.id === myPlayerId
+          const isSelected = p.id === selectedTarget
+          const getInitials = (n) => String(n||'').substring(0, 2).toUpperCase()
+          return (
+            <button 
+              key={p.id}
+              className={`voting-card ${isSelected ? 'voting-card--selected' : ''}`}
+              disabled={isMe}
+              onClick={() => setSelectedTarget(p.id)}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <span className="voting-card__avatar">{getInitials(p.name)}</span>
+              <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
+            </button>
+          )
+        })}
+      </div>
+      </div>
+      <div className="clue-panel__voting-actions">
+        <Button 
+          variant="danger" 
+          onClick={() => onSubmit(selectedTarget)} 
+          disabled={!selectedTarget || submitting}
+          className="voting-card__submit-btn"
+        >
+          CONFIRM TARGET
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function CluePhase({ state, socketRef, onSourceRect }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
@@ -703,13 +763,29 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
     }
   }, [socketRef])
 
+  const handleRevengerSubmit = useCallback((targetId) => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    socketRef.current.emit('submit-revenger-decision', { targetId }, (res) => {
+      if (!res?.success) {
+        setClueError(res?.error || 'Failed to submit decision.')
+        submitLockRef.current = false
+        setSubmitting(false)
+      } else {
+        submitLockRef.current = false
+        setSubmitting(false)
+      }
+    })
+  }, [socketRef])
+
   // Get current state
   return (
     <section className="clue-phase">
       <div className="clue-phase__grid">
         <aside className="clue-phase__order">
           <div className="card-flip-wrapper">
-            <div className={`card-flip-inner ${(gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' || gamePhase === 'MR_WHITE_GUESS') ? 'is-flipped' : ''}`}>
+            <div className={`card-flip-inner ${(gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' || gamePhase === 'MR_WHITE_GUESS' || gamePhase === 'REVENGER_DECISION') ? 'is-flipped' : ''}`}>
               
               {/* FRONT FACE: Clue Order & Turn Indicator */}
               <div className="card-face card-front">
@@ -731,19 +807,29 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
               {/* BACK FACE: Voting Panel */}
               <div className="card-face card-back">
-                <VotingPanel
-                  players={players}
-                  myPlayerId={sessionId}
-                  votes={votes}
-                  lockedVotes={lockedVotes}
-                  voteResult={voteResult}
-                  onSelectVote={handleSelectVote}
-                  onLockVote={handleLockVote}
-                  submitting={submitting}
-                  eliminationResult={state.eliminationResult}
-                  onSourceRect={onSourceRect}
-                  currentRound={currentRound}
-                />
+                {gamePhase === 'REVENGER_DECISION' ? (
+                  <RevengerPanel
+                    players={players}
+                    myPlayerId={sessionId}
+                    revengerId={state.revengerId}
+                    onSubmit={handleRevengerSubmit}
+                    submitting={submitting}
+                  />
+                ) : (
+                  <VotingPanel
+                    players={players}
+                    myPlayerId={sessionId}
+                    votes={votes}
+                    lockedVotes={lockedVotes}
+                    voteResult={voteResult}
+                    onSelectVote={handleSelectVote}
+                    onLockVote={handleLockVote}
+                    submitting={submitting}
+                    eliminationResult={state.eliminationResult}
+                    onSourceRect={onSourceRect}
+                    currentRound={currentRound}
+                  />
+                )}
               </div>
               
             </div>
