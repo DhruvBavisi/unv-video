@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { connectSocket, getSocket } from '../game/socket.js'
 import { ensureIdentity } from '../game/identity.js'
 import Lobby from './components/Lobby.jsx'
+import WordChoice from './components/WordChoice.jsx'
+import DrawingPhase from './components/DrawingPhase.jsx'
 
 function SkribblError({ message }) {
   if (!message) return null
@@ -136,6 +138,12 @@ export default function SkribblApp({ onExit }) {
           onUpdateConfig={handleUpdateConfig}
         />
       )
+    }
+    if (roomState.phase === 'WORD_CHOICE') {
+      return <WordChoice room={roomState} onLeave={handleLeaveRoom} />
+    }
+    if (roomState.phase === 'DRAWING') {
+      return <DrawingPhase room={roomState} onLeave={handleLeaveRoom} />
     }
     return <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} />
   }

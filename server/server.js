@@ -796,6 +796,20 @@ io.on('connection', (socket) => {
   // ==========================================
   // SKRIBBL / DRAWGAME EVENTS
   // ==========================================
+
+  function broadcastDrawRoomState(room) {
+    // Sanitize state per player
+    for (const p of room.players) {
+      const isDrawer = room.currentDrawerId === p.id
+      const safeRoom = {
+        ...room,
+        wordChoices: isDrawer ? room.wordChoices : undefined,
+        selectedWord: isDrawer ? room.selectedWord : undefined,
+        strokes: undefined // We won't send full strokes in room-state to save bandwidth, unless requested/reconnect
+      }
+      io.to(p.id).emit('draw:room-state', safeRoom)
+    }
+  }
   
   socket.on('draw:create-room', ({ sessionId, playerName }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
@@ -862,8 +876,8 @@ io.on('connection', (socket) => {
       currentSessionId = sessionId
       socket.join(`draw:${normalizedId}`)
       connectPlayer(socket, sessionId)
-      callback?.({ room })
-      io.to(`draw:${normalizedId}`).emit('draw:room-state', room)
+      callback?.({ room: getSafeStateForPlayer(room, sessionId) })
+      broadcastDrawRoomState(room)
       return
     }
 
@@ -887,9 +901,19 @@ io.on('connection', (socket) => {
     currentSessionId = sessionId
     socket.join(`draw:${normalizedId}`)
     connectPlayer(socket, sessionId)
-    callback?.({ room })
-    io.to(`draw:${normalizedId}`).emit('draw:room-state', room)
+    callback?.({ room: getSafeStateForPlayer(room, sessionId) })
+    broadcastDrawRoomState(room)
   })
+
+  function getSafeStateForPlayer(room, playerId) {
+    const isDrawer = room.currentDrawerId === playerId
+    return {
+      ...room,
+      wordChoices: isDrawer ? room.wordChoices : undefined,
+      selectedWord: isDrawer ? room.selectedWord : undefined,
+      strokes: undefined
+    }
+  }
 
   socket.on('draw:leave-room', (callback) => {
     if (!currentSessionId) return callback?.({ error: 'NOT_IN_ROOM' })
@@ -920,9 +944,9 @@ io.on('connection', (socket) => {
           nextHost.isHost = true
           foundRoom.hostId = nextHost.id
         }
-        io.to(`draw:${foundRoomId}`).emit('draw:room-state', foundRoom)
+        broadcastDrawRoomState(foundRoom)
       } else {
-        io.to(`draw:${foundRoomId}`).emit('draw:room-state', foundRoom)
+        broadcastDrawRoomState(foundRoom)
       }
     }
     
@@ -962,8 +986,124 @@ io.on('connection', (socket) => {
       room.configuration.useCustomOnly = !!config.useCustomOnly
     }
     
-    io.to(`draw:${room.id}`).emit('draw:room-state', room)
+    broadcastDrawRoomState(room)
   })
+
+  socket.on('draw:start-game', () => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.hostId === currentSessionId) {
+        room = dr
+        break
+      }
+    }
+    if (!room || room.status !== 'LOBBY') return
+    if (room.players.length < 2) return // Need at least 2 players to start
+
+    // Set up turn order and basic game state
+    room.status = 'PLAYING'
+    room.phase = 'WORD_CHOICE'
+    room.round = 1
+    room.totalRounds = room.configuration.rounds
+    
+    // Deterministic shuffle using player IDs to sort
+    room.turnOrder = [...room.players].map(p => p.id).sort()
+    room.turnIndex = 0
+    room.currentDrawerId = room.turnOrder[room.turnIndex]
+    
+    room.wordChoices = generateWordChoices(room)
+    room.selectedWord = null
+    room.strokes = []
+    
+    broadcastDrawRoomState(room)
+  })
+
+  socket.on('draw:choose-word', ({ word }) => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.currentDrawerId === currentSessionId && dr.phase === 'WORD_CHOICE') {
+        room = dr
+        break
+      }
+    }
+    if (!room) return
+    if (!room.wordChoices.includes(word)) return // Validate choice
+
+    room.selectedWord = word
+    room.phase = 'DRAWING'
+    room.roundStartedAt = Date.now()
+    room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
+    room.strokes = [] // Clear canvas state
+
+    broadcastDrawRoomState(room)
+
+    // Schedule round end
+    setTimeout(() => {
+      // Very basic round end timer
+      // Realistically we need a more robust timer manager, but this works for P1
+      const currentRoom = drawRooms.get(room.id)
+      if (currentRoom && currentRoom.phase === 'DRAWING' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
+        currentRoom.phase = 'ROUND_REVEAL'
+        broadcastDrawRoomState(currentRoom)
+      }
+    }, room.configuration.drawTimeSec * 1000)
+  })
+
+  socket.on('draw:stroke', (strokeData) => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
+        room = dr
+        break
+      }
+    }
+    if (!room) return
+
+    // Throttle / Validation can go here
+    room.strokes.push(strokeData)
+    // Broadcast directly to room, skipping the drawer since they drew it locally
+    socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
+  })
+
+  socket.on('draw:clear-canvas', () => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
+        room = dr
+        break
+      }
+    }
+    if (!room) return
+
+    room.strokes = []
+    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+  })
+
+  socket.on('draw:request-strokes', (callback) => {
+    if (!currentSessionId) return callback?.({ strokes: [] })
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room) return callback?.({ strokes: [] })
+    callback?.({ strokes: room.strokes || [] })
+  })
+
+  // Simple mock word generator
+  function generateWordChoices(room) {
+    const defaultWords = ['ocean', 'birthday cake', 'rocket', 'telephone', 'glasses', 'robot']
+    // Pick N random words
+    const count = room.configuration.wordCount
+    const shuffled = defaultWords.sort(() => 0.5 - Math.random())
+    return shuffled.slice(0, count)
+  }
 
   socket.on('play-again', (callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })

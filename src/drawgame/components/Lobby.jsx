@@ -102,11 +102,10 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
 
   const hostDisabled = !isHost
 
-  // A simple deterministic color mapping for players based on their ID character
-  const getAvatarColorClass = (id) => {
-    const charCode = id.charCodeAt(id.length - 1)
-    const num = (charCode % 4) + 1
-    return `sk-avatar--${num}`
+  const handleStartGame = () => {
+    if (!isHost) return
+    const socket = getSocket()
+    socket.emit('draw:start-game')
   }
 
   return (
@@ -229,11 +228,18 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
             </svg>
           </button>
-          <button className="sk-btn" disabled={!isHost}>
-            {isHost ? 'START GAME' : 'WAITING FOR HOST'}
+          <button className="sk-btn" disabled={!isHost || room.players.length < 2} onClick={handleStartGame}>
+            {isHost ? (room.players.length < 2 ? 'NEED MORE PLAYERS' : 'START GAME') : 'WAITING FOR HOST'}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+export function getAvatarColorClass(id) {
+  if (!id) return 'sk-avatar--1'
+  const charCode = id.charCodeAt(id.length - 1)
+  const num = (charCode % 4) + 1
+  return `sk-avatar--${num}`
 }
