@@ -289,7 +289,12 @@ function scheduleWordChoiceTimeout(room) {
       currentRoom.currentDrawerId === room.currentDrawerId
     ) {
       // Auto-select the first word if timeout expires
-      const word = currentRoom.wordChoices[0] || 'emergency'
+      if (!currentRoom.wordChoices || currentRoom.wordChoices.length === 0) {
+        // No words available (pool exhausted) — skip this turn
+        endDrawRound(currentRoom)
+        return
+      }
+      const word = currentRoom.wordChoices[0]
       startDrawingTurn(currentRoom, word)
     }
   }, 15000)
@@ -434,6 +439,7 @@ function generateWordChoices(room) {
     customWords = room.configuration.customWords.split(',').map(w => w.trim()).filter(Boolean)
   }
 
+  // Build pool based on mode
   let pool = []
   if (room.configuration.useCustomOnly) {
     pool = [...customWords]
@@ -443,14 +449,31 @@ function generateWordChoices(room) {
     pool = [...defaultWords]
   }
   
+  // Deduplicate pool (case-insensitive, keep first occurrence)
+  const seen = new Set()
+  pool = pool.filter(w => {
+    const key = w.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  
+  // Remove already-used words (case-insensitive)
   const eligible = pool.filter(w => !room.usedWords.includes(w.toLowerCase()))
   
-  let source = eligible.length > 0 ? eligible : pool
-  if (source.length === 0) source = defaultWords
+  // Never fall back to used words or default words when pool is exhausted
+  if (eligible.length === 0) return []
 
-  const shuffled = source.sort(() => 0.5 - Math.random())
-  const count = room.configuration.wordCount || 3
+  // Fisher-Yates shuffle on a copy
+  const shuffled = [...eligible]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = temp
+  }
   
+  const count = room.configuration.wordCount || 3
   return shuffled.slice(0, count)
 }
 
