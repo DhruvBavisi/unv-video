@@ -5,29 +5,41 @@ export default function PlayerStrip({ room, currentDrawerId }) {
   return (
     <div style={{ 
       display: 'flex', 
-      overflowX: 'auto', 
-      gap: '12px', 
-      padding: '12px 16px', 
+      flexDirection: 'column',
+      overflowY: 'auto', 
+      height: '100%',
+      width: '100%',
       background: 'rgba(255, 255, 255, 0.5)',
-      backdropFilter: 'blur(10px)',
-      borderBottom: '1px solid rgba(255,255,255,0.8)',
       WebkitOverflowScrolling: 'touch',
       scrollbarWidth: 'none',
-      msOverflowStyle: 'none',
-      zIndex: 10
+      msOverflowStyle: 'none'
     }}>
       {room.players.map(p => {
         const isDrawer = p.id === currentDrawerId
+        const isCurrent = p.id === room.currentDrawerId // or maybe use the sessionId to highlight "You"?
         return (
-          <div key={p.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '60px', opacity: p.isConnected ? 1 : 0.5 }}>
-            <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ width: '40px', height: '40px', fontSize: '1.2rem', marginBottom: '4px', margin: '0 0 4px 0', border: isDrawer ? '3px solid var(--sk-primary)' : 'none' }}>
+          <div key={p.id} style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            padding: '8px 12px',
+            opacity: p.isConnected ? 1 : 0.5,
+            borderBottom: '1px solid rgba(0,0,0,0.05)',
+            background: isCurrent ? 'rgba(97, 116, 244, 0.1)' : 'transparent'
+          }}>
+            <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ 
+              width: '36px', height: '36px', fontSize: '1.1rem', flexShrink: 0,
+              border: isDrawer ? '2px solid var(--sk-primary)' : 'none' 
+            }}>
               {p.name.charAt(0).toUpperCase()}
             </div>
-            <div style={{ fontSize: '0.7rem', fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60px', textAlign: 'center' }}>
-              {p.name}
-            </div>
-            <div style={{ fontSize: '0.65rem', fontFamily: 'var(--sk-font-body)', color: 'var(--sk-muted)', fontWeight: 700 }}>
-              {p.score} pt
+            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ fontSize: '0.85rem', fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {p.name} {isDrawer && <span style={{ fontSize: '12px' }}>✏️</span>}
+              </div>
+              <div style={{ fontSize: '0.75rem', fontFamily: 'var(--sk-font-body)', color: 'var(--sk-muted)', fontWeight: 700 }}>
+                {p.score} pts
+              </div>
             </div>
           </div>
         )

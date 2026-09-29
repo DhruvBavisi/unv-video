@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { getSocket } from '../../game/socket.js'
 import { ensureIdentity } from '../../game/identity.js'
 import PlayerStrip from './PlayerStrip.jsx'
@@ -13,6 +13,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const [color, setColor] = useState(DRAW_COLORS[0].value)
   const [size, setSize] = useState(8)
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
+  const [guessInput, setGuessInput] = useState('')
   
   const strokesRef = useRef([])
   const canvasRef = useRef(null)
@@ -69,12 +70,12 @@ export default function DrawingPhase({ room, onLeave }) {
     }
   }, [])
 
-  const handleStroke = (strokeData) => {
+  const handleStroke = useCallback((strokeData) => {
     const socket = getSocket()
     socket.emit('draw:stroke', strokeData)
     strokesRef.current.push(strokeData)
     // The drawer already imperatively drew this locally inside DrawingCanvas!
-  }
+  }, [])
 
   const handleClearCanvas = () => {
     const socket = getSocket()
@@ -88,9 +89,12 @@ export default function DrawingPhase({ room, onLeave }) {
     socket.emit('draw:choose-word', { word })
   }
 
-  const handleGuess = (msg) => {
+  const handleGuessSubmit = (e) => {
+    e.preventDefault()
+    if (!guessInput.trim() || isDrawer) return
     const socket = getSocket()
-    socket.emit('draw:guess', { message: msg })
+    socket.emit('draw:guess', { message: guessInput.trim() })
+    setGuessInput('')
   }
 
   // Formatting Drawer Text
@@ -100,15 +104,13 @@ export default function DrawingPhase({ room, onLeave }) {
   const topBarColor = timeRemaining <= 10 ? 'var(--sk-coral)' : 'var(--sk-primary)'
 
   return (
-    <div className="sk-view" style={{ overflow: 'hidden' }}>
+    <div className="sk-view" style={{ height: '100dvh', minHeight: 0, overflow: 'hidden' }}>
       {/* Background (light layout) */}
       <div className="sk-bg-shapes">
         <div className="sk-bg-shape sk-bg-shape-1" />
         <div className="sk-bg-shape sk-bg-shape-2" />
         <div className="sk-bg-shape sk-bg-shape-3" />
       </div>
-
-      <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} />
 
       {/* TOP BAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 10 }}>
@@ -138,7 +140,7 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* CANVAS AREA */}
-      <div style={{ flex: 1, position: 'relative', background: 'var(--sk-canvas)', cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default', zIndex: 5 }}>
+      <div style={{ flex: 1, position: 'relative', minHeight: 0, background: 'var(--sk-canvas)', cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default', zIndex: 5 }}>
         <div style={{ position: 'absolute', inset: 0, opacity: room.phase === 'WORD_CHOICE' ? 0.3 : 1, transition: 'opacity 300ms ease', pointerEvents: room.phase === 'WORD_CHOICE' ? 'none' : 'auto' }}>
           <DrawingCanvas 
             ref={canvasRef}
@@ -200,23 +202,59 @@ export default function DrawingPhase({ room, onLeave }) {
         )}
       </div>
 
+      {/* LOWER INFO SECTION: Players & Chat */}
+      <div style={{ 
+        display: 'flex', 
+        height: '160px', 
+        flexShrink: 0,
+        borderTop: '1px solid rgba(0,0,0,0.05)', 
+        background: 'rgba(255, 255, 255, 0.8)',
+        zIndex: 10
+      }}>
+        {/* Left Column: Player List */}
+        <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
+          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} />
+        </div>
+        
+        {/* Right Column: Chat Box */}
+        <div style={{ flex: '0 0 55%', minWidth: 0 }}>
+          <ChatBox room={room} />
+        </div>
+      </div>
+
       {/* BOTTOM CONTROLS */}
-      {isDrawer ? (
-        <DrawingToolbar 
-          color={color} 
-          setColor={setColor} 
-          size={size} 
-          setSize={setSize} 
-          onClear={handleClearCanvas} 
-        />
-      ) : (
-        <ChatBox 
-          room={room} 
-          isDrawer={false} 
-          onGuess={handleGuess} 
-          sessionId={sessionId}
-        />
-      )}
+      <div style={{ flexShrink: 0, zIndex: 10 }}>
+        {(isDrawer && room.phase === 'DRAWING') ? (
+          <DrawingToolbar 
+            color={color} 
+            setColor={setColor} 
+            size={size} 
+            setSize={setSize} 
+            onClear={handleClearCanvas} 
+          />
+        ) : (!isDrawer ? (
+          <form onSubmit={handleGuessSubmit} style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            padding: '8px 16px calc(8px + env(safe-area-inset-bottom, 0px))',
+            background: 'var(--sk-surface)'
+          }}>
+            <input 
+              type="text" 
+              placeholder="Type your guess..."
+              className="sk-input"
+              style={{ margin: 0, padding: '12px 16px', fontSize: '1rem', flex: 1 }}
+              value={guessInput}
+              onChange={e => setGuessInput(e.target.value)}
+              disabled={room.guessedPlayerIds?.includes(sessionId)}
+              maxLength={120}
+            />
+            <button type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
+              SEND
+            </button>
+          </form>
+        ) : null)}
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import React, { useRef, useEffect, forwardRef, useImperativeHandle, memo } from 'react'
 
 const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
   const canvasRef = useRef(null)
@@ -174,4 +174,4 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
   )
 })
 
-export default DrawingCanvas
+export default memo(DrawingCanvas)
