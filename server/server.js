@@ -1040,6 +1040,7 @@ io.on('connection', (socket) => {
       }
     }
     if (!room) return
+    if (room.selectedWord) return // Prevent duplicate selection
     if (!room.wordChoices.includes(word)) return // Validate choice
 
     room.selectedWord = word
@@ -1073,7 +1074,19 @@ io.on('connection', (socket) => {
     }
     if (!room) return
 
-    // Throttle / Validation can go here
+    // Stroke Validation
+    if (!strokeData || typeof strokeData !== 'object') return
+    const allowedColors = ['#26334A','#FFFFFF','#6174F4','#FF6F70','#FFC857','#55D6B0','#65C7F3','#A98AF5']
+    if (!allowedColors.includes(strokeData.color)) return
+    if (typeof strokeData.size !== 'number' || strokeData.size < 1 || strokeData.size > 100) return
+    if (!Array.isArray(strokeData.points) || strokeData.points.length > 500) return
+    
+    for (const pt of strokeData.points) {
+      if (typeof pt.x !== 'number' || typeof pt.y !== 'number' || pt.x < -0.2 || pt.x > 1.2 || pt.y < -0.2 || pt.y > 1.2) {
+        return // Reject malformed stroke entirely
+      }
+    }
+
     room.strokes.push(strokeData)
     // Broadcast directly to room, skipping the drawer since they drew it locally
     socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)

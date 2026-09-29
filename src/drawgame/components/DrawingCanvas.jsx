@@ -15,7 +15,12 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
     ctx.lineJoin = 'round'
     ctx.beginPath()
     ctx.moveTo(start.x, start.y)
-    ctx.lineTo(end.x, end.y)
+    // Add tiny epsilon if start === end so dot always renders
+    if (start.x === end.x && start.y === end.y) {
+      ctx.lineTo(end.x + 0.1, end.y)
+    } else {
+      ctx.lineTo(end.x, end.y)
+    }
     ctx.stroke()
   }
 
@@ -36,10 +41,14 @@ export default function DrawingCanvas({ color, size, isDrawer, onStroke, strokes
         const w = rect.width
         const h = rect.height
         let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
-        for (let i = 1; i < stroke.points.length; i++) {
-          let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
-          drawSegment(ctx, start, end, stroke.color, stroke.size)
-          start = end
+        if (stroke.points.length === 1) {
+          drawSegment(ctx, start, start, stroke.color, stroke.size)
+        } else {
+          for (let i = 1; i < stroke.points.length; i++) {
+            let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
+            drawSegment(ctx, start, end, stroke.color, stroke.size)
+            start = end
+          }
         }
       })
     }
