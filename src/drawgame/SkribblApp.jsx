@@ -138,7 +138,7 @@ export default function SkribblApp({ onExit }) {
         />
       )
     }
-    if (roomState.phase === 'WORD_CHOICE' || roomState.phase === 'DRAWING') {
+    if (['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)) {
       return <DrawingPhase room={roomState} onLeave={handleLeaveRoom} />
     }
     return <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} />

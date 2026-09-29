@@ -200,6 +200,54 @@ export default function DrawingPhase({ room, onLeave }) {
             )}
           </div>
         )}
+        {/* Round Reveal Overlay */}
+        {room.phase === 'ROUND_REVEAL' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)' }}>
+            <div style={{ width: '100%', maxWidth: '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
+              <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
+                <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', marginBottom: '8px', fontSize: '1.4rem' }}>THE WORD WAS</h2>
+                <div style={{ fontSize: '2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px' }}>
+                  {room.selectedWord}
+                </div>
+                <div style={{ fontSize: '1.1rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 'bold' }}>
+                  {room.guessedPlayerIds && room.guessedPlayerIds.length > 0 
+                    ? `${room.guessedPlayerIds.length} player${room.guessedPlayerIds.length === 1 ? '' : 's'} guessed correctly!` 
+                    : 'Nobody guessed correctly!'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Game Result Overlay */}
+        {room.phase === 'GAME_RESULT' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 30, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)' }}>
+            <h1 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '2.5rem', marginBottom: '20px' }}>GAME OVER</h1>
+            <div className="sk-card" style={{ width: '100%', maxWidth: '400px', maxHeight: '60%', overflowY: 'auto' }}>
+              {(() => {
+                const sorted = [...room.players].sort((a, b) => b.score - a.score)
+                return sorted.map((p, idx) => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: idx < sorted.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none', background: idx === 0 ? 'rgba(255, 200, 87, 0.2)' : 'transparent', borderRadius: idx === 0 ? '8px' : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontFamily: 'var(--sk-font-display)', fontSize: '1.2rem', color: idx === 0 ? '#FFC857' : 'var(--sk-muted)' }}>#{idx + 1}</span>
+                      <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)' }}>{p.name} {p.id === sessionId && '(You)'}</span>
+                    </div>
+                    <div style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-primary)' }}>{p.score} pts</div>
+                  </div>
+                ))
+              })()}
+            </div>
+            {room.hostId === sessionId ? (
+              <button className="sk-btn" style={{ marginTop: '24px', padding: '16px 32px' }} onClick={() => getSocket().emit('draw:play-again')}>
+                PLAY AGAIN
+              </button>
+            ) : (
+              <div style={{ marginTop: '24px', color: 'var(--sk-muted)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
+                Waiting for host to play again...
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* LOWER INFO SECTION: Players & Chat */}
@@ -213,7 +261,7 @@ export default function DrawingPhase({ room, onLeave }) {
       }}>
         {/* Left Column: Player List */}
         <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
-          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} />
+          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} sessionId={sessionId} />
         </div>
         
         {/* Right Column: Chat Box */}

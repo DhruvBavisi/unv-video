@@ -1030,6 +1030,82 @@ io.on('connection', (socket) => {
     broadcastDrawRoomState(room)
   })
 
+  function endDrawRound(room) {
+    if (room.phase !== 'DRAWING') return
+    
+    room.phase = 'ROUND_REVEAL'
+    
+    // Calculate drawer score
+    const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
+    let drawerPoints = 0
+    if (drawerPlayer && room.turnScores) {
+      const sum = Object.values(room.turnScores).reduce((a, b) => a + b, 0)
+      drawerPoints = Math.round(sum * 0.5)
+      drawerPlayer.score += drawerPoints
+    }
+    
+    room.turnScores = room.turnScores || {}
+    room.turnScores[room.currentDrawerId] = drawerPoints
+    
+    // Add system message
+    room.chatMessages.push({
+      id: crypto.randomUUID(),
+      type: 'SYSTEM',
+      message: `The word was ${room.selectedWord}.`
+    })
+    
+    broadcastDrawRoomState(room)
+    
+    // Schedule next turn
+    setTimeout(() => {
+      const currentRoom = drawRooms.get(room.id)
+      if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
+        currentRoom.turnIndex++
+        
+        if (currentRoom.turnIndex < currentRoom.turnOrder.length) {
+          // Next drawer
+          currentRoom.currentDrawerId = currentRoom.turnOrder[currentRoom.turnIndex]
+          currentRoom.phase = 'WORD_CHOICE'
+          currentRoom.wordChoices = generateWordChoices(currentRoom)
+          currentRoom.selectedWord = null
+          currentRoom.strokes = []
+          currentRoom.guessedPlayerIds = []
+          currentRoom.turnScores = {}
+          broadcastDrawRoomState(currentRoom)
+        } else {
+          // End of round
+          if (currentRoom.round < currentRoom.totalRounds) {
+            currentRoom.round++
+            
+            // Fisher-Yates shuffle using player IDs
+            const playerIds = [...currentRoom.players].map(p => p.id)
+            for (let i = playerIds.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1))
+              const temp = playerIds[i]
+              playerIds[i] = playerIds[j]
+              playerIds[j] = temp
+            }
+            currentRoom.turnOrder = playerIds
+            currentRoom.turnIndex = 0
+            currentRoom.currentDrawerId = currentRoom.turnOrder[currentRoom.turnIndex]
+            
+            currentRoom.phase = 'WORD_CHOICE'
+            currentRoom.wordChoices = generateWordChoices(currentRoom)
+            currentRoom.selectedWord = null
+            currentRoom.strokes = []
+            currentRoom.guessedPlayerIds = []
+            currentRoom.turnScores = {}
+            broadcastDrawRoomState(currentRoom)
+          } else {
+            // End of game
+            currentRoom.phase = 'GAME_RESULT'
+            broadcastDrawRoomState(currentRoom)
+          }
+        }
+      }
+    }, 5000)
+  }
+
   socket.on('draw:choose-word', ({ word }) => {
     if (!currentSessionId) return
     let room = null
@@ -1062,12 +1138,9 @@ io.on('connection', (socket) => {
 
     // Schedule round end
     setTimeout(() => {
-      // Very basic round end timer
-      // Realistically we need a more robust timer manager, but this works for P1
       const currentRoom = drawRooms.get(room.id)
       if (currentRoom && currentRoom.phase === 'DRAWING' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
-        currentRoom.phase = 'ROUND_REVEAL'
-        broadcastDrawRoomState(currentRoom)
+        endDrawRound(currentRoom)
       }
     }, room.configuration.drawTimeSec * 1000)
   })
@@ -1143,12 +1216,26 @@ io.on('connection', (socket) => {
     if (!room.chatMessages) room.chatMessages = []
     if (!room.guessedPlayerIds) room.guessedPlayerIds = []
 
-    if (room.guessedPlayerIds.includes(currentSessionId)) {
-      return // Ignore guesses from players who already guessed correctly
-    }
-
     const normGuess = normalizeGuess(trimmed)
     const normTarget = normalizeGuess(room.selectedWord)
+
+    if (room.guessedPlayerIds.includes(currentSessionId)) {
+      if (normGuess === normTarget) {
+        return // Drop duplicate correct guesses
+      }
+      // Otherwise, allow as normal chat
+      const chatMsg = {
+        id: crypto.randomUUID(),
+        playerId: currentSessionId,
+        playerName: player.name,
+        type: 'CHAT',
+        message: trimmed
+      }
+      room.chatMessages.push(chatMsg)
+      if (room.chatMessages.length > 100) room.chatMessages.shift()
+      broadcastDrawRoomState(room)
+      return
+    }
 
     let msgType = 'CHAT'
     
@@ -1170,6 +1257,20 @@ io.on('connection', (socket) => {
     if (normGuess === normTarget) {
       msgType = 'CORRECT'
       room.guessedPlayerIds.push(currentSessionId)
+      
+      const timeRemaining = Math.max(0, (room.roundEndsAt - Date.now()) / 1000)
+      const basePoints = Math.round(500 * timeRemaining / room.configuration.drawTimeSec)
+      
+      const order = room.guessedPlayerIds.length
+      let multiplier = 0.50
+      if (order === 1) multiplier = 1.00
+      else if (order === 2) multiplier = 0.80
+      else if (order === 3) multiplier = 0.65
+      
+      const points = Math.max(50, Math.round(basePoints * multiplier))
+      if (!room.turnScores) room.turnScores = {}
+      room.turnScores[currentSessionId] = points
+      player.score += points
     } else if (isClose(normGuess, normTarget)) {
       msgType = 'CLOSE'
     }
@@ -1201,6 +1302,39 @@ io.on('connection', (socket) => {
     }
     if (!room) return callback?.({ strokes: [] })
     callback?.({ strokes: room.strokes || [] })
+  })
+
+  socket.on('draw:play-again', (callback) => {
+    if (!currentSessionId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.hostId === currentSessionId) {
+        room = dr
+        break
+      }
+    }
+    if (!room) return callback?.({ success: false, error: 'NOT_HOST_OR_ROOM_NOT_FOUND' })
+    if (room.phase !== 'GAME_RESULT') return callback?.({ success: false, error: 'GAME_NOT_ENDED' })
+
+    room.status = 'LOBBY'
+    room.phase = 'LOBBY'
+    room.round = 1
+    room.turnOrder = []
+    room.turnIndex = 0
+    room.currentDrawerId = null
+    room.selectedWord = null
+    room.wordChoices = []
+    room.strokes = []
+    room.chatMessages = []
+    room.guessedPlayerIds = []
+    room.turnScores = {}
+    
+    room.players.forEach(p => {
+      p.score = 0
+    })
+
+    broadcastDrawRoomState(room)
+    callback?.({ success: true })
   })
 
   // Simple mock word generator

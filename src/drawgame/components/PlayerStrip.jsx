@@ -1,7 +1,7 @@
 import React from 'react'
 import { getAvatarColorClass } from './Lobby.jsx'
 
-export default function PlayerStrip({ room, currentDrawerId }) {
+export default function PlayerStrip({ room, currentDrawerId, sessionId }) {
   return (
     <div style={{ 
       display: 'flex', 
@@ -16,7 +16,7 @@ export default function PlayerStrip({ room, currentDrawerId }) {
     }}>
       {room.players.map(p => {
         const isDrawer = p.id === currentDrawerId
-        const isCurrent = p.id === room.currentDrawerId // or maybe use the sessionId to highlight "You"?
+        const isCurrent = p.id === sessionId
         return (
           <div key={p.id} style={{ 
             display: 'flex', 
