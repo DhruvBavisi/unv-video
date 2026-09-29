@@ -948,6 +948,7 @@ io.on('connection', (socket) => {
     room.submittedCluePlayerIds = []
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
+    room.revengerId = null
 
     room.players.forEach((p) => {
       p.eliminated = false
@@ -1027,6 +1028,7 @@ io.on('connection', (socket) => {
     room.submittedCluePlayerIds = []
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
+    room.revengerId = null
 
     room.players.forEach(p => {
       p.status = p.isHost ? 'READY' : 'JOINED'
@@ -1598,12 +1600,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
           message: `REVENGER\n${revenger?.name || 'The Revenger'} faded away without taking anyone down`
         })
         
-        broadcastRoom(currentRoom)
-        
-        const delay = (currentRoom.mrWhiteQueue && currentRoom.mrWhiteQueue.length > 0) ? 500 : 500
-        setTimeout(() => {
-          advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
-        }, delay)
+        advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
       }, 15000)
       
       broadcastRoom(room)

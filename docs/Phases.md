@@ -456,7 +456,7 @@ Elimination-triggered secondary elimination, this time player-chosen rather than
 - `advanceFromElimination`: if the eliminated player is the Revenger (eliminated by vote), the game enters the `REVENGER_DECISION` state.
 - A private target selection UI is rendered on the Revenger's screen, scoped to remaining active players, excluding self. This natively uses `localSecret` to preserve privacy without leaking `revengerId` to other clients.
 - The Revenger's chosen target is eliminated immediately once submitted via `submit-revenger-decision`; then Mr. White-guess checks, Lovers cascades, and win checks run natively against the resulting state.
-- A server-authoritative 15-second timeout handles disconnects or no response. If the Revenger fails to choose, no target is eliminated and the game safely resumes.
+- A server-authoritative 15-second timeout handles disconnects or no response. If the Revenger fails to choose, no target is eliminated and the game cleanly invokes `advanceFromElimination()` without UI glitches. `room.revengerId` is also rigorously cleared on all game resets.
 - Minimum 5 active players.
 
 **Implementation Note:**
