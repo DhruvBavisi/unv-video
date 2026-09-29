@@ -3,6 +3,7 @@ import Button from '../components/Button.jsx'
 import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
+import { SPECIAL_ROLES } from '../data/specialRoles.js'
 
 const ERROR_MESSAGES = {
   NOT_YOUR_TURN: 'It is not your turn.',
@@ -22,9 +23,11 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const role = localSecret?.role
   const word = localSecret?.word
+  const specialRoleKey = localSecret?.specialRole
   const roleVisible = revealRoles === true && role != null
   const roleLabel = roleVisible ? role.replace('_', ' ') : '???'
   const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE'
+  const specialRoleMeta = specialRoleKey ? SPECIAL_ROLES.find(r => r.key === specialRoleKey) : null
 
   return (
     <div className={`clue-panel__identity${roleVisible ? ` clue-panel__identity--${role.toLowerCase()}` : ''} ${isExpanded ? 'is-expanded' : 'is-collapsed'}`}>
@@ -56,6 +59,21 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             )}
           </div>
         )}
+        
+        {specialRoleMeta && (
+          <div className="clue-panel__secret clue-panel__special-role" style={{ marginTop: '16px' }}>
+            <span className="clue-panel__word-label">Special Role</span>
+            <div className="clue-panel__word-box" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+              {specialRoleMeta.name}
+            </div>
+            {specialRoleMeta.avatar && (
+              <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
+                <img src={specialRoleMeta.avatar.replace('.png', '-bg.png')} alt={specialRoleMeta.name} style={{ maxHeight: '90px', objectFit: 'contain' }} />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="clue-panel__identity-actions">
           <Button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}>HIDE</Button>
         </div>

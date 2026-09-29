@@ -15,6 +15,7 @@ function createBot(roomId, botName) {
   
   let myRole = null
   let myWord = null
+  let mySpecialRole = null
   let hasLockedVote = false
   let hasToggledReady = false
   
@@ -27,9 +28,10 @@ function createBot(roomId, botName) {
     })
   })
 
-  socket.on('role-assigned', ({ role, word }) => {
+  socket.on('role-assigned', ({ role, word, specialRole }) => {
     myRole = role
     myWord = word
+    mySpecialRole = specialRole || 'none'
   })
 
   socket.on('room-state', (room) => {
@@ -66,7 +68,7 @@ function createBot(roomId, botName) {
       hasLockedVote = false // reset for vote phase
       if (room.currentTurnPlayerId === sessionId && !room.submittedCluePlayerIds.includes(sessionId)) {
         setTimeout(() => {
-          const clue = myRole === 'MR_WHITE' ? 'I know nothing' : `I see a ${myWord || 'thing'}`
+          const clue = `ROLE: ${myRole} | SPECIAL: ${mySpecialRole || 'none'}`
           socket.emit('submit-clue', { clue })
         }, 1000 + Math.random() * 1500)
       }
