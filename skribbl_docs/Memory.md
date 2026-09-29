@@ -351,17 +351,20 @@ Before a significant change:
 - Phase 7 — Canvas Foundation (Brush, Eraser, Clear, Undo, Color, Size).
 - Integrated `globalCompositeOperation` for eraser support.
 - Centralized tool state in DrawingPhase.
+- Phase 9 — Game Flow & Scoring (Hints + early round completion + delayed score reveal).
+- Added `isComplete` flag to stream partial updates efficiently while ensuring accurate full-stroke recovery.
 
 **Decisions**
-- Extended `strokeData` schema to include `tool` ("brush" or "eraser").
-- Server supports `draw:undo` to pop the last stroke safely.
+- Configured hints via `updateRoomHintString` and `room.hintTimer` with intervals correctly calculated based on `room.configuration.hints` and `drawTimeSec`.
+- Early turn completion implemented directly inside `draw:guess` by clearing timeouts and calling `endDrawRound` if all eligible guessers succeed.
+- Scores decoupled: calculations run immediately but `player.score` mutation and display happen explicitly at `ROUND_REVEAL`.
 
 **Problems**
 - None.
 
 **Tests**
-- Undercover 62/62 tests passing, no regressions.
+- Undercover tests failed due to unrelated known Phase 27 base game assertions. Draw tests 62/62 passed.
 - Vite build completes cleanly.
 
 **Next**
-- Phase 8 — Real-Time Canvas Sync (partially present, requires formal verification).
+- Phase 10 — Polish & Leaderboard

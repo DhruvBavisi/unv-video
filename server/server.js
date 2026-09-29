@@ -300,7 +300,19 @@ function scheduleWordChoiceTimeout(room) {
   }, 15000)
 }
 
+function updateRoomHintString(room) {
+  if (!room.selectedWord || !room.hintRevealed) return
+  let str = ''
+  for (let i = 0; i < room.selectedWord.length; i++) {
+    str += room.hintRevealed[i] ? room.selectedWord[i] : '_'
+  }
+  room.hint = str
+}
+
 function startDrawingTurn(room, word) {
+  if (room.turnTimeout) clearTimeout(room.turnTimeout)
+  if (room.hintTimer) clearInterval(room.hintTimer)
+
   room.selectedWord = word
   room.usedWords = room.usedWords || []
   if (word && !room.usedWords.includes(word.toLowerCase())) {
@@ -312,7 +324,49 @@ function startDrawingTurn(room, word) {
   room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
   room.strokes = []
   room.guessedPlayerIds = []
+  room.turnScores = {}
   
+  // Initialize Hint System
+  const numHints = room.configuration.hints ?? 2
+  const isHidden = room.configuration.gameMode === 'hidden'
+  
+  if (isHidden || numHints <= 0 || !word) {
+    room.hint = word ? word.replace(/[a-zA-Z0-9]/g, '_') : ''
+  } else {
+    room.hintRevealed = new Array(word.length).fill(false)
+    const revealIndices = []
+    for (let i = 0; i < word.length; i++) {
+      if (/[^a-zA-Z0-9]/.test(word[i])) {
+        room.hintRevealed[i] = true
+      } else {
+        revealIndices.push(i)
+      }
+    }
+    
+    // Shuffle indices
+    for (let i = revealIndices.length - 1; i > 0; i--) {
+       const j = Math.floor(Math.random() * (i + 1));
+       [revealIndices[i], revealIndices[j]] = [revealIndices[j], revealIndices[i]];
+    }
+    
+    const hintsToGive = Math.min(numHints, Math.max(0, revealIndices.length - 1))
+    if (hintsToGive > 0) {
+      const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (hintsToGive + 1)
+      let hintsGiven = 0
+      room.hintTimer = setInterval(() => {
+        if (room.phase !== 'DRAWING') return clearInterval(room.hintTimer)
+        if (hintsGiven >= hintsToGive) return clearInterval(room.hintTimer)
+        
+        const idx = revealIndices[hintsGiven]
+        room.hintRevealed[idx] = true
+        hintsGiven++
+        updateRoomHintString(room)
+        broadcastDrawRoomState(room)
+      }, hintIntervalMs)
+    }
+    updateRoomHintString(room)
+  }
+
   const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
   const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
   room.chatMessages = [{
@@ -328,7 +382,7 @@ function startDrawingTurn(room, word) {
   const expectedRound = room.round
   const expectedDrawerId = room.currentDrawerId
   
-  setTimeout(() => {
+  room.turnTimeout = setTimeout(() => {
     const checkRoom = drawRooms.get(room.id)
     if (checkRoom && checkRoom.phase === 'DRAWING' && 
         checkRoom.round === expectedRound && 
@@ -342,19 +396,39 @@ function startDrawingTurn(room, word) {
 function endDrawRound(room) {
   if (room.phase !== 'DRAWING' && room.phase !== 'WORD_CHOICE') return
   
+  if (room.turnTimeout) {
+    clearTimeout(room.turnTimeout)
+    room.turnTimeout = null
+  }
+  if (room.hintTimer) {
+    clearInterval(room.hintTimer)
+    room.hintTimer = null
+  }
+
   room.phase = 'ROUND_REVEAL'
   
-  // Calculate drawer score
+  // Calculate and apply points
   const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
   let drawerPoints = 0
-  if (drawerPlayer && room.turnScores) {
+  
+  room.turnScores = room.turnScores || {}
+  
+  if (drawerPlayer) {
     const sum = Object.values(room.turnScores).reduce((a, b) => a + b, 0)
     drawerPoints = Math.round(sum * 0.5)
     drawerPlayer.score += drawerPoints
+    room.turnScores[room.currentDrawerId] = drawerPoints
   }
   
-  room.turnScores = room.turnScores || {}
-  room.turnScores[room.currentDrawerId] = drawerPoints
+  // Apply guesser points to persistent totals exactly once here
+  for (const [pid, pts] of Object.entries(room.turnScores)) {
+    if (pid !== room.currentDrawerId) {
+      const p = room.players.find(x => x.id === pid)
+      if (p) {
+        p.score += pts
+      }
+    }
+  }
   
   // Add system message
   room.chatMessages.push({
@@ -1463,7 +1537,26 @@ io.on('connection', (socket) => {
       const points = Math.max(50, Math.round(basePoints * multiplier))
       if (!room.turnScores) room.turnScores = {}
       room.turnScores[currentSessionId] = points
-      player.score += points
+      // player.score += points // DO NOT apply yet, wait for ROUND_REVEAL
+      
+      const eligiblePlayers = room.players.filter(p => !p.spectator && p.id !== room.currentDrawerId)
+      const isEarlyFinish = room.guessedPlayerIds.length >= eligiblePlayers.length
+      
+      if (isEarlyFinish) {
+        // Broadcast the message FIRST so it shows in chat, then trigger round end.
+        const chatMsg = {
+          id: crypto.randomUUID(),
+          playerId: currentSessionId,
+          playerName: player.name,
+          type: msgType,
+          message: null
+        }
+        room.chatMessages.push(chatMsg)
+        if (room.chatMessages.length > 100) room.chatMessages.shift()
+        
+        endDrawRound(room)
+        return // avoid double-broadcasting below
+      }
     } else if (isClose(normGuess, normTarget)) {
       msgType = 'CLOSE'
     }

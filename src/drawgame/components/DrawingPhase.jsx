@@ -162,7 +162,9 @@ export default function DrawingPhase({ room, onLeave }) {
             {isDrawer ? (
               <span>Draw: <strong style={{ color: 'var(--sk-primary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{room.selectedWord}</strong></span>
             ) : (
-              <span><strong>{drawerName}</strong> is drawing</span>
+              <span style={{ letterSpacing: '0.2em', fontFamily: 'monospace', fontWeight: 800, fontSize: '1.4rem', textTransform: 'uppercase' }}>
+                {room.hint || (room.selectedWord ? room.selectedWord.replace(/[a-zA-Z0-9]/g, '_') : '')}
+              </span>
             )}
           </div>
         </div>
@@ -245,17 +247,29 @@ export default function DrawingPhase({ room, onLeave }) {
         )}
         {/* Round Reveal Overlay */}
         {room.phase === 'ROUND_REVEAL' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
             <div style={{ width: '100%', maxWidth: '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-              <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
+              <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
                 <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', marginBottom: '8px', fontSize: '1.4rem' }}>THE WORD WAS</h2>
                 <div style={{ fontSize: '2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px' }}>
                   {room.selectedWord}
                 </div>
-                <div style={{ fontSize: '1.1rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 'bold' }}>
-                  {room.guessedPlayerIds && room.guessedPlayerIds.length > 0 
-                    ? `${room.guessedPlayerIds.length} player${room.guessedPlayerIds.length === 1 ? '' : 's'} guessed correctly!` 
-                    : 'Nobody guessed correctly!'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {room.players.filter(p => !p.spectator).map(p => {
+                    const pts = room.turnScores?.[p.id] || 0
+                    const isCorrect = pts > 0
+                    const isDrawerRow = p.id === room.currentDrawerId
+                    return (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
+                        <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 700, color: 'var(--sk-text)' }}>
+                          {p.name} {isDrawerRow && <span style={{ color: 'var(--sk-muted)', fontSize: '0.85em' }}>(Drawer)</span>}
+                        </span>
+                        <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                          +{pts}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
