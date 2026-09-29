@@ -110,23 +110,15 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
   const getPos = (e) => {
     const cvs = canvasRef.current
     const rect = cvs.getBoundingClientRect()
-    let clientX, clientY
-    if (e.touches && e.touches.length > 0) {
-      clientX = e.touches[0].clientX
-      clientY = e.touches[0].clientY
-    } else {
-      clientX = e.clientX
-      clientY = e.clientY
-    }
     return {
-      x: (clientX - rect.left),
-      y: (clientY - rect.top)
+      x: (e.clientX - rect.left),
+      y: (e.clientY - rect.top)
     }
   }
 
   const handleStart = (e) => {
     if (!isDrawer) return
-    if (e.cancelable) e.preventDefault()
+    if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId)
     isDrawing.current = true
     const pos = getPos(e)
     lastPos.current = pos
@@ -143,7 +135,6 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
 
   const handleMove = (e) => {
     if (!isDrawing.current || !isDrawer) return
-    if (e.cancelable) e.preventDefault()
     
     const pos = getPos(e)
     const cvs = canvasRef.current
@@ -161,24 +152,23 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
     if (onStroke) onStroke(stroke)
   }
 
-  const handleEnd = () => {
+  const handleEnd = (e) => {
     if (!isDrawing.current || !isDrawer) return
+    if (e.target.releasePointerCapture) {
+      try { e.target.releasePointerCapture(e.pointerId) } catch (err) {}
+    }
     isDrawing.current = false
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', touchAction: 'none' }}>
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, overflow: 'hidden', touchAction: 'none' }}>
       <canvas
         ref={canvasRef}
         style={{ display: 'block', touchAction: 'none' }}
-        onMouseDown={handleStart}
-        onMouseMove={handleMove}
-        onMouseUp={handleEnd}
-        onMouseOut={handleEnd}
-        onTouchStart={handleStart}
-        onTouchMove={handleMove}
-        onTouchEnd={handleEnd}
-        onTouchCancel={handleEnd}
+        onPointerDown={handleStart}
+        onPointerMove={handleMove}
+        onPointerUp={handleEnd}
+        onPointerCancel={handleEnd}
       />
     </div>
   )
