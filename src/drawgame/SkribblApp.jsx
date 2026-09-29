@@ -85,9 +85,16 @@ export default function SkribblApp({ onExit }) {
       setError(getFriendlyError(err.error || err.message))
     })
 
+    socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
+      import('../game/identity.js').then(({ setResumeToken }) => {
+        setResumeToken(resumeToken, roomId, playerName)
+      })
+    })
+
     return () => {
       socket.off('draw:room-state')
       socket.off('draw:error')
+      socket.off('session-token')
     }
   }, [])
 

@@ -204,6 +204,15 @@ function findRoomByPlayer(sessionId) {
   return { roomId: null, room: null }
 }
 
+function findDrawRoomByPlayer(sessionId) {
+  for (const [roomId, room] of drawRooms) {
+    if (room.players.some((p) => p.id === sessionId)) {
+      return { roomId, room }
+    }
+  }
+  return { roomId: null, room: null }
+}
+
 function broadcastRoom(room) {
   io.to(room.id).emit('room-state', getPublicRoomState(room))
 }
@@ -248,6 +257,26 @@ function disconnectPlayer(sessionId) {
   }
   broadcastRoom(room)
   return { roomId, room }
+}
+
+function disconnectDrawPlayer(sessionId) {
+  for (const [rid, dr] of drawRooms) {
+    const player = dr.players.find((p) => p.id === sessionId)
+    if (player) {
+      player.isConnected = false
+      player.disconnectedAt = Date.now()
+
+      // Handle drawer disconnect
+      if (dr.currentDrawerId === sessionId && (dr.phase === 'WORD_CHOICE' || dr.phase === 'DRAWING')) {
+        // End their turn safely
+        endDrawRound(dr)
+      } else {
+        // Only broadcast if not already handled by endDrawRound
+        broadcastDrawRoomState(dr)
+      }
+      break
+    }
+  }
 }
 
 // A player's private reconnect credential.  Generated once per player;
@@ -551,10 +580,19 @@ io.on('connection', (socket) => {
     if (!sessionId || typeof sessionId !== 'string') return
     currentSessionId = sessionId
 
-    const { roomId, room } = findRoomByPlayer(sessionId)
+    let { roomId, room } = findRoomByPlayer(sessionId)
+    let isDrawRoom = false
+    
     if (!room) {
-      socket.emit('session-no-room')
-      return
+      const drawResult = findDrawRoomByPlayer(sessionId)
+      if (drawResult.room) {
+        roomId = drawResult.roomId
+        room = drawResult.room
+        isDrawRoom = true
+      } else {
+        socket.emit('session-no-room')
+        return
+      }
     }
 
     if (clientRoomId && clientRoomId !== roomId) {
@@ -580,9 +618,24 @@ io.on('connection', (socket) => {
 
     currentRoomId = roomId
     connectPlayer(socket, sessionId)
-    socket.join(roomId)
+    
+    if (isDrawRoom) {
+      socket.join(`draw:${roomId}`)
+      socket.join(sessionId) // Join private room for Skribbl direct messaging
+    } else {
+      socket.join(roomId)
+    }
+    
     player.isConnected = true
     player.disconnectedAt = null
+    
+    if (isDrawRoom) {
+      socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
+      console.log('[ROOM] draw session reconnected', { sessionId, roomId })
+      socket.emit('draw:room-state', getSafeStateForPlayer(room, sessionId))
+      broadcastDrawRoomState(room)
+      return
+    }
     reassignHostIfNeeded(room)
     socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
     console.log('[ROOM] session reconnected', { sessionId, roomId })
@@ -850,7 +903,12 @@ io.on('connection', (socket) => {
     socket.join(`draw:${roomId}`)
     socket.join(sessionId) // Join private room for Skribbl direct messaging
     connectPlayer(socket, sessionId)
-    callback?.({ room })
+    
+    const player = room.players[0]
+    ensureResumeToken(player)
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
+    
+    callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
   socket.on('draw:join-room', ({ sessionId, roomId, playerName }, callback) => {
@@ -867,10 +925,15 @@ io.on('connection', (socket) => {
     if (existing) {
       existing.isConnected = true
       existing.name = trimmed
+      existing.disconnectedAt = null
       currentSessionId = sessionId
       socket.join(`draw:${normalizedId}`)
       socket.join(sessionId) // Join private room for Skribbl direct messaging
       connectPlayer(socket, sessionId)
+      
+      if (!existing.resumeToken) ensureResumeToken(existing)
+      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name })
+      
       callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)
       return
@@ -884,19 +947,24 @@ io.on('connection', (socket) => {
       return callback?.({ error: 'NAME_TAKEN' })
     }
 
-    room.players.push({
+    const newPlayer = {
       id: sessionId,
       name: trimmed,
       isHost: false,
       isConnected: true,
       spectator: room.status !== 'LOBBY',
       score: 0
-    })
+    }
+    room.players.push(newPlayer)
 
     currentSessionId = sessionId
     socket.join(`draw:${normalizedId}`)
     socket.join(sessionId) // Join private room for Skribbl direct messaging
     connectPlayer(socket, sessionId)
+    
+    ensureResumeToken(newPlayer)
+    socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name })
+    
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
     broadcastDrawRoomState(room)
   })
@@ -991,7 +1059,13 @@ io.on('connection', (socket) => {
     // 15 seconds timeout
     setTimeout(() => {
       const currentRoom = drawRooms.get(room.id)
-      if (currentRoom && currentRoom.phase === 'WORD_CHOICE' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
+      if (
+        currentRoom && 
+        currentRoom.phase === 'WORD_CHOICE' && 
+        currentRoom.round === room.round && 
+        currentRoom.turnIndex === room.turnIndex &&
+        currentRoom.currentDrawerId === room.currentDrawerId
+      ) {
         // Auto-select the first word if timeout expires
         const word = currentRoom.wordChoices[0]
         if (!word) return
@@ -1042,8 +1116,10 @@ io.on('connection', (socket) => {
     room.round = 1
     room.totalRounds = room.configuration.rounds
     
-    // Fisher-Yates shuffle using player IDs
-    const playerIds = [...room.players].map(p => p.id)
+    // Fisher-Yates shuffle using eligible player IDs
+    const playerIds = [...room.players].filter(p => !p.spectator).map(p => p.id)
+    if (playerIds.length === 0) return // Cannot start if no eligible players
+
     for (let i = playerIds.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       const temp = playerIds[i]
@@ -1068,7 +1144,7 @@ io.on('connection', (socket) => {
   })
 
   function endDrawRound(room) {
-    if (room.phase !== 'DRAWING') return
+    if (room.phase !== 'DRAWING' && room.phase !== 'WORD_CHOICE') return
     
     room.phase = 'ROUND_REVEAL'
     
@@ -1088,7 +1164,7 @@ io.on('connection', (socket) => {
     room.chatMessages.push({
       id: crypto.randomUUID(),
       type: 'SYSTEM',
-      message: `The word was ${room.selectedWord}.`
+      message: `The word was ${room.selectedWord || '(None Selected)'}.`
     })
     
     broadcastDrawRoomState(room)
@@ -1117,8 +1193,14 @@ io.on('connection', (socket) => {
           if (currentRoom.round < currentRoom.totalRounds) {
             currentRoom.round++
             
-            // Fisher-Yates shuffle using player IDs
-            const playerIds = [...currentRoom.players].map(p => p.id)
+            // Fisher-Yates shuffle using eligible player IDs
+            const playerIds = [...currentRoom.players].filter(p => !p.spectator).map(p => p.id)
+            if (playerIds.length === 0) {
+              currentRoom.phase = 'GAME_RESULT'
+              broadcastDrawRoomState(currentRoom)
+              return
+            }
+
             for (let i = playerIds.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1))
               const temp = playerIds[i]
@@ -1374,6 +1456,7 @@ io.on('connection', (socket) => {
     
     room.players.forEach(p => {
       p.score = 0
+      p.spectator = false
     })
 
     io.to(`draw:${room.id}`).emit('draw:clear-canvas')
@@ -2254,6 +2337,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
   socket.on('disconnect', () => {
     if (!currentSessionId) return
     disconnectPlayer(currentSessionId)
+    disconnectDrawPlayer(currentSessionId)
   })
 
   socket.on('add-dev-bots', (callback) => {
