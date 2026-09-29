@@ -6,6 +6,7 @@ import Lobby from './components/Lobby.jsx'
 export default function SkribblApp({ onExit }) {
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
+  const [view, setView] = useState('menu') // 'menu', 'create', 'join', 'lobby'
 
   useEffect(() => {
     const { sessionId } = ensureIdentity()
@@ -13,6 +14,7 @@ export default function SkribblApp({ onExit }) {
 
     socket.on('draw:room-state', (state) => {
       setRoomState(state)
+      setView('lobby')
     })
 
     socket.on('draw:error', (err) => {
@@ -30,7 +32,10 @@ export default function SkribblApp({ onExit }) {
     const socket = getSocket()
     socket.emit('draw:create-room', { sessionId, playerName }, (res) => {
       if (res.error) setError(res.error)
-      else if (res.room) setRoomState(res.room)
+      else if (res.room) {
+        setRoomState(res.room)
+        setView('lobby')
+      }
     })
   }
 
@@ -39,7 +44,10 @@ export default function SkribblApp({ onExit }) {
     const socket = getSocket()
     socket.emit('draw:join-room', { sessionId, roomId, playerName }, (res) => {
       if (res.error) setError(res.error)
-      else if (res.room) setRoomState(res.room)
+      else if (res.room) {
+        setRoomState(res.room)
+        setView('lobby')
+      }
     })
   }
 
@@ -47,6 +55,7 @@ export default function SkribblApp({ onExit }) {
     const socket = getSocket()
     socket.emit('draw:leave-room', () => {
       setRoomState(null)
+      setView('menu')
     })
   }
 
@@ -55,55 +64,140 @@ export default function SkribblApp({ onExit }) {
     socket.emit('draw:update-config', config)
   }
 
-  // Very basic landing for skribbl if no roomState
-  if (!roomState) {
+  if (view === 'lobby' && roomState) {
+    if (roomState.phase === 'LOBBY') {
+      return (
+        <Lobby 
+          room={roomState} 
+          onLeave={handleLeaveRoom}
+          onUpdateConfig={handleUpdateConfig}
+        />
+      )
+    }
     return (
-      <div className="skribbl-landing">
-        <div className="section-inner" style={{ paddingTop: '100px' }}>
-          <h1 className="mode-select__title">SKRIBBL</h1>
-          {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
-          <div className="mode-select__cards" style={{ flexDirection: 'column' }}>
-            <div className="mode-select__card" style={{ width: '100%' }}>
-              <h2>CREATE ROOM</h2>
-              <input type="text" id="skribbl-create-name" placeholder="Your Name" className="skribbl-input" />
-              <button className="btn btn--primary" onClick={() => {
-                const name = document.getElementById('skribbl-create-name').value
-                if (name) handleCreateRoom(name)
-              }}>CREATE</button>
-            </div>
-            <div className="mode-select__card" style={{ width: '100%' }}>
-              <h2>JOIN ROOM</h2>
-              <input type="text" id="skribbl-join-name" placeholder="Your Name" className="skribbl-input" />
-              <input type="text" id="skribbl-join-id" placeholder="Room ID" className="skribbl-input" />
-              <button className="btn btn--primary" onClick={() => {
-                const name = document.getElementById('skribbl-join-name').value
-                const roomId = document.getElementById('skribbl-join-id').value
-                if (name && roomId) handleJoinRoom(roomId, name)
-              }}>JOIN</button>
-            </div>
-          </div>
-          <button className="btn btn--ghost" onClick={onExit} style={{ marginTop: '20px' }}>BACK TO MODE SELECT</button>
+      <div className="sk-view">
+        <div className="sk-bg-shapes">
+          <div className="sk-bg-shape sk-bg-shape-1" />
+          <div className="sk-bg-shape sk-bg-shape-2" />
+          <div className="sk-bg-shape sk-bg-shape-3" />
+        </div>
+        <div className="sk-header">
+          <h1 className="sk-logo">SKRIBBL</h1>
+          <p className="sk-tagline" style={{ transform: 'none', color: 'var(--sk-primary)' }}>PHASE: {roomState.phase}</p>
+        </div>
+        <div className="sk-container" style={{ alignItems: 'center' }}>
+          <button className="sk-btn" style={{ maxWidth: '300px' }} onClick={handleLeaveRoom}>LEAVE ROOM</button>
         </div>
       </div>
     )
   }
 
-  if (roomState.phase === 'LOBBY') {
-    return (
-      <Lobby 
-        room={roomState} 
-        onLeave={handleLeaveRoom}
-        onUpdateConfig={handleUpdateConfig}
-      />
-    )
-  }
-
-  // Placeholder for other phases
   return (
-    <div className="skribbl-game">
-      <div className="section-inner" style={{ paddingTop: '100px' }}>
-        <h1>SKRIBBL PHASE: {roomState.phase}</h1>
-        <button className="btn btn--ghost" onClick={handleLeaveRoom}>LEAVE ROOM</button>
+    <div className="sk-view">
+      <div className="sk-bg-shapes">
+        <div className="sk-bg-shape sk-bg-shape-1" />
+        <div className="sk-bg-shape sk-bg-shape-2" />
+        <div className="sk-bg-shape sk-bg-shape-3" />
+      </div>
+      
+      <div className="sk-header">
+        <h1 className="sk-logo">SKRIBBL</h1>
+        <p className="sk-tagline">DRAW IT. GUESS IT. HAVE FUN.</p>
+      </div>
+
+      <div className="sk-container">
+        {error && (
+          <div style={{ background: 'var(--sk-coral)', color: 'white', padding: '12px', borderRadius: '12px', textAlign: 'center', fontWeight: 'bold' }}>
+            {error}
+          </div>
+        )}
+
+        {view === 'menu' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '20px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <svg width="120" height="120" viewBox="0 0 100 100" style={{ opacity: 0.8 }}>
+                <circle cx="50" cy="50" r="40" fill="var(--sk-canvas)" stroke="var(--sk-muted)" strokeWidth="4" strokeDasharray="10 6" />
+                <path d="M35,45 Q40,35 45,45 T55,45 T65,45" fill="none" stroke="var(--sk-primary)" strokeWidth="4" strokeLinecap="round" />
+                <circle cx="40" cy="40" r="4" fill="var(--sk-text)" />
+                <circle cx="60" cy="40" r="4" fill="var(--sk-text)" />
+                <path d="M40,65 Q50,75 60,65" fill="none" stroke="var(--sk-coral)" strokeWidth="5" strokeLinecap="round" />
+              </svg>
+            </div>
+            
+            <button className="sk-btn" onClick={() => { setError(null); setView('create') }}>
+              CREATE ROOM
+            </button>
+            <button className="sk-btn sk-btn--secondary" onClick={() => { setError(null); setView('join') }}>
+              JOIN ROOM
+            </button>
+            <button 
+              onClick={onExit} 
+              style={{ marginTop: '20px', background: 'none', border: 'none', color: 'var(--sk-muted)', fontFamily: 'var(--sk-font-body)', fontWeight: 700, fontSize: '0.9rem', padding: '10px', textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Back to Game Modes
+            </button>
+          </div>
+        )}
+
+        {view === 'create' && (
+          <div className="sk-card sk-card--animated">
+            <h2 className="sk-card-title">YOUR NAME</h2>
+            <input 
+              type="text" 
+              id="sk-create-name" 
+              placeholder="Enter your name" 
+              className="sk-input"
+              autoFocus
+              maxLength={24}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>
+                CANCEL
+              </button>
+              <button className="sk-btn" style={{ flex: 1.5, padding: '16px 12px' }} onClick={() => {
+                const name = document.getElementById('sk-create-name').value
+                if (name) handleCreateRoom(name)
+              }}>
+                CREATE
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === 'join' && (
+          <div className="sk-card sk-card--animated">
+            <h2 className="sk-card-title">JOIN GAME</h2>
+            <input 
+              type="text" 
+              id="sk-join-id" 
+              placeholder="ROOM CODE" 
+              className="sk-input"
+              autoFocus
+              maxLength={6}
+              style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
+            />
+            <input 
+              type="text" 
+              id="sk-join-name" 
+              placeholder="YOUR NAME" 
+              className="sk-input"
+              maxLength={24}
+              style={{ marginTop: '12px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>
+                CANCEL
+              </button>
+              <button className="sk-btn" style={{ flex: 1.5, padding: '16px 12px' }} onClick={() => {
+                const name = document.getElementById('sk-join-name').value
+                const roomId = document.getElementById('sk-join-id').value
+                if (name && roomId) handleJoinRoom(roomId, name)
+              }}>
+                JOIN
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
