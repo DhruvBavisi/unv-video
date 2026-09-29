@@ -289,35 +289,49 @@ function scheduleWordChoiceTimeout(room) {
       currentRoom.currentDrawerId === room.currentDrawerId
     ) {
       // Auto-select the first word if timeout expires
-      const word = currentRoom.wordChoices[0]
-      if (!word) return
-      
-      currentRoom.selectedWord = word
-      currentRoom.phase = 'DRAWING'
-      currentRoom.roundStartedAt = Date.now()
-      currentRoom.roundEndsAt = Date.now() + (currentRoom.configuration.drawTimeSec * 1000)
-      currentRoom.strokes = []
-      currentRoom.guessedPlayerIds = []
-      
-      const drawerPlayer = currentRoom.players.find(p => p.id === currentRoom.currentDrawerId)
-      const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
-      currentRoom.chatMessages = [{
-        id: crypto.randomUUID(),
-        type: 'SYSTEM',
-        message: `${drawerName} is drawing.`
-      }]
-      
-      broadcastDrawRoomState(currentRoom)
-      
-      // Schedule round end
-      setTimeout(() => {
-        const checkRoom = drawRooms.get(room.id)
-        if (checkRoom && checkRoom.phase === 'DRAWING' && checkRoom.round === room.round && checkRoom.turnIndex === room.turnIndex) {
-          endDrawRound(checkRoom)
-        }
-      }, currentRoom.configuration.drawTimeSec * 1000)
+      const word = currentRoom.wordChoices[0] || 'emergency'
+      startDrawingTurn(currentRoom, word)
     }
   }, 15000)
+}
+
+function startDrawingTurn(room, word) {
+  room.selectedWord = word
+  room.usedWords = room.usedWords || []
+  if (word && !room.usedWords.includes(word.toLowerCase())) {
+    room.usedWords.push(word.toLowerCase())
+  }
+  
+  room.phase = 'DRAWING'
+  room.roundStartedAt = Date.now()
+  room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
+  room.strokes = []
+  room.guessedPlayerIds = []
+  
+  const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
+  const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
+  room.chatMessages = [{
+    id: crypto.randomUUID(),
+    type: 'SYSTEM',
+    message: `${drawerName} is drawing.`
+  }]
+  
+  broadcastDrawRoomState(room)
+  
+  // Schedule round end
+  const expectedTurnIndex = room.turnIndex
+  const expectedRound = room.round
+  const expectedDrawerId = room.currentDrawerId
+  
+  setTimeout(() => {
+    const checkRoom = drawRooms.get(room.id)
+    if (checkRoom && checkRoom.phase === 'DRAWING' && 
+        checkRoom.round === expectedRound && 
+        checkRoom.turnIndex === expectedTurnIndex &&
+        checkRoom.currentDrawerId === expectedDrawerId) {
+      endDrawRound(checkRoom)
+    }
+  }, room.configuration.drawTimeSec * 1000)
 }
 
 function endDrawRound(room) {
@@ -409,10 +423,34 @@ function endDrawRound(room) {
 }
 
 function generateWordChoices(room) {
-  const defaultWords = ['ocean', 'birthday cake', 'rocket', 'telephone', 'glasses', 'robot']
-  // Pick N random words
-  const count = room.configuration.wordCount
-  const shuffled = defaultWords.sort(() => 0.5 - Math.random())
+  room.usedWords = room.usedWords || []
+  
+  const defaultWords = ['ocean', 'birthday cake', 'rocket', 'telephone', 'glasses', 'robot', 'pizza', 'bicycle', 'moon', 'guitar', 'volcano', 'penguin', 'sunflower', 'castle', 'butterfly', 'hamburger', 'dragon', 'diamond', 'spider', 'camera']
+  
+  let customWords = []
+  if (Array.isArray(room.configuration.customWords)) {
+    customWords = room.configuration.customWords.map(w => w.trim()).filter(Boolean)
+  } else if (typeof room.configuration.customWords === 'string') {
+    customWords = room.configuration.customWords.split(',').map(w => w.trim()).filter(Boolean)
+  }
+
+  let pool = []
+  if (room.configuration.useCustomOnly) {
+    pool = [...customWords]
+  } else if (room.configuration.gameMode && room.configuration.gameMode.toLowerCase() === 'combination') {
+    pool = [...defaultWords, ...customWords]
+  } else {
+    pool = [...defaultWords]
+  }
+  
+  const eligible = pool.filter(w => !room.usedWords.includes(w.toLowerCase()))
+  
+  let source = eligible.length > 0 ? eligible : pool
+  if (source.length === 0) source = defaultWords
+
+  const shuffled = source.sort(() => 0.5 - Math.random())
+  const count = room.configuration.wordCount || 3
+  
   return shuffled.slice(0, count)
 }
 
@@ -423,14 +461,9 @@ function disconnectDrawPlayer(sessionId) {
       player.isConnected = false
       player.disconnectedAt = Date.now()
 
-      // Handle drawer disconnect
-      if (dr.currentDrawerId === sessionId && (dr.phase === 'WORD_CHOICE' || dr.phase === 'DRAWING')) {
-        // End their turn safely
-        endDrawRound(dr)
-      } else {
-        // Only broadcast if not already handled by endDrawRound
-        broadcastDrawRoomState(dr)
-      }
+      // Do NOT immediately end their turn on transient disconnect
+      // Let the word-choice or drawing timeouts handle it naturally
+      broadcastDrawRoomState(dr)
       break
     }
   }
@@ -1047,7 +1080,8 @@ io.on('connection', (socket) => {
         gameMode: 'NORMAL',
         customWords: '',
         useCustomOnly: false
-      }
+      },
+      usedWords: []
     }
 
     drawRooms.set(roomId, room)
@@ -1260,30 +1294,7 @@ io.on('connection', (socket) => {
     if (room.selectedWord) return // Prevent duplicate selection
     if (!room.wordChoices.includes(word)) return // Validate choice
 
-    room.selectedWord = word
-    room.phase = 'DRAWING'
-    room.roundStartedAt = Date.now()
-    room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
-    room.strokes = [] // Clear canvas state
-
-    room.guessedPlayerIds = []
-    const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
-    const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
-    room.chatMessages = [{
-      id: crypto.randomUUID(),
-      type: 'SYSTEM',
-      message: `${drawerName} is drawing.`
-    }]
-
-    broadcastDrawRoomState(room)
-
-    // Schedule round end
-    setTimeout(() => {
-      const currentRoom = drawRooms.get(room.id)
-      if (currentRoom && currentRoom.phase === 'DRAWING' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
-        endDrawRound(currentRoom)
-      }
-    }, room.configuration.drawTimeSec * 1000)
+    startDrawingTurn(room, word)
   })
 
   socket.on('draw:stroke', (strokeData) => {
@@ -1469,6 +1480,7 @@ io.on('connection', (socket) => {
     room.chatMessages = []
     room.guessedPlayerIds = []
     room.turnScores = {}
+    room.usedWords = []
     
     room.players.forEach(p => {
       p.score = 0
