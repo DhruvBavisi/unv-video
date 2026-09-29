@@ -1337,6 +1337,7 @@ io.on('connection', (socket) => {
     if (!allowedColors.includes(strokeData.color)) return
     if (typeof strokeData.size !== 'number' || strokeData.size < 1 || strokeData.size > 100) return
     if (!Array.isArray(strokeData.points) || strokeData.points.length > 500) return
+    if (strokeData.tool && strokeData.tool !== 'brush' && strokeData.tool !== 'eraser') return
     
     for (const pt of strokeData.points) {
       if (typeof pt.x !== 'number' || typeof pt.y !== 'number' || pt.x < -0.2 || pt.x > 1.2 || pt.y < -0.2 || pt.y > 1.2) {
@@ -1347,6 +1348,21 @@ io.on('connection', (socket) => {
     room.strokes.push(strokeData)
     // Broadcast directly to room, skipping the drawer since they drew it locally
     socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
+  })
+
+  socket.on('draw:undo', () => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
+        room = dr
+        break
+      }
+    }
+    if (!room || !room.strokes || room.strokes.length === 0) return
+
+    room.strokes.pop()
+    socket.to(`draw:${room.id}`).emit('draw:undo')
   })
 
   socket.on('draw:clear-canvas', () => {

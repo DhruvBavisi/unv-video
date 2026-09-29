@@ -12,6 +12,7 @@ export default function DrawingPhase({ room, onLeave }) {
 
   const [color, setColor] = useState(DRAW_COLORS[0].value)
   const [size, setSize] = useState(8)
+  const [tool, setTool] = useState('brush')
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
   const [guessInput, setGuessInput] = useState('')
   
@@ -58,8 +59,16 @@ export default function DrawingPhase({ room, onLeave }) {
       canvasRef.current?.clear()
     }
 
+    const handleIncomingUndo = () => {
+      if (strokesRef.current.length > 0) {
+        strokesRef.current.pop()
+        canvasRef.current?.redrawAll(strokesRef.current)
+      }
+    }
+
     socket.on('draw:stroke', handleIncomingStroke)
     socket.on('draw:clear-canvas', handleClear)
+    socket.on('draw:undo', handleIncomingUndo)
 
     const handleResize = () => {
       setTimeout(() => {
@@ -72,6 +81,7 @@ export default function DrawingPhase({ room, onLeave }) {
       socket.off('connect', fetchStrokes)
       socket.off('draw:stroke', handleIncomingStroke)
       socket.off('draw:clear-canvas', handleClear)
+      socket.off('draw:undo', handleIncomingUndo)
       window.removeEventListener('resize', handleResize)
     }
   }, [])
@@ -98,6 +108,15 @@ export default function DrawingPhase({ room, onLeave }) {
     socket.emit('draw:clear-canvas')
     strokesRef.current = []
     canvasRef.current?.clear()
+  }
+
+  const handleUndo = () => {
+    const socket = getSocket()
+    socket.emit('draw:undo')
+    if (strokesRef.current.length > 0) {
+      strokesRef.current.pop()
+      canvasRef.current?.redrawAll(strokesRef.current)
+    }
   }
 
   const handleChooseWord = (word) => {
@@ -162,6 +181,7 @@ export default function DrawingPhase({ room, onLeave }) {
             ref={canvasRef}
             color={color}
             size={size}
+            tool={tool}
             isDrawer={isDrawer && room.phase === 'DRAWING'}
             onStroke={handleStroke}
           />
@@ -294,7 +314,10 @@ export default function DrawingPhase({ room, onLeave }) {
             setColor={setColor} 
             size={size} 
             setSize={setSize} 
+            tool={tool}
+            setTool={setTool}
             onClear={handleClearCanvas} 
+            onUndo={handleUndo}
           />
         ) : (!isDrawer ? (
           <form onSubmit={handleGuessSubmit} style={{ 

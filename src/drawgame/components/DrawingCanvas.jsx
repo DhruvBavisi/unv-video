@@ -1,13 +1,14 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, memo } from 'react'
 
-const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
+const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStroke }, ref) => {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   
   const isDrawing = useRef(false)
   const lastPos = useRef(null)
 
-  const drawSegment = (ctx, start, end, c, s) => {
+  const drawSegment = (ctx, start, end, c, s, t) => {
+    ctx.globalCompositeOperation = t === 'eraser' ? 'destination-out' : 'source-over'
     ctx.strokeStyle = c
     ctx.lineWidth = s
     ctx.lineCap = 'round'
@@ -37,11 +38,11 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
     let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
     
     if (stroke.points.length === 1) {
-      drawSegment(ctx, start, start, stroke.color, stroke.size)
+      drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
     } else {
       for (let i = 1; i < stroke.points.length; i++) {
         let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
-        drawSegment(ctx, start, end, stroke.color, stroke.size)
+        drawSegment(ctx, start, end, stroke.color, stroke.size, stroke.tool)
         start = end
       }
     }
@@ -65,11 +66,11 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
         const h = rect.height
         let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
         if (stroke.points.length === 1) {
-          drawSegment(ctx, start, start, stroke.color, stroke.size)
+          drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
         } else {
           for (let i = 1; i < stroke.points.length; i++) {
             let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
-            drawSegment(ctx, start, end, stroke.color, stroke.size)
+            drawSegment(ctx, start, end, stroke.color, stroke.size, stroke.tool)
             start = end
           }
         }
@@ -128,7 +129,7 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
     const nx = pos.x / rect.width
     const ny = pos.y / rect.height
     
-    const stroke = { color, size, points: [{ x: nx, y: ny }] }
+    const stroke = { color, size, tool, points: [{ x: nx, y: ny }] }
     liveDraw(stroke)
     if (onStroke) onStroke(stroke)
   }
@@ -145,7 +146,7 @@ const DrawingCanvas = forwardRef(({ color, size, isDrawer, onStroke }, ref) => {
     const nx = pos.x / rect.width
     const ny = pos.y / rect.height
     
-    const stroke = { color, size, points: [{ x: prevNx, y: prevNy }, { x: nx, y: ny }] }
+    const stroke = { color, size, tool, points: [{ x: prevNx, y: prevNy }, { x: nx, y: ny }] }
     liveDraw(stroke)
     
     lastPos.current = pos

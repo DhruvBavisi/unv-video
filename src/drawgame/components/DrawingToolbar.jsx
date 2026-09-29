@@ -11,7 +11,7 @@ export const DRAW_COLORS = [
   { name: 'lavender', value: '#A98AF5' }
 ]
 
-export default function DrawingToolbar({ color, setColor, size, setSize, onClear }) {
+export default function DrawingToolbar({ color, setColor, size, setSize, tool, setTool, onClear, onUndo }) {
   return (
     <div style={{ 
       padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))', 
@@ -24,14 +24,51 @@ export default function DrawingToolbar({ color, setColor, size, setSize, onClear
       zIndex: 10
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Tools: Brush & Eraser */}
+          <div style={{ display: 'flex', background: 'var(--sk-bg-soft)', borderRadius: '8px', padding: '4px', gap: '4px', marginRight: '8px' }}>
+            <button
+              onClick={() => setTool('brush')}
+              style={{
+                background: tool === 'brush' ? 'white' : 'transparent',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                boxShadow: tool === 'brush' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                fontFamily: 'var(--sk-font-display)',
+                color: tool === 'brush' ? 'var(--sk-primary)' : 'var(--sk-muted)',
+                cursor: 'pointer'
+              }}
+            >
+              BRUSH
+            </button>
+            <button
+              onClick={() => setTool('eraser')}
+              style={{
+                background: tool === 'eraser' ? 'white' : 'transparent',
+                border: 'none',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                boxShadow: tool === 'eraser' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                fontFamily: 'var(--sk-font-display)',
+                color: tool === 'eraser' ? 'var(--sk-primary)' : 'var(--sk-muted)',
+                cursor: 'pointer'
+              }}
+            >
+              ERASER
+            </button>
+          </div>
+          
+          <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
+
+          {/* Sizes */}
           {[4, 8, 16].map(s => (
             <div 
               key={s}
               onClick={() => setSize(s)}
               style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -46,21 +83,38 @@ export default function DrawingToolbar({ color, setColor, size, setSize, onClear
           ))}
         </div>
         
-        <button 
-          onClick={onClear}
-          style={{ 
-            background: 'var(--sk-surface)', 
-            border: '2px solid var(--sk-bg-soft)', 
-            padding: '8px 16px', 
-            borderRadius: '100px',
-            fontFamily: 'var(--sk-font-display)',
-            color: 'var(--sk-muted)',
-            cursor: 'pointer',
-            touchAction: 'manipulation'
-          }}
-        >
-          CLEAR
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={onUndo}
+            style={{ 
+              background: 'transparent', 
+              border: '2px solid rgba(0,0,0,0.05)', 
+              padding: '8px 12px', 
+              borderRadius: '100px',
+              fontFamily: 'var(--sk-font-display)',
+              color: 'var(--sk-muted)',
+              cursor: 'pointer',
+              touchAction: 'manipulation'
+            }}
+          >
+            UNDO
+          </button>
+          <button 
+            onClick={onClear}
+            style={{ 
+              background: 'var(--sk-surface)', 
+              border: '2px solid var(--sk-bg-soft)', 
+              padding: '8px 12px', 
+              borderRadius: '100px',
+              fontFamily: 'var(--sk-font-display)',
+              color: 'var(--sk-muted)',
+              cursor: 'pointer',
+              touchAction: 'manipulation'
+            }}
+          >
+            CLEAR
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
