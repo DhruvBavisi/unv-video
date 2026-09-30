@@ -5222,7 +5222,13 @@ input, select, textarea, button { font-size: 16px; }
   flex-direction: column;
   justify-content: center;
   background-color: var(--bg);
+  background-image: linear-gradient(90deg, rgba(15, 20, 25, 0.5) 0%, var(--bg) 30%, var(--bg) 70%, rgba(50, 45, 30, 0.3) 100%);
   position: relative;
+}
+@media (max-width: 760px) {
+  .mode-select {
+    background-image: linear-gradient(180deg, rgba(15, 20, 25, 0.5) 0%, var(--bg) 30%, var(--bg) 70%, rgba(50, 45, 30, 0.3) 100%);
+  }
 }
 
 .mode-select__header {
@@ -5292,6 +5298,110 @@ input, select, textarea, button { font-size: 16px; }
 
 .mode-select__btn {
   width: 100%;
+}
+
+/* Undercover Card */
+.mode-select__card--undercover {
+  background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.08) 100%), var(--surface);
+  border: 1px solid rgba(200, 160, 50, 0.5); /* var(--accent) at 50% */
+}
+.mode-select__svg--uc-hat {
+  position: absolute;
+  top: 14%;
+  right: 22%;
+  width: 32px;
+  height: 32px;
+  opacity: 1;
+  color: var(--accent);
+  z-index: 0;
+  transform: rotate(40deg);
+}
+.mode-select__svg--uc-glass {
+  position: absolute;
+  bottom: 50%;
+  left: 15%;
+  width: 28px;
+  height: 28px;
+  opacity: 1;
+  color: var(--accent);
+  z-index: 0;
+  transform: rotate(10deg);
+}
+
+/* Skribbl Card */
+.mode-select__card--skribbl {
+  background: var(--sk-bg-soft);
+  border: 1px solid var(--sk-sky);
+  color: var(--sk-text);
+}
+.mode-select__card--skribbl .mode-select__card-title {
+  font-family: var(--sk-font-display);
+  color: var(--sk-primary);
+  letter-spacing: normal;
+}
+.mode-select__card--skribbl .mode-select__card-desc {
+  font-family: var(--sk-font-hand);
+  color: var(--sk-coral);
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: 1.5rem;
+}
+.mode-select__svg--sk-pencil {
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  width: 80px;
+  height: 80px;
+  color: var(--sk-yellow);
+  opacity: 0.3;
+  z-index: 0;
+  transform: rotate(0deg);
+}
+.mode-select__svg--sk-palette {
+  position: absolute;
+  bottom: 40%;
+  left: 5%;
+  width: 100px;
+  height: 100px;
+  color: var(--sk-coral);
+  opacity: 0.2;
+  z-index: 0;
+  transform: rotate(-10deg);
+}
+.mode-select__btn--sk {
+  background-color: var(--sk-primary) !important;
+  color: white !important;
+  border-color: var(--sk-primary) !important;
+}
+.mode-select__btn--sk:hover {
+  background-color: var(--sk-coral) !important;
+  border-color: var(--sk-coral) !important;
+}
+
+.mode-select__card-title,
+.mode-select__card-desc,
+.mode-select__btn {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 760px) {
+  .mode-select__svg--uc-hat {
+    width: 28px;
+    height: 28px;
+  }
+  .mode-select__svg--uc-glass {
+    width: 24px;
+    height: 24px;
+  }
+  .mode-select__svg--sk-pencil {
+    width: 60px;
+    height: 60px;
+  }
+  .mode-select__svg--sk-palette {
+    width: 70px;
+    height: 70px;
+  }
 }
 
 /* --- SKRIBBL PREMIUM UI --- */
