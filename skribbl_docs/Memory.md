@@ -375,3 +375,4 @@ Before a significant change:
 - Added centralized, adjustable height layout variables (`CANVAS_FLEX` and `INFO_PANEL_FLEX`) for the drawing screen, allowing an automatic inverse height relationship without modifying CSS structure.
 - Refactored the `ROUND_REVEAL` score list to use CSS column layout (`columnCount: 2`, `columnWidth`) enabling a responsive two-column score layout.
 - Round-reveal points list is now ordered by `turnScores` in a descending manner (stable sorting to preserve ties) without affecting the total game score leaderboards.
+- Fixed stale hint bug: Explicitly reset `room.hint` and `room.hintRevealed` when transitioning to `ROUND_REVEAL` and when initiating the next `WORD_CHOICE` turn to prevent hints from leaking across game states.

@@ -412,6 +412,8 @@ function endDrawRound(room) {
   }
 
   room.phase = 'ROUND_REVEAL'
+  room.hint = ''
+  room.hintRevealed = null
   
   // Calculate and apply points
   const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
@@ -460,6 +462,8 @@ function endDrawRound(room) {
         currentRoom.strokes = []
         currentRoom.guessedPlayerIds = []
         currentRoom.turnScores = {}
+        currentRoom.hint = ''
+        currentRoom.hintRevealed = null
         
         io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
         scheduleWordChoiceTimeout(currentRoom)
@@ -493,6 +497,8 @@ function endDrawRound(room) {
           currentRoom.strokes = []
           currentRoom.guessedPlayerIds = []
           currentRoom.turnScores = {}
+          currentRoom.hint = ''
+          currentRoom.hintRevealed = null
           
           io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
           scheduleWordChoiceTimeout(currentRoom)
