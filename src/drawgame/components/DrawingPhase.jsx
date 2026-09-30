@@ -92,39 +92,28 @@ export default function DrawingPhase({ room, onLeave }) {
     }
   }, [])
 
-  // Defensive canvas clear on turn change
+  // Sync strokes on turn change
   const currentTurnKey = `${room.round}-${room.turnIndex}-${room.currentDrawerId}`
   useEffect(() => {
-    // Only clear if we aren't re-mounting into an existing drawing phase with existing strokes
-    if (room.phase === 'WORD_CHOICE' || room.strokes?.length === 0) {
+    if (room.phase === 'WORD_CHOICE') {
       strokesRef.current = []
       canvasRef.current?.clear()
     }
-  }, [currentTurnKey, room.phase, room.strokes?.length])
+  }, [currentTurnKey, room.phase])
 
   const handleStroke = useCallback((strokeData, isComplete = true) => {
     const socket = getSocket()
     socket.emit('draw:stroke', { ...strokeData, isComplete })
-    if (isComplete) {
-      strokesRef.current.push(strokeData)
-    }
-    // The drawer already imperatively drew this locally inside DrawingCanvas!
   }, [])
 
   const handleClearCanvas = () => {
     const socket = getSocket()
     socket.emit('draw:clear-canvas')
-    strokesRef.current = []
-    canvasRef.current?.clear()
   }
 
   const handleUndo = () => {
     const socket = getSocket()
     socket.emit('draw:undo')
-    if (strokesRef.current.length > 0) {
-      strokesRef.current.pop()
-      canvasRef.current?.redrawAll(strokesRef.current)
-    }
   }
 
   const handleChooseWord = (word) => {

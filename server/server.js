@@ -271,6 +271,8 @@ function getSafeStateForPlayer(room, playerId) {
   const isReveal = room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT'
   return {
     ...room,
+    players: room.players.map(p => ({ ...p })),
+    chatMessages: [...(room.chatMessages || [])],
     wordChoices: isDrawer ? room.wordChoices : undefined,
     selectedWord: (isDrawer || isReveal) ? room.selectedWord : undefined,
     strokes: undefined,
@@ -371,11 +373,13 @@ function startDrawingTurn(room, word) {
 
   const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
   const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
-  room.chatMessages = [{
+  room.chatMessages = room.chatMessages || []
+  room.chatMessages.push({
     id: crypto.randomUUID(),
     type: 'SYSTEM',
     message: `${drawerName} is drawing.`
-  }]
+  })
+  if (room.chatMessages.length > 100) room.chatMessages.shift()
   
   broadcastDrawRoomState(room)
   
@@ -1448,9 +1452,10 @@ io.on('connection', (socket) => {
 
     if (strokeData.isComplete !== false) {
       room.strokes.push(strokeData)
+      io.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
+    } else {
+      socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
     }
-    // Broadcast directly to room, skipping the drawer since they drew it locally
-    socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
   })
 
   socket.on('draw:undo', () => {
@@ -1465,7 +1470,7 @@ io.on('connection', (socket) => {
     if (!room || !room.strokes || room.strokes.length === 0) return
 
     room.strokes.pop()
-    socket.to(`draw:${room.id}`).emit('draw:undo')
+    io.to(`draw:${room.id}`).emit('draw:undo')
   })
 
   socket.on('draw:clear-canvas', () => {
@@ -1480,7 +1485,7 @@ io.on('connection', (socket) => {
     if (!room) return
 
     room.strokes = []
-    socket.to(`draw:${room.id}`).emit('draw:clear-canvas')
+    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
   })
 
   function normalizeGuess(value) {
