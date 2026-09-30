@@ -273,7 +273,9 @@ function getSafeStateForPlayer(room, playerId) {
     ...room,
     wordChoices: isDrawer ? room.wordChoices : undefined,
     selectedWord: (isDrawer || isReveal) ? room.selectedWord : undefined,
-    strokes: undefined
+    strokes: undefined,
+    turnTimeout: undefined,
+    hintTimer: undefined
   }
 }
 

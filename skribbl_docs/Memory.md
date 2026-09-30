@@ -360,7 +360,7 @@ Before a significant change:
 - Scores decoupled: calculations run immediately but `player.score` mutation and display happen explicitly at `ROUND_REVEAL`.
 
 **Problems**
-- None.
+- Fixed a Socket.IO serialization crash when the drawer selected a word. `room.turnTimeout` and `room.hintTimer` were inadvertently broadcasted to clients because `getSafeStateForPlayer()` used `...room`. These timer handles are server-only and must never be included in the client room state.
 
 **Tests**
 - Undercover tests failed due to unrelated known Phase 27 base game assertions. Draw tests 62/62 passed.
