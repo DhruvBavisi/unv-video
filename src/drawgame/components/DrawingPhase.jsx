@@ -164,7 +164,7 @@ export default function DrawingPhase({ room, onLeave }) {
           <div style={{ fontSize: '0.7rem', color: 'var(--sk-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>ROUND {room.round}/{room.totalRounds}</div>
           <div style={{ fontSize: '1rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
             {isDrawer ? (
-              <span>Draw: <strong style={{ color: 'var(--sk-primary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{room.selectedWord}</strong></span>
+              <span><strong style={{ color: 'var(--sk-primary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{room.selectedWord}</strong></span>
             ) : (
               <span style={{ letterSpacing: '0.2em', fontFamily: 'monospace', fontWeight: 800, fontSize: '1.4rem', textTransform: 'uppercase' }}>
                 {room.hint || (room.selectedWord ? room.selectedWord.replace(/[a-zA-Z0-9]/g, '_') : '')}
@@ -206,8 +206,8 @@ export default function DrawingPhase({ room, onLeave }) {
         {room.phase === 'WORD_CHOICE' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20 }}>
             {isDrawer ? (
-              <div style={{ width: '100%', maxWidth: '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-                <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', marginBottom: '8px', fontSize: '1.8rem', textShadow: '0 2px 8px rgba(255,255,255,0.8)' }}>CHOOSE A WORD</h2>
+              <div style={{ width: '100%', maxWidth: '250px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
+                <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', marginBottom: '8px', fontSize: '1.2rem', textShadow: '0 2px 8px rgba(255,255,255,0.8)' }}>CHOOSE A WORD</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
                   {(room.wordChoices || []).map((word, idx) => (
                     <div 
@@ -215,7 +215,7 @@ export default function DrawingPhase({ room, onLeave }) {
                       className="sk-card"
                       style={{ 
                         cursor: 'pointer', 
-                        padding: '16px', 
+                        padding: '10px', 
                         animationDelay: `${idx * 100}ms`,
                         animation: 'skCardEnter 400ms ease both',
                         transition: 'transform 150ms ease, box-shadow 150ms ease',
@@ -226,7 +226,7 @@ export default function DrawingPhase({ room, onLeave }) {
                       onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
                       onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
                     >
-                      <div style={{ fontSize: '1.4rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div style={{ fontSize: '1.2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {word}
                       </div>
                     </div>
