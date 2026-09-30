@@ -10,7 +10,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const { sessionId } = ensureIdentity()
   const isDrawer = room.currentDrawerId === sessionId
 
-  const [color, setColor] = useState(DRAW_COLORS[0].value)
+  const [color, setColor] = useState('#000000')
   const [size, setSize] = useState(8)
   const [tool, setTool] = useState('brush')
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)

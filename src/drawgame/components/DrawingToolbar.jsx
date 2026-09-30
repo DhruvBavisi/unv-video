@@ -99,15 +99,14 @@ export default function DrawingToolbar({ color, setColor, size, setSize, tool, s
             {['brush', 'fill', 'eraser'].map(t => (
               <button
                 key={t}
-                onClick={() => { if (t !== 'fill') setTool(t) }}
+                onClick={() => setTool(t)}
                 style={{
                   background: tool === t ? 'var(--sk-bg-soft)' : 'transparent',
                   border: 'none',
                   padding: '6px',
                   borderRadius: '6px',
                   color: tool === t ? 'var(--sk-primary)' : 'var(--sk-muted)',
-                  cursor: t === 'fill' ? 'not-allowed' : 'pointer',
-                  opacity: t === 'fill' ? 0.5 : 1,
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

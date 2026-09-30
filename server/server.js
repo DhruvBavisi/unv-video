@@ -1444,11 +1444,10 @@ io.on('connection', (socket) => {
 
     // Stroke Validation
     if (!strokeData || typeof strokeData !== 'object') return
-    const allowedColors = ['#26334A','#FFFFFF','#6174F4','#FF6F70','#FFC857','#55D6B0','#65C7F3','#A98AF5']
-    if (!allowedColors.includes(strokeData.color)) return
+    if (typeof strokeData.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(strokeData.color)) return
     if (typeof strokeData.size !== 'number' || strokeData.size < 1 || strokeData.size > 100) return
     if (!Array.isArray(strokeData.points) || strokeData.points.length > 500) return
-    if (strokeData.tool && strokeData.tool !== 'brush' && strokeData.tool !== 'eraser') return
+    if (strokeData.tool && strokeData.tool !== 'brush' && strokeData.tool !== 'eraser' && strokeData.tool !== 'fill') return
     
     for (const pt of strokeData.points) {
       if (typeof pt.x !== 'number' || typeof pt.y !== 'number' || pt.x < -0.2 || pt.x > 1.2 || pt.y < -0.2 || pt.y > 1.2) {
