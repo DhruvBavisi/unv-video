@@ -17,6 +17,14 @@ export default function DrawingPhase({ room, onLeave }) {
   const [guessInput, setGuessInput] = useState('')
   const [isChoosing, setIsChoosing] = useState(false)
   
+  // --- LAYOUT CONFIGURATION ---
+  // Adjust these flex values to manually change the balance between the canvas and the lower player/chat panel.
+  // - Increase CANVAS_FLEX (or decrease INFO_PANEL_FLEX) -> canvas gets taller, lower section gets shorter.
+  // - Decrease CANVAS_FLEX (or increase INFO_PANEL_FLEX) -> canvas gets shorter, lower section gets taller.
+  const CANVAS_FLEX = 60
+  const INFO_PANEL_FLEX = 40
+  // -----------------------------
+
   const strokesRef = useRef([])
   const canvasRef = useRef(null)
   
@@ -153,7 +161,6 @@ export default function DrawingPhase({ room, onLeave }) {
 
       {/* TOP BAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 10 }}>
-        <div>
           <div style={{ fontSize: '0.7rem', color: 'var(--sk-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>ROUND {room.round}/{room.totalRounds}</div>
           <div style={{ fontSize: '1rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
             {isDrawer ? (
@@ -164,7 +171,6 @@ export default function DrawingPhase({ room, onLeave }) {
               </span>
             )}
           </div>
-        </div>
         
         <div style={{ 
           fontSize: '1.4rem', 
@@ -181,7 +187,7 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* CANVAS AREA */}
-      <div style={{ flex: 1, position: 'relative', minHeight: 0, background: 'var(--sk-canvas)', cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default', zIndex: 5 }}>
+      <div style={{ flex: CANVAS_FLEX, position: 'relative', minHeight: 0, background: 'var(--sk-canvas)', cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default', zIndex: 5 }}>
         <div style={{ position: 'absolute', inset: 0, opacity: room.phase === 'WORD_CHOICE' ? 0.3 : 1, transition: 'opacity 300ms ease', pointerEvents: room.phase === 'WORD_CHOICE' ? 'none' : 'auto' }}>
           <DrawingCanvas 
             ref={canvasRef}
@@ -245,29 +251,49 @@ export default function DrawingPhase({ room, onLeave }) {
         {/* Round Reveal Overlay */}
         {room.phase === 'ROUND_REVEAL' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-            <div style={{ width: '100%', maxWidth: '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
+            <div style={{ width: '100%', maxWidth: room.players.filter(p => !p.spectator).length > 4 ? '600px' : '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
               <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', marginBottom: '8px', fontSize: '1.4rem' }}>THE WORD WAS</h2>
-                <div style={{ fontSize: '2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px' }}>
-                  {room.selectedWord}
+                <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '15px'}}>
+                  <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '1.4rem' }}>THE WORD WAS</h2>
+                  <div style={{ fontSize: '1.5rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {room.selectedWord}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {room.players.filter(p => !p.spectator).map(p => {
-                    const pts = room.turnScores?.[p.id] || 0
-                    const isCorrect = pts > 0
-                    const isDrawerRow = p.id === room.currentDrawerId
-                    return (
-                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
-                        <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 700, color: 'var(--sk-text)' }}>
-                          {p.name} {isDrawerRow && <span style={{ color: 'var(--sk-muted)', fontSize: '0.85em' }}>(Drawer)</span>}
-                        </span>
-                        <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                          +{pts}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
+                {(() => {
+                  const activePlayers = room.players.filter(p => !p.spectator)
+                  // Stable sort by round score descending
+                  const sortedPlayers = [...activePlayers].sort((a, b) => {
+                    const scoreA = room.turnScores?.[a.id] || 0
+                    const scoreB = room.turnScores?.[b.id] || 0
+                    return scoreB - scoreA
+                  })
+                  
+                  return (
+                    <div style={{ 
+                      columnWidth: '200px',
+                      columnCount: sortedPlayers.length > 4 ? 2 : 1,
+                      columnGap: '12px',
+                      width: '100%',
+                      textAlign: 'left'
+                    }}>
+                      {sortedPlayers.map(p => {
+                        const pts = room.turnScores?.[p.id] || 0
+                        const isCorrect = pts > 0
+                        const isDrawerRow = p.id === room.currentDrawerId
+                        return (
+                          <div key={p.id} style={{ breakInside: 'avoid', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
+                            <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 700, color: 'var(--sk-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                              {p.name} {isDrawerRow && <span style={{ color: 'var(--sk-muted)', fontSize: '0.85em' }}>(Drawer)</span>}
+                            </span>
+                            <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>
+                              +{pts}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -307,8 +333,8 @@ export default function DrawingPhase({ room, onLeave }) {
       {/* LOWER INFO SECTION: Players & Chat */}
       <div style={{ 
         display: 'flex', 
-        height: '160px', 
-        flexShrink: 0,
+        flex: INFO_PANEL_FLEX,
+        minHeight: 0,
         borderTop: '1px solid rgba(0,0,0,0.05)', 
         background: 'rgba(255, 255, 255, 0.8)',
         zIndex: 10
