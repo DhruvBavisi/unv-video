@@ -259,12 +259,16 @@ export function gameReducer(state, action) {
     }
     case 'SESSION_NO_ROOM': {
       clearSession()
+      let newPhase = GAME_PHASES.MODE_SELECTION
+      if ([GAME_PHASES.ONLINE_SETUP, GAME_PHASES.CREATE_ROOM, GAME_PHASES.JOIN_ROOM, GAME_PHASES.MODE_SELECTION].includes(state.phase)) {
+        newPhase = state.phase
+      }
       return {
         ...state,
         roomId: '',
         hostId: null,
         players: [],
-        phase: GAME_PHASES.ONLINE_SETUP,
+        phase: newPhase,
         membershipState: MEMBERSHIP.NONE,
         error: '',
       }
