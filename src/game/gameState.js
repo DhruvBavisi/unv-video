@@ -1,6 +1,6 @@
 import { GAME_PHASES, PLAYER_STATUS } from './gamePhases.js'
 import { connectSocket, hasListenersAttached, markListenersAttached } from './socket.js'
-import { ensureIdentity, readIdentity, setResumeToken, clearIdentity } from './identity.js'
+import { ensureIdentity, readIdentity, setResumeToken, clearIdentity, clearSession } from './identity.js'
 
 const MEMBERSHIP = {
   NONE: 'NONE',
@@ -13,10 +13,16 @@ const MEMBERSHIP = {
 }
 
 export function createInitialState() {
-  const { sessionId } = ensureIdentity()
+  const { sessionId, resumeToken, roomId } = readIdentity()
+  // ensureIdentity guarantees a session id, but readIdentity gives us what is persisted
+  if (!sessionId) ensureIdentity()
+  const currentSessionId = readIdentity().sessionId
+
+  const initialPhase = (resumeToken && roomId) ? GAME_PHASES.RESTORING_SESSION : GAME_PHASES.MODE_SELECTION
+
   return {
-    phase: GAME_PHASES.MODE_SELECTION,
-    sessionId,
+    phase: initialPhase,
+    sessionId: currentSessionId,
     roomId: '',
     hostId: null,
     error: '',
@@ -160,6 +166,7 @@ export function gameReducer(state, action) {
     }
     case 'ROOM_CLOSED': {
       console.log('[ROOM] room closed')
+      clearSession()
       return {
         ...state,
         roomId: '',
@@ -179,6 +186,7 @@ export function gameReducer(state, action) {
     }
     case 'LEAVE_CONFIRMED': {
       console.log('[ROOM] leave confirmed, returning to setup')
+      clearSession()
       return {
         ...state,
         roomId: '',
@@ -250,6 +258,7 @@ export function gameReducer(state, action) {
       }
     }
     case 'SESSION_NO_ROOM': {
+      clearSession()
       return {
         ...state,
         roomId: '',
@@ -356,7 +365,7 @@ export function initSocket(sid) {
     })
 
     socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
-      setResumeToken(resumeToken, roomId, playerName)
+      setResumeToken(resumeToken, roomId, playerName, 'undercover')
     })
 
     socket.on('chat-message', (message) => {
@@ -389,7 +398,7 @@ export function setDispatchRef(dispatch) {
 export function emitCreateRoom(socket, sessionId, playerName) {
   return new Promise((resolve) => {
     socket.emit('create-room', { sessionId, resumeToken: readIdentity().resumeToken, playerName }, (response) => {
-      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName)
+      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
       if (response.error) {
         const errorMessages = {
           INVALID_NAME: 'IDENTITY REQUIRED — enter a valid investigator name.',
@@ -409,7 +418,7 @@ export function emitJoinRoom(socket, sessionId, roomId, playerName) {
   return new Promise((resolve) => {
     socket.emit('join-room', { sessionId, resumeToken: readIdentity().resumeToken, roomId, playerName }, (response) => {
       console.log('[ROOM] ROOM_JOINED received', response)
-      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName)
+      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
       if (response.error) {
         const errorMessages = {
           ROOM_NOT_FOUND: 'CASE FILE NOT FOUND — check the room ID.',

@@ -11,13 +11,15 @@ const SESSION_KEY = 'undercover-session'
 const TOKEN_KEY = 'undercover-resume-token'
 const ROOM_KEY = 'undercover-room-id'
 const NAME_KEY = 'undercover-player-name'
+const MODE_KEY = 'undercover-game-mode'
 
 export function readIdentity() {
   const sessionId = localStorage.getItem(SESSION_KEY)
   const resumeToken = localStorage.getItem(TOKEN_KEY) || null
   const roomId = localStorage.getItem(ROOM_KEY) || null
   const playerName = localStorage.getItem(NAME_KEY) || null
-  return { sessionId, resumeToken, roomId, playerName }
+  const gameMode = localStorage.getItem(MODE_KEY) || null
+  return { sessionId, resumeToken, roomId, playerName, gameMode }
 }
 
 // Returns a guaranteed-present session id (creating + persisting one
@@ -31,7 +33,7 @@ export function ensureIdentity() {
   return { sessionId, resumeToken: localStorage.getItem(TOKEN_KEY) || null }
 }
 
-export function setResumeToken(token, roomId, playerName) {
+export function setResumeToken(token, roomId, playerName, gameMode) {
   if (typeof token === 'string' && token) {
     localStorage.setItem(TOKEN_KEY, token)
   }
@@ -41,6 +43,9 @@ export function setResumeToken(token, roomId, playerName) {
   if (typeof playerName === 'string' && playerName) {
     localStorage.setItem(NAME_KEY, playerName)
   }
+  if (typeof gameMode === 'string' && gameMode) {
+    localStorage.setItem(MODE_KEY, gameMode)
+  }
 }
 
 export function clearIdentity() {
@@ -48,6 +53,7 @@ export function clearIdentity() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROOM_KEY)
   localStorage.removeItem(NAME_KEY)
+  localStorage.removeItem(MODE_KEY)
 }
 
 // Clear room-specific credentials but keep the device session id.
@@ -56,6 +62,7 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ROOM_KEY)
   localStorage.removeItem(NAME_KEY)
+  localStorage.removeItem(MODE_KEY)
 }
 
 // Returns true if there is a persisted room session worth attempting to restore.

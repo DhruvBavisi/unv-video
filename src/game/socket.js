@@ -14,7 +14,7 @@ export function connectSocket(sessionId) {
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 10,
-    autoConnect: true,
+    autoConnect: false,
   })
 
   socket.on('connect', () => {

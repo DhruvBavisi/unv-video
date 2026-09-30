@@ -26,13 +26,20 @@ function Transition({ text }) {
 }
 
 function getInitialGameView() {
-  const { resumeToken, roomId } = readIdentity()
+  const { resumeToken, roomId, gameMode } = readIdentity()
   if (resumeToken && roomId) {
-    return 'undercover'
+    if (gameMode === 'skribbl') return 'skribbl'
+    if (gameMode === 'undercover') return 'undercover'
+    // fallback for old sessions
+    return 'undercover' 
   }
   
   const params = new URLSearchParams(window.location.search)
   if (params.get('room')) {
+    // We don't necessarily know the mode if joining via URL yet, 
+    // but the original logic assumed undercover. We'll leave it as undercover for now,
+    // or maybe landing? Wait, if they have a URL parameter, the actual game view 
+    // probably handles the joining. We'll keep it as 'undercover' for backward compatibility.
     return 'undercover'
   }
   

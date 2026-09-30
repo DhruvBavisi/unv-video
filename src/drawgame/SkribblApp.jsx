@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { connectSocket, getSocket } from '../game/socket.js'
-import { ensureIdentity } from '../game/identity.js'
+import { ensureIdentity, readIdentity, clearSession } from '../game/identity.js'
 import Lobby from './components/Lobby.jsx'
 import DrawingPhase from './components/DrawingPhase.jsx'
 
@@ -70,7 +70,10 @@ function SkribblScreenTransition({ view, children }) {
 export default function SkribblApp({ onExit }) {
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
-  const [view, setView] = useState('menu') // 'menu', 'create', 'join', 'lobby'
+  const [view, setView] = useState(() => {
+    const { resumeToken, roomId, gameMode } = readIdentity()
+    return (resumeToken && roomId && gameMode === 'skribbl') ? 'restoring' : 'menu'
+  })
 
   useEffect(() => {
     const { sessionId } = ensureIdentity()
@@ -83,21 +86,37 @@ export default function SkribblApp({ onExit }) {
 
     socket.on('draw:error', (err) => {
       setError(getFriendlyError(err.error || err.message))
+      if (view === 'restoring') setView('menu')
+    })
+
+    socket.on('session-no-room', () => {
+      clearSession()
+      if (view === 'restoring' || view === 'lobby') setView('menu')
+    })
+
+    socket.on('session-expired', () => {
+      clearSession()
+      if (view === 'restoring' || view === 'lobby') setView('menu')
     })
 
     socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
       import('../game/identity.js').then(({ setResumeToken }) => {
-        setResumeToken(resumeToken, roomId, playerName)
+        setResumeToken(resumeToken, roomId, playerName, 'skribbl')
       })
     })
+
+    if (!socket.connected) {
+      socket.connect()
+    }
 
     return () => {
       socket.off('draw:room-state')
       socket.off('draw:error')
       socket.off('session-token')
+      socket.off('session-no-room')
+      socket.off('session-expired')
     }
-  }, [])
-
+  }, [view])
   const handleCreateRoom = (playerName) => {
     const { sessionId } = ensureIdentity()
     const socket = getSocket()
@@ -169,6 +188,14 @@ export default function SkribblApp({ onExit }) {
         <SkribblError message={error} />
 
         <SkribblScreenTransition view={view}>
+          {view === 'restoring' && (
+            <div style={{ textAlign: 'center', marginTop: '40px' }}>
+              <h2 className="sk-card-title" style={{ justifyContent: 'center' }}>RESTORING SESSION...</h2>
+              <div className="restore-spinner" aria-label="Loading" style={{ margin: '20px auto' }} />
+              <p style={{ color: 'var(--sk-muted)' }}>Recovering your Skribbl session. Please wait.</p>
+            </div>
+          )}
+
           {view === 'menu' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
