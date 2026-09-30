@@ -330,26 +330,6 @@ export default function DrawingPhase({ room, onLeave }) {
         )}
       </div>
 
-      {/* LOWER INFO SECTION: Players & Chat */}
-      <div style={{ 
-        display: 'flex', 
-        flex: INFO_PANEL_FLEX,
-        minHeight: 0,
-        borderTop: '1px solid rgba(0,0,0,0.05)', 
-        background: 'rgba(255, 255, 255, 0.8)',
-        zIndex: 10
-      }}>
-        {/* Left Column: Player List */}
-        <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
-          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} sessionId={sessionId} />
-        </div>
-        
-        {/* Right Column: Chat Box */}
-        <div style={{ flex: '0 0 55%', minWidth: 0 }}>
-          <ChatBox room={room} />
-        </div>
-      </div>
-
       {/* BOTTOM CONTROLS */}
       <div style={{ flexShrink: 0, zIndex: 10 }}>
         {(isDrawer && room.phase === 'DRAWING') ? (
@@ -367,14 +347,16 @@ export default function DrawingPhase({ room, onLeave }) {
           <form onSubmit={handleGuessSubmit} style={{ 
             display: 'flex', 
             gap: '8px', 
-            padding: '8px 16px calc(8px + env(safe-area-inset-bottom, 0px))',
-            background: 'var(--sk-surface)'
+            padding: '8px 16px',
+            background: 'var(--sk-surface)',
+            borderTop: '1px solid rgba(0,0,0,0.05)',
+            borderBottom: '1px solid rgba(0,0,0,0.05)'
           }}>
             <input 
               type="text" 
               placeholder="Type your guess..."
               className="sk-input"
-              style={{ margin: 0, padding: '12px 16px', fontSize: '1rem', flex: 1 }}
+              style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
               value={guessInput}
               onChange={e => setGuessInput(e.target.value)}
               disabled={room.guessedPlayerIds?.includes(sessionId)}
@@ -385,6 +367,25 @@ export default function DrawingPhase({ room, onLeave }) {
             </button>
           </form>
         ) : null)}
+      </div>
+
+      {/* LOWER INFO SECTION: Players & Chat */}
+      <div style={{ 
+        display: 'flex', 
+        flex: INFO_PANEL_FLEX,
+        minHeight: 0,
+        background: 'rgba(255, 255, 255, 0.8)',
+        zIndex: 10
+      }}>
+        {/* Left Column: Player List */}
+        <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
+          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} sessionId={sessionId} />
+        </div>
+        
+        {/* Right Column: Chat Box */}
+        <div style={{ flex: '0 0 55%', minWidth: 0 }}>
+          <ChatBox room={room} />
+        </div>
       </div>
     </div>
   )
