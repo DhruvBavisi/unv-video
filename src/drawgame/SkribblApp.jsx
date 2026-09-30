@@ -150,9 +150,14 @@ export default function SkribblApp({ onExit }) {
 
   const handleLeaveRoom = () => {
     const socket = getSocket()
-    socket.emit('draw:leave-room', () => {
-      setRoomState(null)
-      setView('menu')
+    socket.emit('draw:leave-room', (res) => {
+      if (res && res.error) {
+        setError(getFriendlyError(res.error))
+      } else {
+        clearSession()
+        setRoomState(null)
+        setView('menu')
+      }
     })
   }
 
