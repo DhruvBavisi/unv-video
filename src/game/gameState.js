@@ -364,7 +364,8 @@ export function initSocket(sid) {
       dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word, specialRole })
     })
 
-    socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
+    socket.on('session-token', ({ resumeToken, roomId, playerName, gameMode }) => {
+      if (gameMode !== 'undercover') return
       setResumeToken(resumeToken, roomId, playerName, 'undercover')
     })
 

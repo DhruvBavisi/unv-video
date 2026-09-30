@@ -943,14 +943,14 @@ io.on('connection', (socket) => {
     player.disconnectedAt = null
     
     if (isDrawRoom) {
-      socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
+      socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
       console.log('[ROOM] draw session reconnected', { sessionId, roomId })
       socket.emit('draw:room-state', getSafeStateForPlayer(room, sessionId))
       broadcastDrawRoomState(room)
       return
     }
     reassignHostIfNeeded(room)
-    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'undercover' })
     console.log('[ROOM] session reconnected', { sessionId, roomId })
     socket.emit('session-reconnected', getPublicRoomState(room))
 
@@ -1067,7 +1067,7 @@ io.on('connection', (socket) => {
       ensureResumeToken(existing)
       const publicState = getPublicRoomState(room)
       console.log('[ROOM] join successful (rejoin)', { roomId: normalizedId, playerId: sessionId })
-      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name })
+      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'undercover' })
 
       if (room.wordPair) {
         const role = existing.role || null
@@ -1113,7 +1113,7 @@ io.on('connection', (socket) => {
     connectPlayer(socket, sessionId)
     const publicState = getPublicRoomState(room)
     console.log('[ROOM] join successful', { roomId: normalizedId, playerId: sessionId })
-    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId, playerName: trimmed })
+    socket.emit('session-token', { resumeToken: room.players[room.players.length - 1].resumeToken, roomId: normalizedId, playerName: trimmed, gameMode: 'undercover' })
     callback?.({ room: publicState, resumeToken: room.players[room.players.length - 1].resumeToken, playerName: trimmed })
     if (room.status === 'LOBBY') {
       const newTotal = Math.max(3, room.players.length)
@@ -1215,7 +1215,7 @@ io.on('connection', (socket) => {
     
     const player = room.players[0]
     ensureResumeToken(player)
-    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name })
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
     
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
@@ -1241,7 +1241,7 @@ io.on('connection', (socket) => {
       connectPlayer(socket, sessionId)
       
       if (!existing.resumeToken) ensureResumeToken(existing)
-      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name })
+      socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'skribbl' })
       
       callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)
@@ -1272,7 +1272,7 @@ io.on('connection', (socket) => {
     connectPlayer(socket, sessionId)
     
     ensureResumeToken(newPlayer)
-    socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name })
+    socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name, gameMode: 'skribbl' })
     
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
     broadcastDrawRoomState(room)

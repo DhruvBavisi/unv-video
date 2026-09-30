@@ -79,44 +79,51 @@ export default function SkribblApp({ onExit }) {
     const { sessionId } = ensureIdentity()
     const socket = connectSocket(sessionId)
 
-    socket.on('draw:room-state', (state) => {
+    const handleRoomState = (state) => {
       setRoomState(state)
       setView('lobby')
-    })
+    }
 
-    socket.on('draw:error', (err) => {
+    const handleError = (err) => {
       setError(getFriendlyError(err.error || err.message))
-      if (view === 'restoring') setView('menu')
-    })
+      setView(prev => prev === 'restoring' ? 'menu' : prev)
+    }
 
-    socket.on('session-no-room', () => {
+    const handleNoRoom = () => {
       clearSession()
-      if (view === 'restoring' || view === 'lobby') setView('menu')
-    })
+      setView(prev => (prev === 'restoring' || prev === 'lobby') ? 'menu' : prev)
+    }
 
-    socket.on('session-expired', () => {
+    const handleExpired = () => {
       clearSession()
-      if (view === 'restoring' || view === 'lobby') setView('menu')
-    })
+      setView(prev => (prev === 'restoring' || prev === 'lobby') ? 'menu' : prev)
+    }
 
-    socket.on('session-token', ({ resumeToken, roomId, playerName }) => {
+    const handleSessionToken = ({ resumeToken, roomId, playerName, gameMode }) => {
+      if (gameMode !== 'skribbl') return
       import('../game/identity.js').then(({ setResumeToken }) => {
         setResumeToken(resumeToken, roomId, playerName, 'skribbl')
       })
-    })
+    }
+
+    socket.on('draw:room-state', handleRoomState)
+    socket.on('draw:error', handleError)
+    socket.on('session-no-room', handleNoRoom)
+    socket.on('session-expired', handleExpired)
+    socket.on('session-token', handleSessionToken)
 
     if (!socket.connected) {
       socket.connect()
     }
 
     return () => {
-      socket.off('draw:room-state')
-      socket.off('draw:error')
-      socket.off('session-token')
-      socket.off('session-no-room')
-      socket.off('session-expired')
+      socket.off('draw:room-state', handleRoomState)
+      socket.off('draw:error', handleError)
+      socket.off('session-no-room', handleNoRoom)
+      socket.off('session-expired', handleExpired)
+      socket.off('session-token', handleSessionToken)
     }
-  }, [view])
+  }, [])
   const handleCreateRoom = (playerName) => {
     const { sessionId } = ensureIdentity()
     const socket = getSocket()
