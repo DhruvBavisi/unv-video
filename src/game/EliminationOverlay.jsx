@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useState, useRef, useEffect, useCallback } from 'react'
 import { getRoleImage } from './roleImages.js'
 import { emitSubmitMrWhiteGuess, emitMrWhiteLiveGuess } from './gameState.js'
+import { SPECIAL_ROLES } from '../data/specialRoles.js'
 
 function getRoleColor(role) {
   if (role === 'CIVILIAN') return '#6a8c6f'
@@ -393,8 +394,9 @@ export default function EliminationOverlay({
 
   if (!eliminationResult) return null
 
-  const { playerName, role } = eliminationResult
-  const characterUrl = getRoleImage(role)
+  const { playerName, role, specialRole } = eliminationResult
+  const specialRoleData = specialRole ? SPECIAL_ROLES.find(r => r.key === specialRole) : null
+  const characterUrl = specialRoleData?.avatar || getRoleImage(role)
   const displayRole = role ? role.replace('_', ' ') : 'UNKNOWN'
   const roleKey = (role || 'civilian').toLowerCase()
 

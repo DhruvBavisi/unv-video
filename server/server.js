@@ -328,7 +328,7 @@ function startDrawingTurn(room, word) {
   
   // Initialize Hint System
   const numHints = room.configuration.hints ?? 2
-  const isHidden = room.configuration.gameMode === 'hidden'
+  const isHidden = typeof room.configuration.gameMode === 'string' && room.configuration.gameMode.toUpperCase() === 'HIDDEN'
   
   if (isHidden || numHints <= 0 || !word) {
     room.hint = word ? word.replace(/[a-zA-Z0-9]/g, '_') : ''
@@ -670,14 +670,7 @@ function assignSpecialRoles(room) {
     for (let i = 0; i < count; i++) {
       if (availablePlayers.length === 0) break
       
-      let rIndex = -1
-      // For local testing, ensure the host gets a special role if available
-      const hostIndex = availablePlayers.findIndex(p => p.id === room.hostId)
-      if (hostIndex !== -1) {
-        rIndex = hostIndex
-      } else {
-        rIndex = Math.floor(Math.random() * availablePlayers.length)
-      }
+      const rIndex = Math.floor(Math.random() * availablePlayers.length)
       
       const p = availablePlayers.splice(rIndex, 1)[0]
       p.specialRole = roleKey
@@ -738,7 +731,28 @@ function startCluePhase(room) {
   room.submittedCluePlayerIds = []
 
   const active = getActivePlayers(room)
-  room.turnOrder = shuffle(active.map((p) => p.id))
+  let order = shuffle(active.map((p) => p.id))
+  
+  if (room.round === 1 && order.length > 1) {
+    const firstPlayerId = order[0]
+    const firstPlayer = room.players.find(p => p.id === firstPlayerId)
+    if (firstPlayer?.role === 'MR_WHITE') {
+      const nonMrWhiteIndices = []
+      for (let i = 1; i < order.length; i++) {
+        const p = room.players.find(x => x.id === order[i])
+        if (p?.role !== 'MR_WHITE') {
+          nonMrWhiteIndices.push(i)
+        }
+      }
+      if (nonMrWhiteIndices.length > 0) {
+        const swapIdx = nonMrWhiteIndices[Math.floor(Math.random() * nonMrWhiteIndices.length)]
+        order[0] = order[swapIdx]
+        order[swapIdx] = firstPlayerId
+      }
+    }
+  }
+
+  room.turnOrder = order
   room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
   room.turnIndex = 0
 
@@ -1378,8 +1392,9 @@ io.on('connection', (socket) => {
 
 
 
-  socket.on('draw:choose-word', ({ word }) => {
-    if (!currentSessionId) return
+  socket.on('draw:choose-word', (payload, callback) => {
+    if (!currentSessionId) return callback?.({ error: 'No session' })
+    const word = payload?.word
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.currentDrawerId === currentSessionId && dr.phase === 'WORD_CHOICE') {
@@ -1387,11 +1402,21 @@ io.on('connection', (socket) => {
         break
       }
     }
-    if (!room) return
-    if (room.selectedWord) return // Prevent duplicate selection
-    if (!room.wordChoices.includes(word)) return // Validate choice
+    if (!room) return callback?.({ error: 'Not your turn or wrong phase' })
+    if (room.selectedWord) return callback?.({ error: 'Already selected a word' })
+    
+    if (!room.wordChoices || !room.wordChoices.includes(word)) {
+      if (!room.wordChoices || room.wordChoices.length === 0) {
+        // Safe fallback if pool exhausted
+        endDrawRound(room)
+        return callback?.({ success: true, endedEarly: true })
+      } else {
+        return callback?.({ error: 'Invalid word choice' })
+      }
+    }
 
     startDrawingTurn(room, word)
+    callback?.({ success: true })
   })
 
   socket.on('draw:stroke', (strokeData) => {
@@ -1554,6 +1579,7 @@ io.on('connection', (socket) => {
         room.chatMessages.push(chatMsg)
         if (room.chatMessages.length > 100) room.chatMessages.shift()
         
+        broadcastDrawRoomState(room) // Broadcast first so the chat message is immediately visible in DRAWING phase
         endDrawRound(room)
         return // avoid double-broadcasting below
       }
@@ -2182,6 +2208,7 @@ io.on('connection', (socket) => {
             voteCount: maxVotes,
             isVoteElimination: true,
             startedAt: Date.now(),
+            specialRole: eliminatedPlayer.specialRole,
             specialRoleOutcomes: room.specialRoleOutcomes
           }
           
@@ -2286,8 +2313,10 @@ ELIMINATION RESULT=`, room.eliminationResult)
       playerId: target.id,
       playerName: target.name,
       role: target.role,
+      specialRole: target.specialRole,
       isRevengerElimination: true,
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      specialRoleOutcomes: room.specialRoleOutcomes
     }
     room.gamePhase = 'ELIMINATION'
     room.revengerId = null

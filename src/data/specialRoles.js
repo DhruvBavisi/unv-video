@@ -56,7 +56,8 @@ export const SPECIAL_ROLES = [
       "The first time they would be eliminated, they survive and another random player is eliminated instead."
     ],
     mobileDescription: "The first time the Boomerang receives the majority of votes, the votes bounce back to those who cast them!",
-    avatar: '/images/characters/boomerang.png'
+    avatar: '/images/characters/boomerang.png',
+    implemented: false
   },
   {
     key: "goddessOfJustice",
@@ -67,7 +68,8 @@ export const SPECIAL_ROLES = [
       "Once per investigation, can reveal the true role of any eliminated player."
     ],
     mobileDescription: "In case of equality of votes, she decides who gets eliminated (even if she has already been eliminated)",
-    avatar: '/images/characters/goddessofjustice.png'
+    avatar: '/images/characters/goddessofjustice.png',
+    implemented: false
   },
   {
     key: "ghost",
@@ -78,7 +80,8 @@ export const SPECIAL_ROLES = [
       "Can continue to communicate with the remaining players after being eliminated."
     ],
     mobileDescription: "The Ghost can still vote even after being eliminated!",
-    avatar: '/images/characters/ghost.png'
+    avatar: '/images/characters/ghost.png',
+    implemented: false
   },
   {
     key: "falafelVendor",
@@ -90,7 +93,8 @@ export const SPECIAL_ROLES = [
       "The player eating the falafel cannot speak for the remainder of the round."
     ],
     mobileDescription: "He receives a random ability each game. Try your luck and see what surprises await!",
-    avatar: '/images/characters/falafalvendor.png'
+    avatar: '/images/characters/falafalvendor.png',
+    implemented: false
   },
   {
     key: "mrMeme",
@@ -101,6 +105,7 @@ export const SPECIAL_ROLES = [
       "Must only communicate using memes, emojis, or internet slang."
     ],
     mobileDescription: "Each round, 1 player must describe their secret word with gestures instead of speaking (only in person or with video)",
-    avatar: '/images/characters/mrmeme.png'
+    avatar: '/images/characters/mrmeme.png',
+    implemented: false
   }
 ];

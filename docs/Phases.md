@@ -342,7 +342,7 @@ Minimum test matrix:
 - neutral local avatar/color/description when roles are hidden
 - secret words remain correct when roles are hidden
 - no role leakage through public state, DOM, accessibility labels, or reconnect
-- Round 1 Mr. White ordering restriction
+- Round 1 Mr. White ordering restriction (Mr. White cannot be the first player in Round 1)
 - Round 2+ Mr. White first position
 - clue maximum 3 words
 - duplicate clue rejection
@@ -455,7 +455,7 @@ Elimination-triggered secondary elimination, this time player-chosen rather than
 - When enabled with ≥5 active players, assign the `revenger` trait to one active player (any alignment).
 - `advanceFromElimination`: if the eliminated player is the Revenger (eliminated by vote), the game enters the `REVENGER_DECISION` state.
 - A private target selection UI is rendered on the Revenger's screen, scoped to remaining active players, excluding self. This natively uses `localSecret` to preserve privacy, and `getPublicRoomState` intentionally strips `specialRole: 'revenger'` from the active Revenger's public player state to prevent data leakage.
-- The Revenger's chosen target is eliminated immediately once submitted via `submit-revenger-decision`; then Mr. White-guess checks, Lovers cascades, and win checks run natively against the resulting state.
+- The Revenger's chosen target is eliminated immediately once submitted via `submit-revenger-decision`; then Mr. White-guess checks, Lovers cascades, and win checks run natively against the resulting state. The targeted player's elimination card animation is visually identical to a normal vote elimination, reusing the exact same `EliminationOverlay` layout and timing.
 - A server-authoritative 15-second timeout handles disconnects or no response. If the Revenger fails to choose, no target is eliminated and the game cleanly invokes `advanceFromElimination()` without UI glitches. `room.revengerId` is also rigorously cleared on all game resets.
 - Minimum 5 active players.
 
@@ -464,6 +464,7 @@ Elimination-triggered secondary elimination, this time player-chosen rather than
 - `REVENGER_DECISION_PHASE` introduced in `gamePhases.js`.
 - The `VotingPanel` card-flip in `CluePhase.jsx` was adapted to conditionally render `RevengerPanel`.
 - Re-uses `onElimination` natively for the Revenger's target to seamlessly trigger downstream cascades.
+- Included `specialRoleOutcomes` and `specialRole` properties inside `eliminationResult` for Revenger target and normal eliminations alike, ensuring Special-Role Avatars gracefully reveal upon elimination.
 
 ## PHASE 30 — The Boomerang
 First role that changes vote-tallying itself rather than post-elimination effects.

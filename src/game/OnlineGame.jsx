@@ -797,7 +797,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
     }
   }, [triggerRect])
 
-  const activeRolesCount = SPECIAL_ROLES.filter(r => configuration?.specialRoles?.[r.key]).length
+  const activeRolesCount = SPECIAL_ROLES.filter(r => configuration?.specialRoles?.[r.key] && r.implemented !== false).length
 
   return (
     <div className={`special-roles-section ${expanded ? 'special-roles-section--expanded' : ''}`}>
@@ -881,7 +881,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
           <div className="special-roles-list">
             {SPECIAL_ROLES.map(role => {
               const enabled = configuration.specialRoles?.[role.key]
-              const canEnable = totalPlayers >= role.minPlayers
+              const canEnable = totalPlayers >= role.minPlayers && role.implemented !== false
               const unavailable = !canEnable
               
               return (
@@ -964,7 +964,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                   duelists: '#f97316' // warm peach/orange
                 }
                 const enabled = configuration.specialRoles?.[role.key]
-                const canEnable = totalPlayers >= role.minPlayers
+                const canEnable = totalPlayers >= role.minPlayers && role.implemented !== false
                 const unavailable = !canEnable
                 const activeColor = MOBILE_ROLE_COLORS[role.key] || 'var(--accent)'
                 const panelLayout = MOBILE_PANEL_CHARACTER_LAYOUT[role.key] || { scale: 1, translateY: 0, translateX: 0 }

@@ -15,6 +15,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const [tool, setTool] = useState('brush')
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
   const [guessInput, setGuessInput] = useState('')
+  const [isChoosing, setIsChoosing] = useState(false)
   
   const strokesRef = useRef([])
   const canvasRef = useRef(null)
@@ -127,8 +128,15 @@ export default function DrawingPhase({ room, onLeave }) {
   }
 
   const handleChooseWord = (word) => {
+    if (isChoosing) return
+    setIsChoosing(true)
     const socket = getSocket()
-    socket.emit('draw:choose-word', { word })
+    socket.emit('draw:choose-word', { word }, (res) => {
+      setIsChoosing(false)
+      if (res?.error) {
+        console.error('Word choice rejected:', res.error)
+      }
+    })
   }
 
   const handleGuessSubmit = (e) => {

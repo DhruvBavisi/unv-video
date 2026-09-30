@@ -2128,7 +2128,7 @@ video {
   }
 
   .clue-panel__order-list {
-    max-height: 180px;
+    max-height: none;
   }
 }
 
@@ -2155,7 +2155,7 @@ video {
   }
 
   .clue-panel__order-list {
-    max-height: 150px;
+    max-height: none;
   }
 }
 
@@ -2194,6 +2194,8 @@ video {
   background: linear-gradient(135deg, rgba(28, 29, 31, 0.96), rgba(11, 12, 13, 0.98));
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .clue-panel__order-header {
@@ -2217,7 +2219,7 @@ video {
 }
 
 .clue-panel__order-list {
-  max-height: 320px;
+  flex: 1;
   overflow-y: auto;
   padding: 10px 14px;
   display: flex;
