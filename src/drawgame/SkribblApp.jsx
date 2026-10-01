@@ -70,6 +70,7 @@ function SkribblScreenTransition({ view, children }) {
 export default function SkribblApp({ onExit }) {
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
+  const connectPromiseRef = useRef(null)
   const [view, setView] = useState(() => {
     const { resumeToken, roomId, gameMode } = readIdentity()
     return (resumeToken && roomId && gameMode === 'skribbl') ? 'restoring' : 'menu'
@@ -84,9 +85,27 @@ export default function SkribblApp({ onExit }) {
       setView('lobby')
     }
 
+    const handleConnect = () => {
+      setError((prev) => (
+        prev === 'Unable to connect to the game server. Please try again.' ||
+        prev === 'Connection lost. Reconnecting...'
+      ) ? null : prev)
+    }
+
     const handleError = (err) => {
       setError(getFriendlyError(err.error || err.message))
       setView(prev => prev === 'restoring' ? 'menu' : prev)
+    }
+
+    const handleConnectError = () => {
+      setError('Unable to connect to the game server. Please try again.')
+      setView(prev => prev === 'restoring' ? 'menu' : prev)
+    }
+
+    const handleDisconnect = (reason) => {
+      if (reason !== 'io client disconnect') {
+        setError('Connection lost. Reconnecting...')
+      }
     }
 
     const handleNoRoom = () => {
@@ -108,6 +127,9 @@ export default function SkribblApp({ onExit }) {
 
     socket.on('draw:room-state', handleRoomState)
     socket.on('draw:error', handleError)
+    socket.on('connect', handleConnect)
+    socket.on('connect_error', handleConnectError)
+    socket.on('disconnect', handleDisconnect)
     socket.on('session-no-room', handleNoRoom)
     socket.on('session-expired', handleExpired)
     socket.on('session-token', handleSessionToken)
@@ -119,14 +141,65 @@ export default function SkribblApp({ onExit }) {
     return () => {
       socket.off('draw:room-state', handleRoomState)
       socket.off('draw:error', handleError)
+      socket.off('connect', handleConnect)
+      socket.off('connect_error', handleConnectError)
+      socket.off('disconnect', handleDisconnect)
       socket.off('session-no-room', handleNoRoom)
       socket.off('session-expired', handleExpired)
       socket.off('session-token', handleSessionToken)
     }
   }, [])
-  const handleCreateRoom = (playerName) => {
-    const { sessionId } = ensureIdentity()
+
+  const ensureSocketConnected = async () => {
     const socket = getSocket()
+    if (!socket) throw new Error('SOCKET_UNAVAILABLE')
+    if (socket.connected) return socket
+
+    if (!connectPromiseRef.current) {
+      connectPromiseRef.current = new Promise((resolve, reject) => {
+        let timeoutId = null
+
+        const cleanup = () => {
+          socket.off('connect', onConnect)
+          socket.off('connect_error', onConnectError)
+          if (timeoutId) clearTimeout(timeoutId)
+        }
+
+        const onConnect = () => {
+          cleanup()
+          resolve(socket)
+        }
+
+        const onConnectError = () => {
+          cleanup()
+          reject(new Error('CONNECT_ERROR'))
+        }
+
+        timeoutId = setTimeout(() => {
+          cleanup()
+          reject(new Error('CONNECT_TIMEOUT'))
+        }, 10000)
+
+        socket.on('connect', onConnect)
+        socket.on('connect_error', onConnectError)
+        if (!socket.connected) socket.connect()
+      }).finally(() => {
+        connectPromiseRef.current = null
+      })
+    }
+
+    return connectPromiseRef.current
+  }
+
+  const handleCreateRoom = async (playerName) => {
+    const { sessionId } = ensureIdentity()
+    let socket
+    try {
+      socket = await ensureSocketConnected()
+    } catch {
+      setError('Unable to connect to the game server. Please try again.')
+      return
+    }
     socket.emit('draw:create-room', { sessionId, playerName }, (res) => {
       if (res.error) setError(getFriendlyError(res.error))
       else if (res.room) {
@@ -136,9 +209,15 @@ export default function SkribblApp({ onExit }) {
     })
   }
 
-  const handleJoinRoom = (roomId, playerName) => {
+  const handleJoinRoom = async (roomId, playerName) => {
     const { sessionId } = ensureIdentity()
-    const socket = getSocket()
+    let socket
+    try {
+      socket = await ensureSocketConnected()
+    } catch {
+      setError('Unable to connect to the game server. Please try again.')
+      return
+    }
     socket.emit('draw:join-room', { sessionId, roomId, playerName }, (res) => {
       if (res.error) setError(getFriendlyError(res.error))
       else if (res.room) {

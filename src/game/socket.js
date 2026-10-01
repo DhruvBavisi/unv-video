@@ -7,13 +7,8 @@ let listenersAttached = false
 export function connectSocket(sessionId) {
   if (socket) return socket
 
-  let socketUrl = import.meta.env.SOCKET_URL
-  if (!socketUrl) {
-    if (import.meta.env.PROD) {
-      throw new Error("SOCKET_URL environment variable is required in production.")
-    }
-    socketUrl = window.location.origin
-  }
+  const socketUrl =
+    (import.meta.env.VITE_SOCKET_URL || import.meta.env.SOCKET_URL || window.location.origin).trim()
 
   socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
