@@ -160,9 +160,9 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* TOP BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'calc(12px + env(safe-area-inset-top, 0px)) 20px 12px 20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 10 }}>
           <div style={{ fontSize: '0.7rem', color: 'var(--sk-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>ROUND {room.round}/{room.totalRounds}</div>
-          <div style={{ fontSize: '1rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
             {isDrawer ? (
               <span><strong style={{ color: 'var(--sk-primary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{room.selectedWord}</strong></span>
             ) : (
@@ -173,7 +173,7 @@ export default function DrawingPhase({ room, onLeave }) {
           </div>
         
         <div style={{ 
-          fontSize: '1.4rem', 
+          fontSize: '1.2rem', 
           fontFamily: 'var(--sk-font-display)', 
           color: topBarColor,
           background: 'var(--sk-surface)',
