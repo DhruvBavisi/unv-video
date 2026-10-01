@@ -516,7 +516,7 @@ function endDrawRound(room) {
 function generateWordChoices(room) {
   room.usedWords = room.usedWords || []
   
-  const defaultWords = ['ocean', 'birthday cake', 'rocket', 'telephone', 'glasses', 'robot', 'pizza', 'bicycle', 'moon', 'guitar', 'volcano', 'penguin', 'sunflower', 'castle', 'butterfly', 'hamburger', 'dragon', 'diamond', 'spider', 'camera']
+  const defaultWords = require('./drawWords.json')
   
   let customWords = []
   if (Array.isArray(room.configuration.customWords)) {
