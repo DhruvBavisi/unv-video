@@ -42,9 +42,16 @@ app.use(cors())
 
 const httpServer = createServer(app)
 
+function normalizeOrigin(origin) {
+  const value = String(origin || '').trim()
+  if (!value) return value
+  if (/^https?:\/\//i.test(value)) return value
+  return `https://${value}`
+}
+
 const originList = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((s) => s.trim())
+  .map((s) => normalizeOrigin(s))
   .filter(Boolean)
 const allowedOrigin = originList.length === 1 ? originList[0] : originList
 
