@@ -11,3 +11,6 @@ web:
     - key: PORT
       sync: false
       value: 10000
+    - key: FRONTEND_ORIGIN
+      sync: false
+      value: https://investigation-room.vercel.app
