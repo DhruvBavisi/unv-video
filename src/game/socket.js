@@ -7,8 +7,11 @@ let listenersAttached = false
 export function connectSocket(sessionId) {
   if (socket) return socket
 
-  const socketUrl =
-    (import.meta.env.VITE_SOCKET_URL || import.meta.env.SOCKET_URL || window.location.origin).trim()
+  const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.SOCKET_URL
+  const socketUrl = (
+    configuredSocketUrl ||
+    (import.meta.env.PROD ? 'https://undercover-server.onrender.com' : window.location.origin)
+  ).trim()
 
   socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
