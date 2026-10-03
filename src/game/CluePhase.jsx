@@ -528,6 +528,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   })
   const myVote = votes[myPlayerId]
   const isLocked = lockedVotes.includes(myPlayerId)
+  const allVotesConfirmed = activePlayers.length > 0 && lockedVotes.length >= activePlayers.length
   
   const voteCounts = {}
   Object.values(votes).forEach(targetId => {
@@ -588,7 +589,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
         <Button 
           variant="danger" 
           onClick={isLocked ? onUnlockVote : onLockVote} 
-          disabled={!myVote || submitting}
+          disabled={!myVote || submitting || allVotesConfirmed}
           className="voting-card__submit-btn"
         >
           {isLocked ? 'Unlock My Vote' : 'Confirm Vote'}
