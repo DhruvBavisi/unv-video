@@ -201,6 +201,7 @@ function getPublicRoomState(room) {
     category: room.category,
     wordPair: room.gamePhase === 'RESULT' ? room.wordPair : undefined,
     specialRoleOutcomes: room.specialRoleOutcomes || [],
+    revengerDecisionEndsAt: room.gamePhase === 'REVENGER_DECISION' ? (room.revengerDecisionEndsAt || null) : null,
   }
 }
 
@@ -1735,6 +1736,7 @@ io.on('connection', (socket) => {
       room.mrWhiteLiveGuess = ''
       room.pendingMrWhiteElimination = null
       room.revengerId = null
+    room.revengerDecisionEndsAt = null
       room.goddessId = null
       room.chat = []
       room.turnOrder = []
@@ -1853,6 +1855,7 @@ io.on('connection', (socket) => {
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
+    room.revengerDecisionEndsAt = null
     room.goddessId = null
 
     room.players.forEach((p) => {
@@ -1934,6 +1937,7 @@ io.on('connection', (socket) => {
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
+    room.revengerDecisionEndsAt = null
     room.goddessId = null
 
     room.players.forEach(p => {
@@ -2414,6 +2418,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
     room.gamePhase = 'ELIMINATION'
     room.revengerId = null
+    room.revengerDecisionEndsAt = null
     broadcastRoom(room)
     
     const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
@@ -2601,6 +2606,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     ) {
       room.gamePhase = 'REVENGER_DECISION'
       room.revengerId = eliminatedId
+      room.revengerDecisionEndsAt = Date.now() + 20000
       
       const version = room.gameVersion
       setTimeout(() => {
@@ -2615,6 +2621,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
         revenger.specialRoleData.resolved = true
         
         currentRoom.revengerId = null
+        currentRoom.revengerDecisionEndsAt = null
         currentRoom.gamePhase = 'ELIMINATION'
         
         currentRoom.specialRoleOutcomes = currentRoom.specialRoleOutcomes || []
@@ -2626,7 +2633,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
         })
         
         advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
-      }, 15000)
+      }, 20000)
       
       broadcastRoom(room)
       return
