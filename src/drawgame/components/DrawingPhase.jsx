@@ -109,9 +109,77 @@ export default function DrawingPhase({ room, onLeave }) {
     }
   }, [currentTurnKey, room.phase])
 
+  // Batch rapid pointer events into short ordered packets. Sending one Socket.IO
+  // message per pointer event can overwhelm the realtime stream when drawing fast.
+  const pendingLivePointsRef = useRef([])
+  const liveFlushTimerRef = useRef(null)
+
+  const flushLiveStroke = useCallback(() => {
+    if (liveFlushTimerRef.current) {
+      clearTimeout(liveFlushTimerRef.current)
+      liveFlushTimerRef.current = null
+    }
+
+    const points = pendingLivePointsRef.current
+    if (points.length === 0) return
+    pendingLivePointsRef.current = []
+
+    const socket = getSocket()
+    socket.emit('draw:stroke', {
+      color: points.color,
+      size: points.size,
+      tool: points.tool,
+      points: points.points,
+      isComplete: false,
+    })
+  }, [])
+
   const handleStroke = useCallback((strokeData, isComplete = true) => {
     const socket = getSocket()
-    socket.emit('draw:stroke', { ...strokeData, isComplete })
+
+    if (isComplete) {
+      // Preserve ordering: all pending live points must reach the server before
+      // the persisted complete stroke is sent.
+      flushLiveStroke()
+      socket.emit('draw:stroke', { ...strokeData, isComplete: true })
+      return
+    }
+
+    if (!strokeData?.points?.length) return
+
+    const pending = pendingLivePointsRef.current
+    if (pending.length === 0) {
+      pendingLivePointsRef.current = {
+        color: strokeData.color,
+        size: strokeData.size,
+        tool: strokeData.tool,
+        points: [...strokeData.points],
+      }
+    } else {
+      // Pointer deltas are already ordered. Keep the complete point sequence in
+      // one packet so the remote canvas can draw it without gaps.
+      pending.points.push(...strokeData.points.slice(1))
+    }
+
+    // Keep packets small enough for smooth realtime rendering while greatly
+    // reducing event pressure during fast strokes.
+    if (pendingLivePointsRef.current.points.length >= 32) {
+      flushLiveStroke()
+      return
+    }
+
+    if (!liveFlushTimerRef.current) {
+      liveFlushTimerRef.current = setTimeout(() => {
+        liveFlushTimerRef.current = null
+        flushLiveStroke()
+      }, 16)
+    }
+  }, [flushLiveStroke])
+
+  useEffect(() => () => {
+    if (liveFlushTimerRef.current) clearTimeout(liveFlushTimerRef.current)
+    liveFlushTimerRef.current = null
+    pendingLivePointsRef.current = []
   }, [])
 
   const handleClearCanvas = () => {
