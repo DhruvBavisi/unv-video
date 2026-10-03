@@ -1433,6 +1433,29 @@ video {
   gap: 14px;
 }
 
+.revenger-decision-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px auto 4px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.revenger-decision-timer strong {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
 .clue-panel__voting-header {
   padding: 16px 18px;
   border: 1px solid rgba(169, 166, 158, 0.22);
