@@ -2196,9 +2196,6 @@ io.on('connection', (socket) => {
     if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     
     if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
-    // After a tie, only the host can start the next voting attempt.
-    if (room.voteResult?.tie) return callback?.({ success: false, error: 'REVOTE_NOT_STARTED' })
-
     const target = room.players.find(p => p.id === targetId)
     if (!target || target.eliminated || target.spectator) return callback?.({ success: false, error: 'INVALID_TARGET' })
 
@@ -2340,17 +2337,39 @@ ELIMINATION RESULT=`, room.eliminationResult)
               currentGoddess.specialRoleData.used = true
             }
             
+            currentRoom.votes = {}
+            currentRoom.lockedVotes = []
+            currentRoom.voteResult = null
+            currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
             currentRoom.gamePhase = 'VOTE'
             currentRoom.goddessId = null
             broadcastRoom(currentRoom)
           }, 15000)
         } else {
-          // Preserve the tied vote state. The host must explicitly start the revote.
+          // No special-role decision is required: immediately start the next vote attempt.
+          room.votes = {}
+          room.lockedVotes = []
+          room.voteResult = null
+          room.votingAttempt = (room.votingAttempt || 1) + 1
           room.gamePhase = 'VOTE'
         }
       }
     }
     
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('unlock-vote', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
+
+    const player = room.players.find((p) => p.id === currentSessionId)
+    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    if (!room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_NOT_LOCKED' })
+
+    room.lockedVotes = room.lockedVotes.filter((id) => id !== currentSessionId)
     broadcastRoom(room)
     callback?.({ success: true })
   })
