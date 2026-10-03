@@ -17,6 +17,7 @@ const ERROR_MESSAGES = {
   EMPTY_MESSAGE: 'Enter a message first.',
   MESSAGE_TOO_LONG: 'Message is too long.',
   GAME_NOT_ACTIVE: 'Game is not active.',
+  REVOTE_NOT_STARTED: 'Waiting for the host to start the revote.',
 }
 
 const SPECIAL_ROLE_AVATAR_LAYOUT = {
