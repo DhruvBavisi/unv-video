@@ -20,7 +20,7 @@ const ERROR_MESSAGES = {
 }
 
 const SPECIAL_ROLE_AVATAR_LAYOUT = {
-  boomerang: { scale: 1.05, translateY: -5, translateX: -5 },
+  boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#d63941ff'},
   duelists: { scale: 1.4, translateY: 10, translateX: 0 },
   falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
   ghost: { scale: 1, translateY: -10, translateX: 7 },
