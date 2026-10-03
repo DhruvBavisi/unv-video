@@ -125,7 +125,7 @@ export default function PlayersPanel({ state, onClose, buttonRect, onActionReque
           <div className="player-card__initial">{getInitial(p.name)}</div>
         )}
         <div className="player-card__name" title={p.name}>{p.name}</div>
-        {p.isHost && <span className="player-card__host-badge">HOST</span>}
+        {p.id === state.hostId && <span className="player-card__host-badge">HOST</span>}
         {p.eliminated && p.role && (
           <div className="player-card__role">{p.role.replace('_', ' ')}</div>
         )}
