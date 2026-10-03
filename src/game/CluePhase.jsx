@@ -598,8 +598,18 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   )
 }
 
-function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting }) {
+function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting, decisionEndsAt }) {
   const [selectedTarget, setSelectedTarget] = useState(null)
+  const [remainingMs, setRemainingMs] = useState(() => Math.max(0, (decisionEndsAt || Date.now()) - Date.now()))
+
+  useEffect(() => {
+    const updateRemaining = () => setRemainingMs(Math.max(0, (decisionEndsAt || 0) - Date.now()))
+    updateRemaining()
+    const interval = setInterval(updateRemaining, 250)
+    return () => clearInterval(interval)
+  }, [decisionEndsAt])
+
+  const remainingSeconds = Math.ceil(remainingMs / 1000)
   
   const activePlayers = players.filter(p => !p.eliminated && !p.spectator)
   
@@ -609,6 +619,10 @@ function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting }
         <div className="clue-panel__voting-header">
           <span className="online-kicker">Special Role Phase</span>
           <h2>THE REVENGER</h2>
+          <div className="revenger-decision-timer" aria-live="polite">
+            <span>TIME REMAINING</span>
+            <strong>{remainingSeconds}s</strong>
+          </div>
           <p className="clue-panel__voting-tie" style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Waiting for the Revenger's final strike...</p>
         </div>
       </div>
@@ -620,6 +634,10 @@ function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting }
       <div className="clue-panel__voting-header">
         <span className="online-kicker">Special Role Phase</span>
         <h2>THE REVENGER</h2>
+        <div className="revenger-decision-timer" aria-live="polite">
+          <span>TIME REMAINING</span>
+          <strong>{remainingSeconds}s</strong>
+        </div>
         <p className="clue-panel__voting-tie" style={{ margin: '8px 0', fontSize: '0.85rem' }}>You have been eliminated.<br/>Choose one player to take down with you.</p>
       </div>
       <div className="clue-panel__order" style={{ flexGrow: 1, minHeight: 0 }}>
@@ -735,6 +753,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
     votes,
     lockedVotes,
     voteResult,
+    revengerDecisionEndsAt,
   } = state
 
   const isMyTurn = currentTurnPlayerId === sessionId
@@ -885,6 +904,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                     isRevenger={localSecret?.specialRole === 'revenger'}
                     onSubmit={handleRevengerSubmit}
                     submitting={submitting}
+                    decisionEndsAt={revengerDecisionEndsAt}
                   />
                 ) : gamePhase === 'GODDESS_DECISION' ? (
                   <GoddessPanel
