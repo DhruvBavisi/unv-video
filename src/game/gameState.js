@@ -505,6 +505,14 @@ export function emitLockVote(socket) {
   })
 }
 
+export function emitUnlockVote(socket) {
+  return new Promise((resolve) => {
+    socket.emit('unlock-vote', (response) => {
+      resolve(response)
+    })
+  })
+}
+
 export function emitSubmitMrWhiteGuess(socket, guess) {
   return new Promise((resolve) => {
     socket.emit('submit-mr-white-guess', { guess }, (response) => {
