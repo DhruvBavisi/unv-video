@@ -54,6 +54,11 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
 
   const host = state.hostId === state.sessionId
   const isResultPhase = state.gamePhase === 'RESULT'
+  const isVotePhase = state.gamePhase === 'VOTE'
+  const hasVotes = Object.keys(state.votes || {}).length > 0
+  const hasLockedVotes = (state.lockedVotes || []).length > 0
+  const hasTieResult = Boolean(state.voteResult?.tie)
+  const canRevote = host && isVotePhase && (hasVotes || hasLockedVotes || hasTieResult)
 
   // Compute origin transform from button rect to panel center
   const getOriginVars = useCallback(() => {
@@ -172,6 +177,27 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
     })
   }
 
+  const handleRevote = async () => {
+    if (loading || isConfirmExiting) return
+    if (!socketRef.current || !socketRef.current.connected) {
+      dispatch({ type: 'SET_ERROR', error: 'Connection lost' })
+      return
+    }
+    setLoading(true)
+    setTransitionAction('revote')
+    setIsConfirmExiting(true)
+
+    socketRef.current.emit('host-revote', (res) => {
+      if (res?.error) {
+        setLoading(false)
+        setIsConfirmExiting(false)
+        setTransitionAction(null)
+        setConfirmState(null)
+        dispatch({ type: 'SET_ERROR', error: res.error })
+      }
+    })
+  }
+
   const handleConfirmExited = useCallback(() => {
     setConfirmState(null)
     setIsConfirmExiting(false)
@@ -192,8 +218,17 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
       if (state.gamePhase === 'VOTE' || state.phase === 'VOTE_PHASE') {
         setServerStateMet(true)
       }
+    } else if (transitionAction === 'revote') {
+      if (
+        state.gamePhase === 'VOTE' &&
+        Object.keys(state.votes || {}).length === 0 &&
+        (state.lockedVotes || []).length === 0 &&
+        !state.voteResult
+      ) {
+        setServerStateMet(true)
+      }
     }
-  }, [state.phase, state.gamePhase, state.gameStatus, transitionAction])
+  }, [state.phase, state.gamePhase, state.gameStatus, state.votes, state.lockedVotes, state.voteResult, transitionAction])
 
   // When BOTH confirm exited AND server state met, settle and close GameMenu
   useEffect(() => {
@@ -249,6 +284,15 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
                     style={{ fontSize: '1.2rem', padding: '16px' }}
                   >
                     Skip Clue Round
+                  </Button>
+                )}
+                {canRevote && (
+                  <Button
+                    onClick={() => setConfirmState('revote')}
+                    disabled={loading || transitionAction}
+                    style={{ fontSize: '1.2rem', padding: '16px' }}
+                  >
+                    ↻ Revote
                   </Button>
                 )}
                 {!isResultPhase && (
@@ -320,6 +364,19 @@ export default function GameMenu({ state, socketRef, dispatch, onClose, buttonRe
           message={'The remaining players will not give clues this round.\nThe game will move directly to voting.'}
           confirmLabel="Skip Clue Round"
           onConfirm={handleSkipClueRound}
+          onCancel={() => setConfirmState(null)}
+          isExiting={isConfirmExiting}
+          onExited={handleConfirmExited}
+          disabled={isConfirmExiting}
+        />
+      )}
+
+      {confirmState === 'revote' && (
+        <ConfirmDialog
+          title="RESTART VOTE?"
+          message={'All current votes will be cleared.\nPlayers can cast and lock their votes again.'}
+          confirmLabel="Start Revote"
+          onConfirm={handleRevote}
           onCancel={() => setConfirmState(null)}
           isExiting={isConfirmExiting}
           onExited={handleConfirmExited}
