@@ -8,6 +8,7 @@ import cors from 'cors'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../shared/game-limits.js'
 import { onRoundStart, onVoteTallied, onElimination, onGameEnd } from './specialRolesHooks.js'
 import { SPECIAL_ROLES } from '../src/data/specialRoles.js'
+import defaultWords from './drawWords.json' with { type: 'json' }
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -523,7 +524,7 @@ function endDrawRound(room) {
 function generateWordChoices(room) {
   room.usedWords = room.usedWords || []
   
-  const defaultWords = require('./drawWords.json')
+  // defaultWords is imported at module scope
   
   let customWords = []
   if (Array.isArray(room.configuration.customWords)) {
