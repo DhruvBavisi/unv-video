@@ -1858,6 +1858,7 @@ io.on('connection', (socket) => {
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
+    room.goddessId = null
 
     room.players.forEach((p) => {
       p.eliminated = false
@@ -1938,6 +1939,7 @@ io.on('connection', (socket) => {
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
+    room.goddessId = null
 
     room.players.forEach(p => {
       p.status = p.isHost ? 'READY' : 'JOINED'
@@ -2303,6 +2305,12 @@ ELIMINATION RESULT=`, room.eliminationResult)
           setTimeout(() => {
             const currentRoom = rooms.get(room.id)
             if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
+            if (currentRoom.goddessId !== goddess.id) return
+            
+            const currentGoddess = currentRoom.players.find(p => p.id === goddess.id)
+            if (currentGoddess && currentGoddess.specialRoleData) {
+              currentGoddess.specialRoleData.used = true
+            }
             
             currentRoom.votes = {}
             currentRoom.lockedVotes = []
