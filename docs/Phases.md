@@ -469,11 +469,12 @@ Elimination-triggered secondary elimination, this time player-chosen rather than
 ## PHASE 30 — The Boomerang
 First role that changes vote-tallying itself rather than post-elimination effects.
 
-- When enabled, assign the `boomerang` trait to one active player (any alignment), with a `used: false` flag.
-- `onVoteTallied`: if the Boomerang trait is unused and the Boomerang player is this round's uniquely-highest-voted (i.e. about to be eliminated), reroute: every vote cast **against** the Boomerang is instead tallied against the voter who cast it, mark the trait `used: true`, and re-resolve the tally (which may itself produce a new highest-voted player, a tie, or no majority).
-- This can only trigger once per Boomerang player for the whole investigation (one-shot).
-- Re-resolution must still respect existing tie rules (Phase 16) if the rerouted tally produces a tie.
-- No minimum player count specified by source — ASSUMPTION: usable from 5 players (consistent with the other vote/elimination-altering roles); confirm before building.
+- **Status: Implemented ✅**
+
+**Implementation Note:**
+- Server-authoritative assignment of exactly one Boomerang for player count >= 5.
+- `onVoteTallied`: activates on unique-highest-vote; redirects votes to voters and re-tallies through normal elimination/revote pipelines.
+- One-use only (`used` state is kept private).
 
 ## PHASE 31 — The Goddess of Justice
 Changes the existing tie-resolution rule (Phase 16) — must not silently break the default (no-Goddess) tie→revote behavior.

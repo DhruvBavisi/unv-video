@@ -189,6 +189,7 @@ function getPublicRoomState(room) {
         delete safeData.partnerId;
         delete safeData.partnerName;
         delete safeData.duelId;
+        delete safeData.used;
         return safeData;
       })(),
       points: room.gamePhase === 'RESULT' ? (p.points || 0) : 0,

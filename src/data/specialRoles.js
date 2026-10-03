@@ -53,7 +53,7 @@ export const SPECIAL_ROLES = [
     minPlayers: 5,
     description: "Resilient and lucky, eliminations bounce off them.",
     rules: [
-      "The first time they would be eliminated, they survive and another random player is eliminated instead."
+      "The first time the Boomerang receives the highest number of votes, those votes bounce back to the players who cast them and the vote is recalculated."
     ],
     mobileDescription: "The first time the Boomerang receives the majority of votes, the votes bounce back to those who cast them!",
     avatar: '/images/characters/boomerang.png'
