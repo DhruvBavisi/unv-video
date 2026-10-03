@@ -54,6 +54,7 @@ export function createInitialState() {
     mrWhiteLiveGuess: '',
     winner: null,
     specialRoleOutcomes: [],
+    revengerDecisionEndsAt: null,
   }
 }
 
@@ -163,6 +164,7 @@ export function gameReducer(state, action) {
         winner: room.winner || null,
         wordPair: room.wordPair || state.wordPair || null,
         specialRoleOutcomes: room.specialRoleOutcomes || [],
+        revengerDecisionEndsAt: room.revengerDecisionEndsAt || null,
         error: '',
       }
     }
@@ -256,6 +258,7 @@ export function gameReducer(state, action) {
         winner: room.winner || null,
         wordPair: room.wordPair || state.wordPair || null,
         specialRoleOutcomes: room.specialRoleOutcomes || [],
+        revengerDecisionEndsAt: room.revengerDecisionEndsAt || null,
         error: '',
       }
     }
