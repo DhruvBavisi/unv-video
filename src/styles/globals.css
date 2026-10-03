@@ -3959,6 +3959,7 @@ input, select, textarea, button { font-size: 16px; }
 .player-card__initial { font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 4px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 .player-card__name { font-size: 0.75rem; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-card__role { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; margin-top: 2px; color: var(--text-secondary); }
+.player-card__host-badge { display: inline-flex; align-items: center; justify-content: center; margin-top: 3px; padding: 2px 6px; border: 1px solid rgba(181,138,82,.35); background: rgba(181,138,82,.08); color: var(--accent); font-size: .5rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 
 .player-card--active { background: rgba(85, 107, 47, 0.15); border: 1px solid rgba(85, 107, 47, 0.4); color: #dcedc8; }
 .player-card--eliminated { background: rgba(142, 41, 41, 0.2); border: 1px solid rgba(142, 41, 41, 0.4); color: #ef9a9a; }
