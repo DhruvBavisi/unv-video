@@ -754,6 +754,16 @@ function assignSpecialRoles(room) {
       }
     }
   }
+
+  const goddessMeta = SPECIAL_ROLES.find(r => r.key === 'goddessOfJustice')
+  if (specialRolesConfig.goddessOfJustice === true || specialRolesConfig.goddessOfJustice?.enabled === true) {
+    if (room.players.length >= goddessMeta.minPlayers) {
+      const goddesses = assignRole('goddessOfJustice', 1)
+      if (goddesses.length > 0) {
+        goddesses[0].specialRoleData = { used: false }
+      }
+    }
+  }
 }
 
 function startCluePhase(room) {
@@ -1729,6 +1739,8 @@ io.on('connection', (socket) => {
       room.mrWhiteGuesserId = null
       room.mrWhiteLiveGuess = ''
       room.pendingMrWhiteElimination = null
+      room.revengerId = null
+      room.goddessId = null
       room.chat = []
       room.turnOrder = []
       room.currentTurnPlayerId = null
@@ -2281,10 +2293,30 @@ ELIMINATION RESULT=`, room.eliminationResult)
       } else {
         // Tie
         room.voteResult = { tie: true, tiedPlayers: mostVoted }
-        room.votes = {}
-        room.lockedVotes = []
-        room.votingAttempt = (room.votingAttempt || 1) + 1
-        // Remain in VOTE phase
+        
+        const goddess = room.players.find(p => p.specialRole === 'goddessOfJustice')
+        if (goddess && !goddess.specialRoleData?.used) {
+          room.gamePhase = 'GODDESS_DECISION'
+          room.goddessId = goddess.id
+          
+          const version = room.gameVersion
+          setTimeout(() => {
+            const currentRoom = rooms.get(room.id)
+            if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
+            
+            currentRoom.votes = {}
+            currentRoom.lockedVotes = []
+            currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
+            currentRoom.gamePhase = 'VOTE'
+            currentRoom.goddessId = null
+            broadcastRoom(currentRoom)
+          }, 15000)
+        } else {
+          room.votes = {}
+          room.lockedVotes = []
+          room.votingAttempt = (room.votingAttempt || 1) + 1
+          // Remain in VOTE phase
+        }
       }
     }
     
@@ -2356,6 +2388,67 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
     room.gamePhase = 'ELIMINATION'
     room.revengerId = null
+    broadcastRoom(room)
+    
+    const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
+    const delay = hasMrWhite ? 5000 : 6500
+    const version = room.gameVersion
+    setTimeout(() => {
+      advanceFromElimination(room.id, version)
+    }, delay)
+    
+    callback?.({ success: true })
+  })
+
+  // Goddess selects target to eliminate from tied players
+  socket.on('submit-goddess-decision', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'GODDESS_DECISION') return callback?.({ success: false })
+    
+    if (currentSessionId !== room.goddessId) return callback?.({ success: false, error: 'NOT_GODDESS' })
+    const goddess = room.players.find(p => p.id === currentSessionId)
+    if (!goddess || goddess.specialRole !== 'goddessOfJustice') return callback?.({ success: false })
+    if (goddess.specialRoleData?.used) return callback?.({ success: false, error: 'ALREADY_DECIDED' })
+    
+    const target = room.players.find(p => p.id === targetId)
+    if (!target || target.eliminated || target.spectator || !(room.voteResult?.tiedPlayers || []).includes(targetId)) {
+      return callback?.({ success: false, error: 'INVALID_TARGET' })
+    }
+    
+    goddess.specialRoleData.used = true
+    
+    target.eliminated = true
+    target.spectator = true
+    
+    const cascadedPlayers = onElimination(room, target.id) || []
+    const newlyEliminated = [target, ...cascadedPlayers]
+    
+    if (!room.mrWhiteQueue) room.mrWhiteQueue = []
+    newlyEliminated.forEach(p => {
+      if (p.role === 'MR_WHITE') room.mrWhiteQueue.push(p.id)
+    })
+    
+    room.specialRoleOutcomes = room.specialRoleOutcomes || []
+    room.specialRoleOutcomes.push({
+      role: 'goddessOfJustice',
+      goddessName: goddess.name,
+      targetName: target.name,
+      message: `GODDESS OF JUSTICE\n${goddess.name} resolved the tie against ${target.name}`
+    })
+    
+    room.voteResult = { tie: false, eliminated: target.id }
+    room.eliminationResult = {
+      playerId: target.id,
+      playerName: target.name,
+      role: target.role,
+      specialRole: target.specialRole,
+      isVoteElimination: true,
+      startedAt: Date.now(),
+      specialRoleOutcomes: room.specialRoleOutcomes
+    }
+    room.gamePhase = 'ELIMINATION'
+    room.goddessId = null
     broadcastRoom(room)
     
     const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')

@@ -62,13 +62,13 @@ export const SPECIAL_ROLES = [
     key: "goddessOfJustice",
     name: "Goddess of Justice",
     minPlayers: 3,
-    description: "A seeker of truth who can reveal hidden identities.",
+    description: "A seeker of truth who deals out justice when votes are tied.",
     rules: [
-      "Once per investigation, can reveal the true role of any eliminated player."
+      "In case of a tie during a vote, the Goddess decides who is eliminated.",
+      "The Goddess remains in the game to deal out justice even if she has already been eliminated."
     ],
     mobileDescription: "In case of equality of votes, she decides who gets eliminated (even if she has already been eliminated)",
-    avatar: '/images/characters/goddessofjustice.png',
-    implemented: false
+    avatar: '/images/characters/goddessofjustice.png'
   },
   {
     key: "ghost",

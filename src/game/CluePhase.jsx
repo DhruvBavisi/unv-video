@@ -657,6 +657,62 @@ function RevengerPanel({ players, myPlayerId, isRevenger, onSubmit, submitting }
   )
 }
 
+function GoddessPanel({ tiedPlayers, myPlayerId, isGoddess, onSubmit, submitting }) {
+  const [selectedTarget, setSelectedTarget] = useState(null)
+  
+  if (!isGoddess) {
+    return (
+      <div className="clue-panel__voting" style={{ justifyContent: 'center' }}>
+        <div className="clue-panel__voting-header">
+          <span className="online-kicker">Special Role Phase</span>
+          <h2>GODDESS OF JUSTICE</h2>
+          <p className="clue-panel__voting-tie" style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Waiting for the Goddess of Justice to break the tie...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="clue-panel__voting">
+      <div className="clue-panel__voting-header">
+        <span className="online-kicker">Special Role Phase</span>
+        <h2>GODDESS OF JUSTICE</h2>
+        <p className="clue-panel__voting-tie" style={{ margin: '8px 0', fontSize: '0.85rem' }}>The vote is tied.<br/>You must decide who is eliminated.</p>
+      </div>
+      <div className="clue-panel__order" style={{ flexGrow: 1, minHeight: 0 }}>
+        <div className="clue-panel__voting-list" style={{ padding: '10px 14px', gap: '7px' }}>
+        {tiedPlayers.map((p, index) => {
+          const isMe = p.id === myPlayerId
+          const isSelected = p.id === selectedTarget
+          const getInitials = (n) => String(n||'').substring(0, 2).toUpperCase()
+          return (
+            <button 
+              key={p.id}
+              className={`voting-card ${isSelected ? 'voting-card--selected' : ''}`}
+              onClick={() => setSelectedTarget(p.id)}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <span className="voting-card__avatar">{getInitials(p.name)}</span>
+              <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
+            </button>
+          )
+        })}
+      </div>
+      </div>
+      <div className="clue-panel__voting-actions">
+        <Button 
+          variant="danger" 
+          onClick={() => onSubmit(selectedTarget)} 
+          disabled={!selectedTarget || submitting}
+          className="voting-card__submit-btn"
+        >
+          CONFIRM TARGET
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function CluePhase({ state, socketRef, onSourceRect }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
@@ -778,13 +834,29 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
     })
   }, [socketRef])
 
+  const handleGoddessSubmit = useCallback((targetId) => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    socketRef.current.emit('submit-goddess-decision', { targetId }, (res) => {
+      if (!res?.success) {
+        setClueError(res?.error || 'Failed to submit decision.')
+        submitLockRef.current = false
+        setSubmitting(false)
+      } else {
+        submitLockRef.current = false
+        setSubmitting(false)
+      }
+    })
+  }, [socketRef])
+
   // Get current state
   return (
     <section className="clue-phase">
       <div className="clue-phase__grid">
         <aside className="clue-phase__order">
           <div className="card-flip-wrapper">
-            <div className={`card-flip-inner ${(gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' || gamePhase === 'MR_WHITE_GUESS' || gamePhase === 'REVENGER_DECISION') ? 'is-flipped' : ''}`}>
+            <div className={`card-flip-inner ${(gamePhase === 'VOTE' || gamePhase === 'ELIMINATION' || gamePhase === 'MR_WHITE_GUESS' || gamePhase === 'REVENGER_DECISION' || gamePhase === 'GODDESS_DECISION') ? 'is-flipped' : ''}`}>
               
               {/* FRONT FACE: Clue Order & Turn Indicator */}
               <div className="card-face card-front">
@@ -812,6 +884,14 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                     myPlayerId={sessionId}
                     isRevenger={localSecret?.specialRole === 'revenger'}
                     onSubmit={handleRevengerSubmit}
+                    submitting={submitting}
+                  />
+                ) : gamePhase === 'GODDESS_DECISION' ? (
+                  <GoddessPanel
+                    tiedPlayers={players.filter(p => (voteResult?.tiedPlayers || []).includes(p.id))}
+                    myPlayerId={sessionId}
+                    isGoddess={localSecret?.specialRole === 'goddessOfJustice'}
+                    onSubmit={handleGoddessSubmit}
                     submitting={submitting}
                   />
                 ) : (
