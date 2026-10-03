@@ -2196,13 +2196,19 @@ io.on('connection', (socket) => {
     if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     
     if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
+    // After a tie, only the host can start the next voting attempt.
+    if (room.voteResult?.tie) return callback?.({ success: false, error: 'REVOTE_NOT_STARTED' })
 
     const target = room.players.find(p => p.id === targetId)
     if (!target || target.eliminated || target.spectator) return callback?.({ success: false, error: 'INVALID_TARGET' })
 
     if (currentSessionId === targetId) return callback?.({ success: false, error: 'SELF_VOTING_NOT_ALLOWED' })
 
-    room.votes[currentSessionId] = targetId
+    if (room.votes[currentSessionId] === targetId) {
+      delete room.votes[currentSessionId]
+    } else {
+      room.votes[currentSessionId] = targetId
+    }
     broadcastRoom(room)
     callback?.({ success: true })
   })
@@ -2334,18 +2340,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
               currentGoddess.specialRoleData.used = true
             }
             
-            currentRoom.votes = {}
-            currentRoom.lockedVotes = []
-            currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
             currentRoom.gamePhase = 'VOTE'
             currentRoom.goddessId = null
             broadcastRoom(currentRoom)
           }, 15000)
         } else {
-          room.votes = {}
-          room.lockedVotes = []
-          room.votingAttempt = (room.votingAttempt || 1) + 1
-          // Remain in VOTE phase
+          // Preserve the tied vote state. The host must explicitly start the revote.
+          room.gamePhase = 'VOTE'
         }
       }
     }
