@@ -2034,6 +2034,29 @@ io.on('connection', (socket) => {
     callback?.({ success: true })
   })
 
+  socket.on('host-revote', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'ACTIVE' || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'INVALID_PHASE' })
+
+    const hasVoteStateToReset = Object.keys(room.votes || {}).length > 0 ||
+      (room.lockedVotes || []).length > 0 ||
+      Boolean(room.voteResult?.tie)
+
+    if (!hasVoteStateToReset) return callback?.({ success: false, error: 'INVALID_PHASE' })
+
+    room.votes = {}
+    room.lockedVotes = []
+    room.voteResult = null
+    room.votingAttempt = (room.votingAttempt || 1) + 1
+    room.gamePhase = 'VOTE'
+
+    broadcastRoom(room)
+    callback?.({ success: true })
+  })
+
   socket.on('submit-clue', ({ clue: rawClue }, callback) => {
     if (!currentSessionId || !currentRoomId) {
       return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
