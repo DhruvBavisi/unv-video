@@ -56,8 +56,7 @@ export const SPECIAL_ROLES = [
       "The first time they would be eliminated, they survive and another random player is eliminated instead."
     ],
     mobileDescription: "The first time the Boomerang receives the majority of votes, the votes bounce back to those who cast them!",
-    avatar: '/images/characters/boomerang.png',
-    implemented: false
+    avatar: '/images/characters/boomerang.png'
   },
   {
     key: "goddessOfJustice",

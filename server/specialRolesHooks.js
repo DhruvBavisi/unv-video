@@ -3,7 +3,47 @@ export function onRoundStart(room) {
 }
 
 export function onVoteTallied(room, tally) {
-  // Hook for future special-role phase mechanics
+  let maxVotes = 0;
+  let mostVoted = [];
+  
+  for (const [targetId, count] of Object.entries(tally)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      mostVoted = [targetId];
+    } else if (count === maxVotes) {
+      mostVoted.push(targetId);
+    }
+  }
+
+  if (mostVoted.length === 1) {
+    const eliminatedId = mostVoted[0];
+    const player = room.players.find(p => p.id === eliminatedId);
+    
+    if (player && player.specialRole === 'boomerang' && !player.specialRoleData.used) {
+      player.specialRoleData.used = true;
+      
+      const newTally = { ...tally };
+      
+      for (const voterId of room.lockedVotes) {
+        if (room.votes[voterId] === eliminatedId) {
+          room.votes[voterId] = voterId; // redirect to themselves
+          newTally[eliminatedId]--;
+          if (newTally[eliminatedId] <= 0) delete newTally[eliminatedId];
+          newTally[voterId] = (newTally[voterId] || 0) + 1;
+        }
+      }
+      
+      if (!room.specialRoleOutcomes) room.specialRoleOutcomes = [];
+      room.specialRoleOutcomes.push({
+        role: 'boomerang',
+        message: `BOOMERANG ACTIVATED\n${player.name}'s votes bounced back to their voters.`
+      });
+      
+      return { redirectedTally: newTally };
+    }
+  }
+  
+  return null;
 }
 
 function addScore(player, amount, reason) {

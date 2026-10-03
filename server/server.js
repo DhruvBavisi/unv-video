@@ -743,6 +743,16 @@ function assignSpecialRoles(room) {
       }
     }
   }
+
+  const boomerangMeta = SPECIAL_ROLES.find(r => r.key === 'boomerang')
+  if (specialRolesConfig.boomerang === true || specialRolesConfig.boomerang?.enabled === true) {
+    if (room.players.length >= boomerangMeta.minPlayers) {
+      const boomerangs = assignRole('boomerang', 1)
+      if (boomerangs.length > 0) {
+        boomerangs[0].specialRoleData = { used: false }
+      }
+    }
+  }
 }
 
 function startCluePhase(room) {
@@ -2193,12 +2203,17 @@ io.on('connection', (socket) => {
         const targetId = room.votes[voterId]
         voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
       }
-      onVoteTallied(room, voteCounts)
+      
+      let finalVoteCounts = voteCounts
+      const tallyResult = onVoteTallied(room, voteCounts)
+      if (tallyResult && tallyResult.redirectedTally) {
+        finalVoteCounts = tallyResult.redirectedTally
+      }
       
       let maxVotes = 0
       let mostVoted = []
       
-      for (const [targetId, count] of Object.entries(voteCounts)) {
+      for (const [targetId, count] of Object.entries(finalVoteCounts)) {
         if (count > maxVotes) {
           maxVotes = count
           mostVoted = [targetId]
