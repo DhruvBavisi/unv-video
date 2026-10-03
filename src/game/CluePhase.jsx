@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import Button from '../components/Button.jsx'
-import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote } from './gameState.js'
+import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote, emitUnlockVote } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
@@ -17,7 +17,6 @@ const ERROR_MESSAGES = {
   EMPTY_MESSAGE: 'Enter a message first.',
   MESSAGE_TOO_LONG: 'Message is too long.',
   GAME_NOT_ACTIVE: 'Game is not active.',
-  REVOTE_NOT_STARTED: 'Waiting for the host to start the revote.',
 }
 
 const SPECIAL_ROLE_AVATAR_LAYOUT = {
@@ -519,7 +518,7 @@ function getInitials(name) {
     .join('')
 }
 
-function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, submitting, eliminationResult, onSourceRect, currentRound }) {
+function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSelectVote, onLockVote, onUnlockVote, submitting, eliminationResult, onSourceRect, currentRound }) {
   const activePlayers = players.filter(p => {
     // Keep the currently eliminated player in the list so their card can be used as the animation source
     if (eliminationResult && eliminationResult.playerId === p.id) {
@@ -588,11 +587,11 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
       <div className="clue-panel__voting-actions">
         <Button 
           variant="danger" 
-          onClick={onLockVote} 
-          disabled={isLocked || !myVote || submitting}
+          onClick={isLocked ? onUnlockVote : onLockVote} 
+          disabled={!myVote || submitting}
           className="voting-card__submit-btn"
         >
-          {isLocked ? 'Vote Locked' : 'Confirm Vote'}
+          {isLocked ? 'Unlock My Vote' : 'Confirm Vote'}
         </Button>
       </div>
     </div>
@@ -838,6 +837,19 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
     }
   }, [socketRef])
 
+  const handleUnlockVote = useCallback(async () => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    const response = await emitUnlockVote(socketRef.current)
+    if (!response?.success) {
+      const msg = ERROR_MESSAGES[response?.error] || 'Failed to unlock vote.'
+      setClueError(msg)
+    }
+    submitLockRef.current = false
+    setSubmitting(false)
+  }, [socketRef])
+
   const handleRevengerSubmit = useCallback((targetId) => {
     if (submitLockRef.current) return
     submitLockRef.current = true
@@ -924,6 +936,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                     voteResult={voteResult}
                     onSelectVote={handleSelectVote}
                     onLockVote={handleLockVote}
+                    onUnlockVote={handleUnlockVote}
                     submitting={submitting}
                     eliminationResult={state.eliminationResult}
                     onSourceRect={onSourceRect}
