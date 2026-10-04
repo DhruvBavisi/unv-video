@@ -56,14 +56,79 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
 
       <div className="clue-panel__identity-content">
         <span className="online-kicker">Classified</span>
-        {roleVisible ? (
-          <div className="clue-panel__avatar">
-            <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" />
+
+        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', marginTop: '1rem', alignItems: 'flex-start' }}>
+          {/* Normal Role Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Identity</span>
+            {roleVisible ? (
+              <div className="clue-panel__avatar" style={{ width: '84px', height: '84px', marginBottom: '5px', padding: 0 }}>
+                <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            ) : (
+              <div className="clue-panel__avatar" style={{ width: '84px', height: '84px', marginBottom: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', background: 'var(--bg-secondary)', padding: 0 }}>
+                ?
+              </div>
+            )}
+            <h2 className="clue-panel__role-name" style={{ fontSize: '1.3rem', margin: '0 0 12px 0' }}>{roleVisible ? roleLabel : 'HIDDEN'}</h2>
           </div>
-        ) : null}
-        <h2 className="clue-panel__role-name">{roleLabel}</h2>
+
+          {/* Special Role Column */}
+          {specialRoleMeta && (() => {
+            const layout = SPECIAL_ROLE_AVATAR_LAYOUT[specialRoleKey] || { scale: 1, translateY: 0, translateX: 0 }
+            const avatarSrc = layout.imageVariant && layout.imageVariant !== 'normal' && specialRoleMeta.avatar
+              ? specialRoleMeta.avatar.replace('.png', `-${layout.imageVariant}.png`)
+              : specialRoleMeta.avatar;
+            
+            return (
+              <div 
+                className="clue-panel__special-role" 
+                style={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  '--role-accent': layout.themeColor || 'var(--accent, #a684ff)' 
+                }}
+              >
+                <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Special Role</span>
+                
+                {avatarSrc && (
+                  <div 
+                    className="clue-panel__avatar" 
+                    style={{ 
+                      width: '84px', 
+                      height: '84px', 
+                      padding: 0, 
+                      marginBottom: '5px', 
+                      position: 'relative',
+                      background: layout.bgColor || 'var(--bg-secondary)',
+                      ...(layout.borderColor ? { border: `2px solid ${layout.borderColor}` } : {}),
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <img 
+                      src={avatarSrc} 
+                      alt={layout.label || specialRoleMeta.name} 
+                      style={{ 
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        transform: `translateX(${layout.translateX}px) scale(${layout.scale}) translateY(${layout.translateY}%)` 
+                      }}
+                    />
+                  </div>
+                )}
+                
+                <h3 className="clue-panel__role-name" style={{ fontSize: '1.3rem', color: 'var(--role-accent)', margin: '0 0 12px 0' }}>
+                  {layout.label || specialRoleMeta.name}
+                </h3>
+              </div>
+            )
+          })()}
+        </div>
+
         {wordVisible && (
-          <div className="clue-panel__secret">
+          <div className="clue-panel__secret" style={{ marginTop: '1rem' }}>
             <span className="clue-panel__word-label">Your Secret Word</span>
             {word ? (
               <div className="clue-panel__word-box">{word}</div>
@@ -72,55 +137,9 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             )}
           </div>
         )}
-        
-            {specialRoleMeta && (() => {
-          const layout = SPECIAL_ROLE_AVATAR_LAYOUT[specialRoleKey] || { scale: 1, translateY: 0, translateX: 0 }
-          const avatarSrc = layout.imageVariant && layout.imageVariant !== 'normal' && specialRoleMeta.avatar
-            ? specialRoleMeta.avatar.replace('.png', `-${layout.imageVariant}.png`)
-            : specialRoleMeta.avatar;
-          
-          return (
-            <div 
-              className="clue-panel__secret clue-panel__special-role" 
-              style={{ 
-                marginTop: '24px', 
-                '--role-accent': layout.themeColor || 'var(--accent, #a684ff)' 
-              }}
-            >
-              <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Special Role</span>
-              
-              {avatarSrc && (
-                <div 
-                  className="clue-panel__avatar" 
-                  style={{ 
-                    width: '84px', 
-                    height: '84px', 
-                    padding: 0, 
-                    marginBottom: '5px', 
-                    position: 'relative',
-                    background: layout.bgColor || 'var(--bg-secondary)',
-                    ...(layout.borderColor ? { border: `2px solid ${layout.borderColor}` } : {}),
-                    overflow: 'hidden'
-                  }}
-                >
-                  <img 
-                    src={avatarSrc} 
-                    alt={layout.label || specialRoleMeta.name} 
-                    style={{ 
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      transform: `translateX(${layout.translateX}px) scale(${layout.scale}) translateY(${layout.translateY}%)` 
-                    }}
-                  />
-                </div>
-              )
-            }
-            
-            <h3 className="clue-panel__role-name" style={{ fontSize: '1.3rem', color: 'var(--role-accent)', margin: '0 0 12px 0' }}>
-              {layout.label || specialRoleMeta.name}
-            </h3>
-            
+
+        {specialRoleMeta && (
+          <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div 
               onClick={(e) => { e.stopPropagation(); setIsSpecialRoleInfoExpanded(!isSpecialRoleInfoExpanded); }}
               style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', letterSpacing: '0.15em', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none' }}
@@ -129,13 +148,12 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             </div>
             
             {isSpecialRoleInfoExpanded && (
-              <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', fontSize: '0.75rem', lineHeight: '1.5', color: 'rgba(255, 255, 255, 0.85)', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', fontSize: '0.75rem', lineHeight: '1.5', color: 'rgba(255, 255, 255, 0.85)', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)', maxWidth: '400px' }}>
                 {specialRoleMeta.description}
               </div>
             )}
           </div>
-        )
-      })()}
+        )}
 
       <div className="clue-panel__identity-actions">
           <Button onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}>HIDE</Button>
