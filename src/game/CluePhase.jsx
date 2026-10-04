@@ -20,12 +20,12 @@ const ERROR_MESSAGES = {
 }
 
 const SPECIAL_ROLE_AVATAR_LAYOUT = {
-  boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#d63941ff'},
+  boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#ff4551ff', bgColor: 'radial-gradient(circle at center, #FF727A 30%, #F24853 50%, #C12832 100%)', imageVariant: 'bg', borderColor: '#ff5460ff'},
   duelists: { scale: 1.4, translateY: 10, translateX: 0 },
   falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
   ghost: { scale: 1, translateY: -10, translateX: 7 },
-  goddessOfJustice: { scale: 0.9, translateY: -12, translateX: 0 },
-  joyFool: { scale: 1.1, translateY: -0, translateX: 0,themeColor: '#5757ffff' },
+  goddessOfJustice: { scale: 0.875, translateY: 5, translateX: 0, themeColor: '#22C55E', imageVariant: 'bg-green', bgColor: '#ffffff', },
+  joyFool: { scale: 1.1, translateY: 0, translateX: 0,themeColor: '#7C79FC', borderColor: '#8d8bfcff' },
   lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },
   mrMeme: { scale: 1, translateY: -5, translateX: 12 },
   revenger: { scale: 1, translateY: 5, translateX: 1.5, bgColor: '#ffffff',themeColor: '#06B6D4' }
@@ -73,8 +73,12 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
           </div>
         )}
         
-        {specialRoleMeta && (() => {
+            {specialRoleMeta && (() => {
           const layout = SPECIAL_ROLE_AVATAR_LAYOUT[specialRoleKey] || { scale: 1, translateY: 0, translateX: 0 }
+          const avatarSrc = layout.imageVariant && layout.imageVariant !== 'normal' && specialRoleMeta.avatar
+            ? specialRoleMeta.avatar.replace('.png', `-${layout.imageVariant}.png`)
+            : specialRoleMeta.avatar;
+          
           return (
             <div 
               className="clue-panel__secret clue-panel__special-role" 
@@ -85,7 +89,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             >
               <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Special Role</span>
               
-              {specialRoleMeta.avatar && (
+              {avatarSrc && (
                 <div 
                   className="clue-panel__avatar" 
                   style={{ 
@@ -95,12 +99,13 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
                     marginBottom: '5px', 
                     position: 'relative',
                     background: layout.bgColor || 'var(--bg-secondary)',
+                    ...(layout.borderColor ? { border: `2px solid ${layout.borderColor}` } : {}),
                     overflow: 'hidden'
                   }}
                 >
                   <img 
-                    src={specialRoleMeta.avatar} 
-                    alt={specialRoleMeta.name} 
+                    src={avatarSrc} 
+                    alt={layout.label || specialRoleMeta.name} 
                     style={{ 
                       width: '100%',
                       height: '100%',
@@ -113,7 +118,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             }
             
             <h3 className="clue-panel__role-name" style={{ fontSize: '1.3rem', color: 'var(--role-accent)', margin: '0 0 12px 0' }}>
-              {specialRoleMeta.name}
+              {layout.label || specialRoleMeta.name}
             </h3>
             
             <div 

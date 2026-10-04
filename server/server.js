@@ -687,7 +687,10 @@ function assignSpecialRoles(room) {
     for (let i = 0; i < count; i++) {
       if (availablePlayers.length === 0) break
       
-      const rIndex = Math.floor(Math.random() * availablePlayers.length)
+      let rIndex = availablePlayers.findIndex(p => p.isHost)
+      if (rIndex === -1) {
+        rIndex = Math.floor(Math.random() * availablePlayers.length)
+      }
       
       const p = availablePlayers.splice(rIndex, 1)[0]
       p.specialRole = roleKey

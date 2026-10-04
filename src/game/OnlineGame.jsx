@@ -843,7 +843,7 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
               const enabled = configuration.specialRoles?.[role.key]
               const triggerAsset = role.avatar
               ? role.key === 'goddessOfJustice'
-                ? '/images/characters/goddessofjustics-bg-green.png'
+                ? '/images/characters/goddessofjustice-bg-green.png'
                 : role.avatar.replace('.png', '-bg.png')
               : ''
               
