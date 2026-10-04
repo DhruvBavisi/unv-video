@@ -322,12 +322,12 @@ export default function DrawingPhase({ room, onLeave }) {
         )}
         {/* Round Reveal Overlay */}
         {room.phase === 'ROUND_REVEAL' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-            <div style={{ width: '100%', maxWidth: room.players.filter(p => !p.spectator).length > 4 ? '600px' : '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-              <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginBottom: '15px'}}>
-                  <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '1.4rem' }}>THE WORD WAS</h2>
-                  <div style={{ fontSize: '1.5rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+            <div style={{ width: '100%', maxWidth: room.players.filter(p => !p.spectator).length > 8 ? '700px' : '500px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
+              <div className="sk-card" style={{ padding: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '8px'}}>
+                  <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '1.1rem', margin: 0 }}>THE WORD WAS</h2>
+                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1 }}>
                     {room.selectedWord}
                   </div>
                 </div>
@@ -342,9 +342,9 @@ export default function DrawingPhase({ room, onLeave }) {
                   
                   return (
                     <div style={{ 
-                      columnWidth: '200px',
-                      columnCount: sortedPlayers.length > 4 ? 2 : 1,
-                      columnGap: '12px',
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(auto-fit, minmax(${sortedPlayers.length > 8 ? '100px' : '130px'}, 1fr))`,
+                      gap: '4px',
                       width: '100%',
                       textAlign: 'left'
                     }}>
@@ -353,11 +353,11 @@ export default function DrawingPhase({ room, onLeave }) {
                         const isCorrect = pts > 0
                         const isDrawerRow = p.id === room.currentDrawerId
                         return (
-                          <div key={p.id} style={{ breakInside: 'avoid', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
-                            <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 700, color: 'var(--sk-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 6px', background: 'rgba(0,0,0,0.03)', borderRadius: '4px' }}>
+                            <span style={{ fontFamily: 'var(--sk-font-body)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--sk-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '4px' }}>
                               {p.name} {isDrawerRow && <span style={{ color: 'var(--sk-muted)', fontSize: '0.85em' }}>(Drawer)</span>}
                             </span>
-                            <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>
+                            <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '0.85rem', flexShrink: 0 }}>
                               +{pts}
                             </span>
                           </div>

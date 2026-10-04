@@ -4,11 +4,6 @@ import { getSocket } from '../../game/socket.js'
 export default function ChatBox({ room }) {
   const messagesEndRef = useRef(null)
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [room.chatMessages])
-
   return (
     <div style={{ 
       display: 'flex', 
@@ -20,19 +15,19 @@ export default function ChatBox({ room }) {
       <div style={{ 
         flex: 1, 
         overflowY: 'auto', 
-        padding: '12px 16px',
+        padding: '4px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px'
+        gap: '2px'
       }}>
         {(room.chatMessages || []).map((msg, i) => {
-          let style = { fontSize: '0.9rem', fontFamily: 'var(--sk-font-body)', fontWeight: 600, padding: '4px 8px', borderRadius: '8px' }
+          let style = { fontSize: '0.75rem', lineHeight: '1.2', fontFamily: 'var(--sk-font-body)', fontWeight: 600, padding: '1px 4px', borderRadius: '4px' }
           let content = null
 
           if (msg.type === 'SYSTEM') {
             style.color = 'var(--sk-muted)'
             style.textAlign = 'center'
-            style.fontSize = '0.8rem'
+            style.fontSize = '0.65rem'
             content = msg.message
           } else if (msg.type === 'CORRECT') {
             style.color = 'var(--sk-surface)'

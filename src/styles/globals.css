@@ -5700,8 +5700,8 @@ input, select, textarea, button { font-size: 16px; }
 .sk-player-row {
   display: flex;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 2px dashed var(--sk-bg-soft);
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--sk-bg-soft);
   animation: skPlayerEnter 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .sk-player-row:last-child {
@@ -5717,18 +5717,18 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 .sk-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: var(--sk-lavender);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--sk-font-display);
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-right: 14px;
+  margin-right: 10px;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(38, 51, 74, 0.08);
 }
@@ -5736,7 +5736,7 @@ input, select, textarea, button { font-size: 16px; }
 
 .sk-player-name {
   font-family: var(--sk-font-body);
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   flex: 1;
   color: var(--sk-text);
@@ -5746,10 +5746,10 @@ input, select, textarea, button { font-size: 16px; }
 }
 .sk-badge {
   font-family: var(--sk-font-body);
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   font-weight: 800;
   letter-spacing: 0.1em;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 8px;
   background: var(--sk-bg-soft);
   color: var(--sk-muted);

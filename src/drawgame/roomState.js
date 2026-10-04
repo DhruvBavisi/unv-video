@@ -6,7 +6,7 @@ export function getInitialRoomState() {
     phase: 'LOBBY',
     players: [],
     configuration: {
-      maxPlayers: 8,
+      maxPlayers: 20,
       drawTimeSec: 80,
       rounds: 3,
       wordCount: 3,

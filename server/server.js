@@ -1232,7 +1232,7 @@ io.on('connection', (socket) => {
         score: 0
       }],
       configuration: {
-        maxPlayers: 8,
+        maxPlayers: 20,
         drawTimeSec: 80,
         rounds: 3,
         wordCount: 3,
