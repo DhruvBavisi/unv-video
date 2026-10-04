@@ -546,7 +546,10 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
     }
     return !p.eliminated && !p.spectator;
   })
-  const eligibleVoters = players.filter(p => (!p.eliminated || p.specialRole === 'ghost') && !p.spectator)
+  const eligibleVoters = players.filter(p => {
+    const isGhostSpectator = p.eliminated === true && p.specialRole === 'ghost'
+    return isGhostSpectator || (!p.eliminated && !p.spectator)
+  })
   const myVote = votes[myPlayerId]
   const isLocked = lockedVotes.includes(myPlayerId)
   const allVotesConfirmed = eligibleVoters.length > 0 && lockedVotes.length >= eligibleVoters.length
@@ -783,7 +786,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
   const myPlayer = players.find(p => p.id === sessionId)
   const isGhost = localSecret?.specialRole === 'ghost'
-  const canChat = !myPlayer?.eliminated || isGhost
+  const canChat = myPlayer && ((!myPlayer.eliminated && !myPlayer.spectator) || isGhost)
 
   useEffect(() => {
     window.scrollTo({
