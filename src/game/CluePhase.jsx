@@ -23,7 +23,7 @@ const SPECIAL_ROLE_AVATAR_LAYOUT = {
   boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#ff4551ff', bgColor: 'radial-gradient(circle at center, #FF727A 30%, #F24853 50%, #C12832 100%)', imageVariant: 'bg', borderColor: '#ff5460ff'},
   duelists: { scale: 1.4, translateY: 10, translateX: 0 },
   falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
-  ghost: { scale: 1, translateY: -10, translateX: 7, themeColor: '#9CA3AF', imageVariant: 'bg', bgColor: '#ffffff' },
+  ghost: { scale: 1.2, translateY: 0, translateX: 0, themeColor: '#3B82F6', imageVariant: 'bg', bgColor: '#ffffff' },
   goddessOfJustice: { scale: 0.875, translateY: 5, translateX: 0, themeColor: '#22C55E', imageVariant: 'bg-green', bgColor: '#ffffff', },
   joyFool: { scale: 1.1, translateY: 0, translateX: 0,themeColor: '#7C79FC', borderColor: '#8d8bfcff' },
   lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },

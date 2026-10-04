@@ -763,6 +763,15 @@ function assignSpecialRoles(room) {
       }
     }
   }
+  const ghostMeta = SPECIAL_ROLES.find(r => r.key === 'ghost')
+  if (specialRolesConfig.ghost === true || specialRolesConfig.ghost?.enabled === true) {
+    if (room.players.length >= ghostMeta.minPlayers) {
+      const ghosts = assignRole('ghost', 1)
+      if (ghosts.length > 0) {
+        ghosts[0].specialRoleData = {}
+      }
+    }
+  }
 }
 
 function startCluePhase(room) {
