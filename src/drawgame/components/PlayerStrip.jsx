@@ -24,41 +24,45 @@ export default function PlayerStrip({ room, currentDrawerId, sessionId }) {
       overflowY: 'auto', 
       height: '100%',
       width: '100%',
-      background: 'rgba(255, 255, 255, 0.5)',
+      background: 'white',
       WebkitOverflowScrolling: 'touch',
       scrollbarWidth: 'none',
       msOverflowStyle: 'none'
     }}>
-      {room.players.map(p => {
+      {room.players.map((p, i) => {
         const isDrawer = p.id === currentDrawerId
         const isCurrent = p.id === sessionId
         const isGuessed = guessedIds.includes(p.id)
         
+        const baseBg = i % 2 === 0 ? '#FFFFFF' : '#ECECEC'
+        const bg = isGuessed ? '#CFFFBD' : baseBg
+
         return (
           <div key={p.id} style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '6px',
-            padding: '2px 4px',
+            gap: '8px',
+            padding: '10px 6px',
+            minHeight: '36px',
             opacity: p.isConnected ? 1 : 0.5,
-            borderBottom: '1px solid rgba(0,0,0,0.05)',
-            background: isGuessed ? 'rgba(85, 214, 176, 0.25)' : (isCurrent ? 'rgba(97, 116, 244, 0.1)' : 'transparent')
+            background: bg
           }}>
-            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--sk-muted)', width: '16px', flexShrink: 0, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'black', width: '24px', flexShrink: 0, textAlign: 'center' }}>
               #{rankMap[p.id] || 1}
             </div>
             <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ 
-              width: '24px', height: '24px', fontSize: '0.8rem', flexShrink: 0,
-              border: isDrawer ? '2px solid var(--sk-primary)' : 'none' 
+              width: '28px', height: '28px', fontSize: '0.9rem', flexShrink: 0, borderRadius: '50%',
+              border: isDrawer ? '2px solid var(--sk-primary)' : '1px solid rgba(0,0,0,0.1)',
+              boxShadow: 'none'
             }}>
               {p.name.charAt(0).toUpperCase()}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', lineHeight: '1.1' }}>
-              <div style={{ fontSize: '0.75rem', fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {p.name} {isDrawer && <span style={{ fontSize: '10px', marginLeft: '2px' }}>✏️</span>}
+              <div style={{ fontSize: '0.8rem', fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: isCurrent ? '#3366cc' : 'black', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {p.name} {isCurrent} {isDrawer && <span style={{ fontSize: '10px', marginLeft: '2px' }}>✏️</span>}
               </div>
-              <div style={{ fontSize: '0.65rem', fontFamily: 'var(--sk-font-body)', color: 'var(--sk-muted)', fontWeight: 700 }}>
-                {p.score} pts
+              <div style={{ fontSize: '0.65rem', fontFamily: 'var(--sk-font-body)', color: '#333333', fontWeight: 600 }}>
+                {p.score} points
               </div>
             </div>
           </div>
