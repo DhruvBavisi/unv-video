@@ -492,8 +492,14 @@ Changes eligibility for post-elimination participation — most invasive role re
 - Once the Ghost is eliminated: they remain able to post in Chat/Clue-discussion context and **cast a vote** in subsequent rounds, in addition to ordinary spectators who still cannot vote or clue.
 - The Ghost's vote counts toward vote tallying/tie resolution for elimination purposes, but the Ghost is explicitly excluded from win-condition player counts (`uc > ci`, Civilian/Undercover win checks) since they are not an active player.
 - The Ghost does not clue and does not re-enter the active roster; this is a voting/discussion exception only.
-- UI must distinguish an ordinary spectator ("SPECTATOR — cannot vote") from a Ghost-empowered spectator ("SPECTATOR — GHOST — may still vote") without exposing this to other players beyond the fact that a Ghost rule is active in this room (the Ghost's own identity can be public per source flavor, since the haunting is meant to be visible — ASSUMPTION: identity is revealed at elimination, same as Lovers; confirm before building).
+- UI distinguishes an ordinary spectator ("SPECTATOR — cannot vote") from a Ghost-empowered spectator ("SPECTATOR — GHOST — may still vote").
+- **Elimination Feedback:** During elimination, the Ghost's own device presents a localized private message within the EliminationOverlay indicating "YOU ARE NOW A GHOST" and confirming they can still vote in future rounds.
+- **Vote Visual Indicator:** When the eliminated Ghost locks in a vote against a target during the VOTE phase, that target's voting card receives a small `ghost-bg.png` visual marker to indicate the Ghost's choice to all players.
 - No minimum player count specified by source.
+
+---
+### Mobile / iOS Input Visibility
+For all user text inputs (e.g., Clue inputs, Chat, Mr. White Guess), the client uses a `window.visualViewport` resize listener hook (`useMobileKeyboardFocus`) to guarantee the focused input scrolls itself into view directly above the iOS virtual keyboard, preventing inputs from being hidden behind the keyboard when it opens.
 
 ## PHASE 33 — The Falafel Vendor
 Needs a concrete effect definition before an agent can build it — the source only says "protection or sabotage," not the mechanics.

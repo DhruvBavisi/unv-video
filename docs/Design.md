@@ -197,11 +197,20 @@ Eliminated players should see a clear:
 
 They remain connected to the Room ID but cannot clue or vote.
 
+**Ghost Spectator Exception:**
+If the eliminated player is a Ghost, they instead see a specialized status in the UI:
+`SPECTATOR — GHOST — may still vote`
+During elimination, the Ghost receives a private localized `YOU ARE NOW A GHOST` message inside the Elimination Overlay confirming they can continue to vote. 
+When the Ghost votes, a small Ghost visual marker (`ghost-bg.png`) appears on their selected target's card to alert all players of the haunting.
+
 A player joining mid-investigation should see:
 
 `SPECTATOR — JOINING NEXT ROUND`
 
 At the next round boundary they move to the lobby/eligible pool automatically.
+
+## Mobile Input UX
+For an optimal mobile experience, particularly on iOS, when any text input (e.g., Clue, Chat, Mr. White Guess) receives focus, it must automatically scroll itself into the visible viewport above the virtual keyboard via a `visualViewport` resize listener. This ensures the player is never typing blindly behind the keyboard.
 
 ## Reconnection UI
 If disconnected:

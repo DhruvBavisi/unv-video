@@ -5,6 +5,9 @@
 > Update after meaningful implementation or architectural decisions.
 > Do not invent completed work.
 
+## 0. Global Mobile UX Polish
+A cross-game mobile input fix (`useMobileKeyboardFocus`) has been successfully integrated. All user text inputs (Create Room Name, Join Room Code, Join Name, and Drawing Guess inputs) are now guaranteed to scroll into the active visual viewport upon focus, ensuring players on iOS do not have their inputs hidden beneath the virtual keyboard.
+
 ## 1. Product Relationship
 
 The application contains two separate game modes:

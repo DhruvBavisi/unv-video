@@ -67,10 +67,20 @@ function SkribblScreenTransition({ view, children }) {
   )
 }
 
+import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
+
 export default function SkribblApp({ onExit }) {
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
   const connectPromiseRef = useRef(null)
+  const createNameRef = useRef(null)
+  const joinIdRef = useRef(null)
+  const joinNameRef = useRef(null)
+
+  useMobileKeyboardFocus(createNameRef)
+  useMobileKeyboardFocus(joinIdRef)
+  useMobileKeyboardFocus(joinNameRef)
+
   const [view, setView] = useState(() => {
     const { resumeToken, roomId, gameMode } = readIdentity()
     return (resumeToken && roomId && gameMode === 'skribbl') ? 'restoring' : 'menu'
@@ -320,6 +330,7 @@ export default function SkribblApp({ onExit }) {
             <div className="sk-card">
               <h2 className="sk-card-title">YOUR NAME</h2>
               <input 
+                ref={createNameRef}
                 type="text" 
                 id="sk-create-name" 
                 placeholder="Enter your name" 
@@ -346,6 +357,7 @@ export default function SkribblApp({ onExit }) {
             <div className="sk-card">
               <h2 className="sk-card-title">JOIN GAME</h2>
               <input 
+                ref={joinIdRef}
                 type="text" 
                 id="sk-join-id" 
                 placeholder="ROOM CODE" 
@@ -355,6 +367,7 @@ export default function SkribblApp({ onExit }) {
                 style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
               />
               <input 
+                ref={joinNameRef}
                 type="text" 
                 id="sk-join-name" 
                 placeholder="YOUR NAME" 

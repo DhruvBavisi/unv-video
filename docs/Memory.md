@@ -4,6 +4,13 @@
 > This is not the original requirements document.
 
 ## Current Phase
+**Phase 32 — The Ghost UI & Mobile Polish**
+
+The Ghost special role implementation has been refined to provide proper post-elimination feedback. When the Ghost is eliminated, they now receive a private "YOU ARE NOW A GHOST" message within the existing `EliminationOverlay`, clearly instructing them that their voting privileges remain active. When a Ghost successfully casts and locks a vote, a small `ghost-bg.png` visual marker is rendered on the target's player card to broadcast the Ghost's choice to all users. Ghost server authority, participant visibility rules, and chat logic were preserved without side effects.
+
+Additionally, a global iOS/Mobile keyboard visibility fix was deployed via the `useMobileKeyboardFocus` hook. This enforces a `window.visualViewport` listener across all game text inputs (`ClueInput`, `ChatFeed`, `MrWhiteGuessPhase`, `EliminationOverlay`, `SkribblApp` lobbies, and `DrawingPhase` guesses) so the active input is reliably scrolled into view above the virtual keyboard without breaking Android or Desktop.
+
+## Previous Phase
 **Phase 28 — The Revenger**
 
 The Revenger special role has been implemented natively into the existing elimination pipeline. When a Revenger is eliminated by vote, the server pauses normal cascade and win-evaluation to enter the authoritative `REVENGER_DECISION` game phase. The Revenger's identity remains completely private; `room.revengerId` is kept purely server-side, and `getPublicRoomState` actively strips `specialRole: 'revenger'` from the eliminated player while the decision is pending. The client UI relies securely on `localSecret` to reveal the target selection panel. A server-authoritative 15-second timeout is active during this phase—if the Revenger disconnects or goes idle, the timeout safely verifies state and cleanly resumes `advanceFromElimination()` without any intermediate delay. Furthermore, `room.revengerId` is rigorously cleared upon Play Again, new game, and returning to the lobby to prevent any stale states across games. Once a target is submitted, they enter the standard elimination pipeline natively (triggering Lovers cascades, Mr. White guess queues, etc.). The Revenger's target exactly mirrors the visual flow of a normal voted-out player, reusing the existing `EliminationOverlay` animation identically.

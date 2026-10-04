@@ -4,6 +4,7 @@ import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote, emitUnlockV
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
+import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
 
 const ERROR_MESSAGES = {
   NOT_YOUR_TURN: 'It is not your turn.',
@@ -200,6 +201,8 @@ function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit }) {
   const overLimit = charCount > MAX_CLUE_LENGTH
   const canSubmit = isMyTurn && gamePhase === 'CLUE' && !submitting && !overLimit
 
+  useMobileKeyboardFocus(inputRef)
+
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return
     const trimmed = text.trim()
@@ -352,6 +355,9 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound, canChat
   const [text, setText] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
   const containerRef = useRef(null)
+  const chatInputRef = useRef(null)
+
+  useMobileKeyboardFocus(chatInputRef)
 
   useEffect(() => {
     if (autoScroll && containerRef.current) {
@@ -420,6 +426,7 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound, canChat
       </div>
       <div className="comm-panel__input">
         <input
+          ref={chatInputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -554,6 +561,9 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
   const isLocked = lockedVotes.includes(myPlayerId)
   const allVotesConfirmed = eligibleVoters.length > 0 && lockedVotes.length >= eligibleVoters.length
   
+  const ghostPlayer = players.find(p => p.eliminated === true && p.specialRole === 'ghost')
+  const ghostTargetId = ghostPlayer && lockedVotes.includes(ghostPlayer.id) ? votes[ghostPlayer.id] : null
+
   const voteCounts = {}
   Object.values(votes).forEach(targetId => {
     voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
@@ -587,6 +597,8 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
           const isSelected = p.id === myVote
           const hasLocked = lockedVotes.includes(p.id)
           const isEliminatedAnim = eliminationResult?.playerId === p.id
+          const isGhostTarget = p.id === ghostTargetId
+
           return (
             <button 
               key={p.id}
@@ -598,7 +610,10 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
             >
               <span className="voting-card__avatar">{getInitials(p.name)}</span>
               <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
-              <div className="voting-card__meta">
+              <div className="voting-card__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {isGhostTarget && (
+                  <img src="/images/characters/ghost-bg.png" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                )}
                 {voteCounts[p.id] > 0 && (
                   <span className="voting-card__votes">{voteCounts[p.id]} Vote{voteCounts[p.id] > 1 ? 's' : ''}</span>
                 )}

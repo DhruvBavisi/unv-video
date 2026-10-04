@@ -1649,6 +1649,7 @@ export default function OnlineGame({ onExit }) {
             mrWhiteGuesserId={state.mrWhiteGuesserId}
             mrWhiteLiveGuess={state.mrWhiteLiveGuess}
             socketRef={socketRef}
+            localSecret={state.localSecret}
           />
         )}
       {showQR && (

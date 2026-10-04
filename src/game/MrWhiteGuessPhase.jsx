@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Button from '../components/Button.jsx'
 import { emitSubmitMrWhiteGuess } from './gameState.js'
+import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
 
 export default function MrWhiteGuessPhase({ state, socketRef }) {
   const { sessionId, mrWhiteGuesserId, players } = state
@@ -10,6 +11,9 @@ export default function MrWhiteGuessPhase({ state, socketRef }) {
   const [guess, setGuess] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const inputRef = useRef(null)
+
+  useMobileKeyboardFocus(inputRef)
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
@@ -46,6 +50,7 @@ export default function MrWhiteGuessPhase({ state, socketRef }) {
       
       <form onSubmit={handleSubmit} style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <input 
+          ref={inputRef}
           type="text" 
           placeholder="Enter the Civilian word..." 
           value={guess}

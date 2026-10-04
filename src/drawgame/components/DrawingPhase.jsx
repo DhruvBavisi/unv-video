@@ -5,6 +5,7 @@ import PlayerStrip from './PlayerStrip.jsx'
 import DrawingToolbar, { DRAW_COLORS } from './DrawingToolbar.jsx'
 import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
+import { useMobileKeyboardFocus } from '../../hooks/useMobileKeyboardFocus.js'
 
 export default function DrawingPhase({ room, onLeave }) {
   const { sessionId } = ensureIdentity()
@@ -15,6 +16,9 @@ export default function DrawingPhase({ room, onLeave }) {
   const [tool, setTool] = useState('brush')
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
   const [guessInput, setGuessInput] = useState('')
+  const guessInputRef = useRef(null)
+
+  useMobileKeyboardFocus(guessInputRef)
   const [isChoosing, setIsChoosing] = useState(false)
   
   // --- LAYOUT CONFIGURATION ---
@@ -421,6 +425,7 @@ export default function DrawingPhase({ room, onLeave }) {
             borderBottom: '1px solid rgba(0,0,0,0.05)'
           }}>
             <input 
+              ref={guessInputRef}
               type="text" 
               placeholder="Type your guess..."
               className="sk-input"

@@ -28,6 +28,8 @@ function getInitials(name) {
     .join('')
 }
 
+import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
+
 // Inline Mr White guess panel rendered inside the elimination card back-face
 function MrWhiteGuessPanel({ isMe, liveGuess, socketRef, onSubmitted }) {
   const [localText, setLocalText] = useState(liveGuess || '')
@@ -36,6 +38,8 @@ function MrWhiteGuessPanel({ isMe, liveGuess, socketRef, onSubmitted }) {
   const [submitted, setSubmitted] = useState(false)
   const throttleRef = useRef(null)
   const inputRef = useRef(null)
+
+  useMobileKeyboardFocus(inputRef)
 
   // Sync incoming liveGuess (from server broadcasts) when not the guesser
   useEffect(() => {
@@ -207,6 +211,7 @@ export default function EliminationOverlay({
   mrWhiteGuesserId,
   mrWhiteLiveGuess,
   socketRef,
+  localSecret,
 }) {
   // 0: hidden/measure, 1: travel, 2: flip at center, 3: morph, 4: role presentation, 5: final details, 6: exit flight
   const [phase, setPhase] = useState(0)
@@ -477,6 +482,13 @@ export default function EliminationOverlay({
                   </div>
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Both are eliminated</div>
+              </div>
+            )}
+
+            {eliminationResult.playerId === myPlayerId && localSecret?.specialRole === 'ghost' && (
+              <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '12px 24px', background: 'linear-gradient(145deg, rgba(30, 32, 40, 0.7), rgba(20, 22, 28, 0.6))', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '6px', textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)' }}>
+                <span style={{ fontSize: '0.75rem', color: '#3B82F6', display: 'block', marginBottom: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 'bold' }}>YOU ARE NOW A GHOST</span>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>You can still vote in future rounds.</div>
               </div>
             )}
           </div>
