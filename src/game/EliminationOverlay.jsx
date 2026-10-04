@@ -485,12 +485,6 @@ export default function EliminationOverlay({
               </div>
             )}
 
-            {eliminationResult.playerId === myPlayerId && localSecret?.specialRole === 'ghost' && (
-              <div className={`elimination-desc ${(showDetails && !isExiting) ? 'is-visible' : ''}`} style={{ margin: '0', padding: '12px 24px', background: 'linear-gradient(145deg, rgba(30, 32, 40, 0.7), rgba(20, 22, 28, 0.6))', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '6px', textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2)' }}>
-                <span style={{ fontSize: '0.75rem', color: '#3B82F6', display: 'block', marginBottom: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 'bold' }}>YOU ARE NOW A GHOST</span>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>You can still vote in future rounds.</div>
-              </div>
-            )}
           </div>
         )}
 
