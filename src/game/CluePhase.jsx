@@ -37,7 +37,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   const role = localSecret?.role
   const word = localSecret?.word
   const specialRoleKey = localSecret?.specialRole
-  const roleVisible = revealRoles === true && role != null
+  const roleVisible = (revealRoles === true || role === 'MR_WHITE') && role != null
   const roleLabel = roleVisible ? role.replace('_', ' ') : '???'
   const wordVisible = gamePhase === 'CLUE' || gamePhase === 'VOTE'
   const specialRoleMeta = specialRoleKey ? SPECIAL_ROLES.find(r => r.key === specialRoleKey) : null
@@ -130,11 +130,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
         {wordVisible && (
           <div className="clue-panel__secret" style={{ marginTop: '1rem' }}>
             <span className="clue-panel__word-label">Your Secret Word</span>
-            {word ? (
-              <div className="clue-panel__word-box">{word}</div>
-            ) : (
-              <p className="clue-panel__no-word">No word assigned. Listen carefully to every clue.</p>
-            )}
+            <div className="clue-panel__word-box">{word || '???'}</div>
           </div>
         )}
 

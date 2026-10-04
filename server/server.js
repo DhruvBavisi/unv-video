@@ -2436,6 +2436,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       role: target.role,
       specialRole: target.specialRole,
       isRevengerElimination: true,
+      isVoteElimination: true,
       startedAt: Date.now(),
       specialRoleOutcomes: room.specialRoleOutcomes
     }
@@ -2630,6 +2631,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.gamePhase = 'REVENGER_DECISION'
       room.revengerId = eliminatedId
       room.revengerDecisionEndsAt = Date.now() + 20000
+      room.eliminationResult = null
       
       const version = room.gameVersion
       setTimeout(() => {
