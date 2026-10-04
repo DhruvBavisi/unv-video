@@ -129,6 +129,11 @@ export default function PlayersPanel({ state, onClose, buttonRect, onActionReque
         {p.eliminated && p.role && (
           <div className="player-card__role">{p.role.replace('_', ' ')}</div>
         )}
+        {p.spectator && (
+          <div className="player-card__role" style={{ marginTop: '2px', opacity: 0.8, fontSize: '0.65rem' }}>
+            {p.specialRole === 'ghost' ? 'SPECTATOR — GHOST — may still vote' : 'SPECTATOR — cannot vote'}
+          </div>
+        )}
       </li>
     )
   }
