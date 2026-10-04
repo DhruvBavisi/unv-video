@@ -80,7 +80,7 @@ export const SPECIAL_ROLES = [
     ],
     mobileDescription: "The Ghost can still vote even after being eliminated!",
     avatar: '/images/characters/ghost.png',
-    implemented: false
+    implemented: true
   },
   {
     key: "falafelVendor",

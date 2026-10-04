@@ -23,7 +23,7 @@ const SPECIAL_ROLE_AVATAR_LAYOUT = {
   boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#ff4551ff', bgColor: 'radial-gradient(circle at center, #FF727A 30%, #F24853 50%, #C12832 100%)', imageVariant: 'bg', borderColor: '#ff5460ff'},
   duelists: { scale: 1.4, translateY: 10, translateX: 0 },
   falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
-  ghost: { scale: 1, translateY: -10, translateX: 7 },
+  ghost: { scale: 1, translateY: -10, translateX: 7, themeColor: '#9CA3AF', imageVariant: 'bg', bgColor: '#ffffff' },
   goddessOfJustice: { scale: 0.875, translateY: 5, translateX: 0, themeColor: '#22C55E', imageVariant: 'bg-green', bgColor: '#ffffff', },
   joyFool: { scale: 1.1, translateY: 0, translateX: 0,themeColor: '#7C79FC', borderColor: '#8d8bfcff' },
   lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },
@@ -348,7 +348,7 @@ function ClueFeed({ clues, myPlayerId, currentRound }) {
   )
 }
 
-function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
+function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound, canChat }) {
   const [text, setText] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
   const containerRef = useRef(null)
@@ -426,13 +426,13 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           maxLength={MAX_CHAT_LENGTH + 10}
-          disabled={!isGameActive}
+          disabled={!isGameActive || !canChat}
           className="comm-panel__text-input"
           autoComplete="off"
         />
         <Button
           onClick={handleSubmit}
-          disabled={!isGameActive || !text.trim() || overLimit}
+          disabled={!isGameActive || !text.trim() || overLimit || !canChat}
           className="comm-panel__send-btn"
         >
           Send
@@ -442,7 +442,7 @@ function ChatFeed({ chat, myPlayerId, gamePhase, onSubmit, currentRound }) {
   )
 }
 
-function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, onSendChat }) {
+function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, onSendChat, canChat }) {
   const [activeTab, setActiveTab] = useState('clues')
   const [unreadClues, setUnreadClues] = useState(0)
   const [unreadChat, setUnreadChat] = useState(0)
@@ -520,6 +520,7 @@ function CommunicationPanel({ clues, chat, currentRound, myPlayerId, gamePhase, 
             gamePhase={gamePhase}
             onSubmit={onSendChat}
             currentRound={currentRound}
+            canChat={canChat}
           />
         </div>
       </div>
@@ -545,9 +546,10 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
     }
     return !p.eliminated && !p.spectator;
   })
+  const eligibleVoters = players.filter(p => (!p.eliminated || p.specialRole === 'ghost') && !p.spectator)
   const myVote = votes[myPlayerId]
   const isLocked = lockedVotes.includes(myPlayerId)
-  const allVotesConfirmed = activePlayers.length > 0 && lockedVotes.length >= activePlayers.length
+  const allVotesConfirmed = eligibleVoters.length > 0 && lockedVotes.length >= eligibleVoters.length
   
   const voteCounts = {}
   Object.values(votes).forEach(targetId => {
@@ -779,6 +781,10 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
   const isMyTurn = currentTurnPlayerId === sessionId
   const currentRound = round
 
+  const myPlayer = players.find(p => p.id === sessionId)
+  const isGhost = localSecret?.specialRole === 'ghost'
+  const canChat = !myPlayer?.eliminated || isGhost
+
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -991,6 +997,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
             myPlayerId={sessionId}
             gamePhase={gamePhase}
             onSendChat={handleSendChat}
+            canChat={canChat}
           />
           {chatError && <div className="clue-phase__error" role="alert">{chatError}</div>}
         </aside>

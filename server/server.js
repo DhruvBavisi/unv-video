@@ -2151,6 +2151,10 @@ io.on('connection', (socket) => {
       return callback?.({ success: false, error: 'GAME_NOT_ACTIVE' })
     }
 
+    if (player.eliminated && player.specialRole !== 'ghost') {
+      return callback?.({ success: false, error: 'ELIMINATED_PLAYERS_CANNOT_CHAT' })
+    }
+
     const text = String(rawText || '').trim()
 
     if (!text) {
@@ -2196,7 +2200,8 @@ io.on('connection', (socket) => {
     if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
     
     const player = room.players.find((p) => p.id === currentSessionId)
-    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    const isGhostVoting = player?.eliminated && player?.specialRole === 'ghost'
+    if (!player || player.spectator || (player.eliminated && !isGhostVoting)) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     
     if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
     const target = room.players.find(p => p.id === targetId)
@@ -2219,23 +2224,24 @@ io.on('connection', (socket) => {
     if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
     
     const player = room.players.find((p) => p.id === currentSessionId)
-    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    const isGhostVoting = player?.eliminated && player?.specialRole === 'ghost'
+    if (!player || player.spectator || (player.eliminated && !isGhostVoting)) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     
     if (room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_ALREADY_LOCKED' })
     if (!room.votes[currentSessionId]) return callback?.({ success: false, error: 'NO_VOTE_SELECTED' })
 
     room.lockedVotes.push(currentSessionId)
     
-    const activePlayers = getActivePlayers(room)
-    const votingComplete = room.lockedVotes.length === activePlayers.length
+    const eligibleVoters = room.players.filter((p) => !p.spectator && p.status === 'PLAYING' && (!p.eliminated || p.specialRole === 'ghost'))
+    const votingComplete = room.lockedVotes.length === eligibleVoters.length
     
     console.log('[VOTING DEBUG]')
     console.log(`room=${room.id}`)
     console.log(`round=${room.round}`)
     console.log(`attempt=${room.votingAttempt || 1}`)
-    console.log(`eligibleVoters=${activePlayers.length}`)
+    console.log(`eligibleVoters=${eligibleVoters.length}`)
     console.log(`confirmedVoters=${room.lockedVotes.length}`)
-    console.log(`remainingVoters=${activePlayers.length - room.lockedVotes.length}`)
+    console.log(`remainingVoters=${eligibleVoters.length - room.lockedVotes.length}`)
     console.log(`votingComplete=${votingComplete}`)
 
     if (votingComplete) {
@@ -2369,7 +2375,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!room || room.gamePhase !== 'VOTE') return callback?.({ success: false, error: 'NOT_VOTE_PHASE' })
 
     const player = room.players.find((p) => p.id === currentSessionId)
-    if (!player || player.eliminated || player.spectator) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
+    const isGhostVoting = player?.eliminated && player?.specialRole === 'ghost'
+    if (!player || player.spectator || (player.eliminated && !isGhostVoting)) return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     if (!room.lockedVotes.includes(currentSessionId)) return callback?.({ success: false, error: 'VOTE_NOT_LOCKED' })
 
     room.lockedVotes = room.lockedVotes.filter((id) => id !== currentSessionId)
