@@ -24,17 +24,22 @@ export default function DrawingPhase({ room, onLeave }) {
   const [chatNotifications, setChatNotifications] = useState([])
   const seenMessageIds = useRef(new Set())
 
+  const hasInitialized = useRef(false)
+
   useEffect(() => {
-    if (room.phase !== 'DRAWING') return
     const messages = room.chatMessages || []
     const newNotifs = []
     
     messages.forEach(msg => {
-      if ((msg.type === 'CHAT' || msg.type === 'SYSTEM' || msg.type === 'CORRECT' || msg.type === 'CLOSE') && !seenMessageIds.current.has(msg.id)) {
+      if ((msg.type === 'CHAT' || msg.type === 'SYSTEM' || msg.type === 'CORRECT' || msg.type === 'CLOSE' || msg.type === 'REACTION') && !seenMessageIds.current.has(msg.id)) {
         seenMessageIds.current.add(msg.id)
-        newNotifs.push({ ...msg, expireAt: Date.now() + 4000 })
+        if (hasInitialized.current) {
+          newNotifs.push({ ...msg, expireAt: Date.now() + 4000 })
+        }
       }
     })
+    
+    hasInitialized.current = true
 
     if (newNotifs.length > 0) {
       setChatNotifications(prev => {
@@ -42,7 +47,7 @@ export default function DrawingPhase({ room, onLeave }) {
         return next.slice(-3) // Keep max 3 at a time
       })
     }
-  }, [room.chatMessages, room.phase])
+  }, [room.chatMessages])
 
   useEffect(() => {
     if (chatNotifications.length === 0) return
@@ -291,7 +296,46 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* CANVAS AREA */}
-      <div style={{ flex: CANVAS_FLEX, position: 'relative', minHeight: 0, background: 'var(--sk-canvas)', cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default', zIndex: 5 }}>
+      <style>{`
+        .sk-drawing-surface-wrapper {
+          flex: ${CANVAS_FLEX};
+          position: relative;
+          min-height: 0;
+          background: var(--sk-canvas);
+          z-index: 5;
+        }
+        .sk-drawing-surface {
+          position: absolute;
+          inset: 0;
+        }
+        .sk-lower-info-section {
+          flex: ${INFO_PANEL_FLEX};
+        }
+        @media (max-width: 768px) {
+          .sk-drawing-surface-wrapper {
+            flex: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .sk-drawing-surface {
+            position: relative !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            aspect-ratio: 4 / 3 !important;
+            inset: auto !important;
+          }
+          .sk-lower-info-section {
+            flex: 1 !important;
+          }
+        }
+      `}</style>
+      <div 
+        className="sk-drawing-surface-wrapper" 
+        style={{ cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default' }}
+      >
+        <div className="sk-drawing-surface">
         <div style={{ position: 'absolute', inset: 0, opacity: room.phase === 'WORD_CHOICE' ? 0.3 : 1, transition: 'opacity 300ms ease', pointerEvents: room.phase === 'WORD_CHOICE' ? 'none' : 'auto' }}>
           <DrawingCanvas 
             ref={canvasRef}
@@ -364,6 +408,16 @@ export default function DrawingPhase({ room, onLeave }) {
             } else if (notif.type === 'CLOSE') {
               textColor = '#b08d00'
               content = <strong style={{ color: textColor }}>{notif.playerName} is close!</strong>
+            } else if (notif.type === 'REACTION') {
+              const text = notif.message || ''
+              if (text.includes('liked')) {
+                textColor = '#359b35'
+              } else if (text.includes('disliked')) {
+                textColor = '#cc4e14'
+              } else {
+                textColor = '#777777'
+              }
+              content = <strong style={{ color: textColor }}>{notif.message}</strong>
             }
 
             return (
@@ -517,6 +571,7 @@ export default function DrawingPhase({ room, onLeave }) {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* BOTTOM CONTROLS */}
@@ -560,9 +615,8 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* LOWER INFO SECTION: Players & Chat */}
-      <div style={{ 
+      <div className="sk-lower-info-section" style={{ 
         display: 'flex', 
-        flex: INFO_PANEL_FLEX,
         minHeight: 0,
         background: 'rgba(255, 255, 255, 0.8)',
         zIndex: 10

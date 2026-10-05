@@ -6,7 +6,7 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-export default function QRScannerModal({ onClose, onScan }) {
+export default function QRScannerModal({ onClose, onScan, expectedMode = 'undercover' }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const overlayRef = useRef(null)
   const containerRef = useRef(null)
@@ -52,7 +52,9 @@ export default function QRScannerModal({ onClose, onScan }) {
       try {
         const url = new URL(text)
         const room = url.searchParams.get('room')
-        if (room && room.length === 6) {
+        const mode = url.searchParams.get('mode') || 'undercover'
+
+        if (room && room.length === 6 && mode === expectedMode) {
           onScan(room.toUpperCase())
           handleClose()
         }

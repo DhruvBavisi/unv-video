@@ -62,15 +62,25 @@ function SessionResolver({ onResolved }) {
 }
 
 function getInitialGameView() {
+  const params = new URLSearchParams(window.location.search)
+  const room = params.get('room')
+  const mode = params.get('mode')
+
   const { resumeToken, roomId, gameMode } = readIdentity()
+
+  if (room && room.toUpperCase() !== (roomId || '').toUpperCase()) {
+    if (mode === 'skribbl') return 'skribbl'
+    return 'undercover'
+  }
+
   if (resumeToken && roomId) {
     if (gameMode === 'skribbl') return 'skribbl'
     if (gameMode === 'undercover') return 'undercover'
     return 'resolving-session' 
   }
   
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('room')) {
+  if (room) {
+    if (mode === 'skribbl') return 'skribbl'
     return 'undercover'
   }
   

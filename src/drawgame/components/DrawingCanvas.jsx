@@ -204,7 +204,7 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
         cvs.height = 600
         cvs.style.width = '100%'
         cvs.style.height = '100%'
-        cvs.style.objectFit = 'contain'
+        cvs.style.objectFit = 'fill'
       } else {
         const dpr = window.devicePixelRatio || 1
         cvs.width = rect.width * dpr

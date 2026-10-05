@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { ensureIdentity } from '../../game/identity.js'
 import { getSocket } from '../../game/socket.js'
+import QRModal from '../../game/QRModal.jsx'
 
 function SegmentControl({ label, value, options, onChange, disabled }) {
   return (
@@ -84,6 +85,8 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
   const isHost = room.hostId === sessionId
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+  const qrBtnRef = useRef(null)
 
   const handleConfigChange = (key, value) => {
     if (!isHost) return
@@ -109,6 +112,18 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
     socket.emit('draw:start-game')
   }
 
+  const handleAddBots = () => {
+    if (!isHost) return
+    const socket = getSocket()
+    socket.emit('draw:add-dev-bots')
+  }
+
+  const handleRemoveBots = () => {
+    if (!isHost) return
+    const socket = getSocket()
+    socket.emit('draw:remove-dev-bots')
+  }
+
   return (
     <div className="sk-view">
       <div className="sk-bg-shapes">
@@ -125,12 +140,32 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
         
         {/* ROOM CODE */}
         <div className="sk-card sk-card--animated" style={{ animationDelay: '0ms', padding: '16px' }}>
-          <div className="sk-card-title" style={{ justifyContent: 'center', marginBottom: '12px' }}>ROOM CODE</div>
+          <div className="sk-card-title" style={{ justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span>ROOM CODE</span>
+            <button 
+              ref={qrBtnRef}
+              className="sk-btn sk-btn--secondary" 
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              onClick={() => setShowQR(true)}
+            >
+              SHOW QR
+            </button>
+          </div>
           <div className={`sk-code-box ${copied ? 'copied' : ''}`} onClick={handleCopyCode}>
             <div className="sk-code-val">{room.id}</div>
             <div className="sk-code-hint">{copied ? 'COPIED!' : copyFailed ? 'COPY FAILED' : 'TAP TO COPY'}</div>
           </div>
         </div>
+
+        {showQR && (
+          <QRModal 
+            joinUrl={window.location.origin + '/?mode=skribbl&room=' + encodeURIComponent(room.id)}
+            roomId={room.id}
+            onClose={() => setShowQR(false)}
+            buttonRect={qrBtnRef.current?.getBoundingClientRect()}
+            mode="skribbl"
+          />
+        )}
 
         {/* PLAYERS */}
         <div className="sk-card sk-card--animated" style={{ animationDelay: '100ms', padding: '20px 24px' }}>
@@ -223,6 +258,16 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
       </div>
 
       <div className="sk-action-area">
+        {import.meta.env.VITE_DEV_BOTS_ENABLED === 'true' && isHost && (
+          <div className="sk-action-inner" style={{ marginBottom: '8px' }}>
+            <button className="sk-btn sk-btn--secondary" onClick={handleAddBots}>
+              ADD DEV BOTS
+            </button>
+            <button className="sk-btn sk-btn--secondary" onClick={handleRemoveBots}>
+              REMOVE DEV BOTS
+            </button>
+          </div>
+        )}
         <div className="sk-action-inner">
           <button className="sk-btn-icon" onClick={onLeave} aria-label="Leave Room">
             <svg viewBox="0 0 24 24">

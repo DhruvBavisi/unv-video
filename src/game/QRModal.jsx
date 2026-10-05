@@ -6,7 +6,7 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-export default function QRModal({ joinUrl, roomId, onClose, buttonRect }) {
+export default function QRModal({ joinUrl, roomId, onClose, buttonRect, mode = 'undercover' }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const [copied, setCopied] = useState(false)
   const overlayRef = useRef(null)
@@ -57,17 +57,24 @@ export default function QRModal({ joinUrl, roomId, onClose, buttonRect }) {
   const animClass = animState === ANIM_ENTERING ? 'players-panel--entering' : animState === ANIM_EXITING ? 'players-panel--exiting' : 'players-panel--open'
   const overlayClass = animState === ANIM_ENTERING ? 'players-panel-overlay--entering' : animState === ANIM_EXITING ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'
 
+  const isSkribbl = mode === 'skribbl'
+  const panelStyle = isSkribbl 
+    ? { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative', background: 'var(--sk-card)', color: 'var(--sk-text)', borderRadius: '24px', border: '3px solid var(--sk-primary)' }
+    : { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative' }
+
   return createPortal(
     <div className={`players-panel-overlay ${overlayClass}`} ref={overlayRef} onClick={handleOverlayClick} style={{ zIndex: 1000000 }}>
-      <div className={`players-panel ${animClass}`} style={{ ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative' }}>
-        <button type="button" className="players-panel-close" onClick={handleClose} aria-label="Close QR" style={{ position: 'absolute', top: '5px', right: '16px' }}>
+      <div className={`players-panel ${animClass}`} style={panelStyle}>
+        <button type="button" className="players-panel-close" onClick={handleClose} aria-label="Close QR" style={{ position: 'absolute', top: '5px', right: '16px', color: isSkribbl ? 'var(--sk-muted)' : undefined }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', marginBottom: '8px', letterSpacing: '0.1em' }}>ROOM {roomId}</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.9rem' }}>Scan this code to join the investigation</p>
+        <h2 style={{ fontFamily: isSkribbl ? 'var(--sk-font-display)' : 'var(--font-display)', fontSize: '1.5rem', marginBottom: '8px', letterSpacing: '0.1em' }}>ROOM {roomId}</h2>
+        <p style={{ color: isSkribbl ? 'var(--sk-muted)' : 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.9rem', fontFamily: isSkribbl ? 'var(--sk-font-body)' : undefined }}>
+          {isSkribbl ? 'Scan this code to join the Skribbl game' : 'Scan this code to join the investigation'}
+        </p>
         <div style={{ background: '#ffffff', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
           <QRCodeSVG value={joinUrl} size={200} level="M" />
         </div>

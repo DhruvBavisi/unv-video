@@ -3,6 +3,7 @@ import { connectSocket, getSocket } from '../game/socket.js'
 import { ensureIdentity, readIdentity, clearSession } from '../game/identity.js'
 import Lobby from './components/Lobby.jsx'
 import DrawingPhase from './components/DrawingPhase.jsx'
+import QRScannerModal from '../game/QRScannerModal.jsx'
 
 function SkribblError({ message }) {
   if (!message) return null
@@ -81,9 +82,23 @@ export default function SkribblApp({ onExit }) {
   useMobileKeyboardFocus(joinIdRef)
   useMobileKeyboardFocus(joinNameRef)
 
+  const [showScanner, setShowScanner] = useState(false)
+
   const [view, setView] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlRoom = params.get('room')
+    const urlMode = params.get('mode')
+    
     const { resumeToken, roomId, gameMode } = readIdentity()
-    return (resumeToken && roomId && gameMode === 'skribbl') ? 'restoring' : 'menu'
+    
+    if (urlRoom && urlRoom.toUpperCase() !== (roomId || '').toUpperCase()) {
+      if (urlMode === 'skribbl') return 'join'
+    }
+
+    if (resumeToken && roomId && gameMode === 'skribbl') return 'restoring'
+    
+    if (urlMode === 'skribbl' && urlRoom) return 'join'
+    return 'menu'
   })
 
   useEffect(() => {
@@ -356,16 +371,28 @@ export default function SkribblApp({ onExit }) {
           {view === 'join' && (
             <div className="sk-card">
               <h2 className="sk-card-title">JOIN GAME</h2>
-              <input 
-                ref={joinIdRef}
-                type="text" 
-                id="sk-join-id" 
-                placeholder="ROOM CODE" 
-                className="sk-input"
-                autoFocus
-                maxLength={6}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
-              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  ref={joinIdRef}
+                  type="text" 
+                  id="sk-join-id" 
+                  placeholder="ROOM CODE" 
+                  className="sk-input"
+                  autoFocus
+                  maxLength={6}
+                  defaultValue={new URLSearchParams(window.location.search).get('room') || ''}
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.2em', flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="sk-btn sk-btn--secondary"
+                  style={{ padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Scan QR Code"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h6v6H4z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6H4z" /><path d="M14 14h6v6h-6z" /></svg>
+                </button>
+              </div>
               <input 
                 ref={joinNameRef}
                 type="text" 
@@ -391,6 +418,21 @@ export default function SkribblApp({ onExit }) {
             </div>
           )}
         </SkribblScreenTransition>
+        
+        {showScanner && (
+          <QRScannerModal 
+            onClose={(focus) => {
+              setShowScanner(false)
+              if (focus && joinIdRef.current) joinIdRef.current.focus()
+            }}
+            onScan={(code) => {
+              if (joinIdRef.current) {
+                joinIdRef.current.value = code
+              }
+            }}
+            expectedMode="skribbl"
+          />
+        )}
       </div>
     </div>
   )

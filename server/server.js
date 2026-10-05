@@ -27,6 +27,7 @@ if (fs.existsSync(envPath)) {
 const IS_DEV_BOTS_ENABLED = process.env.DEV_BOTS_ENABLED === 'true'
 
 let initBotManager, addBots, removeBots
+let initDrawBotManager, addDrawBots, removeDrawBots
 if (IS_DEV_BOTS_ENABLED) {
   import('./dev/botManager.js').then(module => {
     initBotManager = module.initBotManager
@@ -35,6 +36,15 @@ if (IS_DEV_BOTS_ENABLED) {
     initBotManager(process.env.PORT || 3001)
   }).catch(err => {
     console.error('Failed to load bot manager:', err)
+  })
+
+  import('./dev/drawBotManager.js').then(module => {
+    initDrawBotManager = module.initDrawBotManager
+    addDrawBots = module.addDrawBots
+    removeDrawBots = module.removeDrawBots
+    initDrawBotManager(process.env.PORT || 3001)
+  }).catch(err => {
+    console.error('Failed to load draw bot manager:', err)
   })
 }
 
@@ -393,6 +403,14 @@ function startDrawingTurn(room, word) {
   if (room.chatMessages.length > 100) room.chatMessages.shift()
   
   broadcastDrawRoomState(room)
+  
+  if (IS_DEV_BOTS_ENABLED) {
+    room.players.forEach(p => {
+      if (p.isBot) {
+        io.to(p.id).emit('draw:dev-secret-word', room.selectedWord)
+      }
+    })
+  }
   
   // Schedule round end
   const expectedTurnIndex = room.turnIndex
@@ -1260,7 +1278,7 @@ io.on('connection', (socket) => {
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
-  socket.on('draw:join-room', ({ sessionId, roomId, playerName }, callback) => {
+  socket.on('draw:join-room', ({ sessionId, roomId, playerName, isBot }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -1302,6 +1320,7 @@ io.on('connection', (socket) => {
       isHost: false,
       isConnected: true,
       spectator: room.status !== 'LOBBY',
+      isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
       score: 0
     }
     room.players.push(newPlayer)
@@ -1739,6 +1758,53 @@ io.on('connection', (socket) => {
 
     io.to(`draw:${room.id}`).emit('draw:clear-canvas')
     
+    broadcastDrawRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('draw:add-dev-bots', (callback) => {
+    if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
+    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
+    if (room.phase !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
+
+    const botCount = room.players.filter(p => p.isBot).length
+    if (botCount >= 4) return callback?.({ error: '4 development bots are already in this room.' })
+    
+    const availableSlots = room.configuration.maxPlayers - room.players.length
+    if (availableSlots < 4) return callback?.({ error: `Only ${availableSlots} slots available. Cannot add 4 bots.` })
+    
+    addDrawBots(room.id, 4)
+    callback?.({ success: true })
+  })
+
+  socket.on('draw:remove-dev-bots', (callback) => {
+    if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
+    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
+    if (room.phase !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
+
+    removeDrawBots(room.id)
+
+    // Remove bots from the room players array
+    room.players = room.players.filter(p => !p.isBot)
+
     broadcastDrawRoomState(room)
     callback?.({ success: true })
   })
