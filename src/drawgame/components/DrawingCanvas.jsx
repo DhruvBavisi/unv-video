@@ -122,13 +122,13 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
       return
     }
-    
-    const dpr = window.devicePixelRatio || 1
+    const isMobile = window.innerWidth <= 768
+    const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.scale(dpr, dpr)
     
-    const w = rect.width
-    const h = rect.height
+    const w = isMobile ? 800 : rect.width
+    const h = isMobile ? 600 : rect.height
     let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
     
     if (stroke.points.length === 1) {
@@ -148,7 +148,8 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const ctx = cvs.getContext('2d')
     const rect = cvs.getBoundingClientRect()
     
-    const dpr = window.devicePixelRatio || 1
+    const isMobile = window.innerWidth <= 768
+    const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvs.width, cvs.height)
     ctx.scale(dpr, dpr)
@@ -161,8 +162,8 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
           performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
           return
         }
-        const w = rect.width
-        const h = rect.height
+        const w = isMobile ? 800 : rect.width
+        const h = isMobile ? 600 : rect.height
         let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
         if (stroke.points.length === 1) {
           drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
@@ -196,11 +197,22 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       if (!cvs || !container) return
       
       const rect = container.getBoundingClientRect()
-      const dpr = window.devicePixelRatio || 1
-      cvs.width = rect.width * dpr
-      cvs.height = rect.height * dpr
-      cvs.style.width = `${rect.width}px`
-      cvs.style.height = `${rect.height}px`
+      const isMobile = window.innerWidth <= 768
+      
+      if (isMobile) {
+        cvs.width = 800
+        cvs.height = 600
+        cvs.style.width = '100%'
+        cvs.style.height = '100%'
+        cvs.style.objectFit = 'contain'
+      } else {
+        const dpr = window.devicePixelRatio || 1
+        cvs.width = rect.width * dpr
+        cvs.height = rect.height * dpr
+        cvs.style.width = `${rect.width}px`
+        cvs.style.height = `${rect.height}px`
+        cvs.style.objectFit = 'fill'
+      }
     }
     window.addEventListener('resize', resizeCanvas)
     resizeCanvas()

@@ -34,7 +34,7 @@ export default function PlayerStrip({ room, currentDrawerId, sessionId }) {
         const isCurrent = p.id === sessionId
         const isGuessed = guessedIds.includes(p.id)
         
-        const baseBg = i % 2 === 0 ? '#FFFFFF' : '#ECECEC'
+        const baseBg = i % 2 === 0 ? '#FFFFFF' : '#f1f1f1ff'
         const bg = isGuessed ? '#CFFFBD' : baseBg
 
         return (

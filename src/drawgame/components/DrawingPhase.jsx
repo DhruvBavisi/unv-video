@@ -20,6 +20,38 @@ export default function DrawingPhase({ room, onLeave }) {
 
   useMobileKeyboardFocus(guessInputRef)
   const [isChoosing, setIsChoosing] = useState(false)
+
+  const [chatNotifications, setChatNotifications] = useState([])
+  const seenMessageIds = useRef(new Set())
+
+  useEffect(() => {
+    if (room.phase !== 'DRAWING') return
+    const messages = room.chatMessages || []
+    const newNotifs = []
+    
+    messages.forEach(msg => {
+      if ((msg.type === 'CHAT' || msg.type === 'SYSTEM' || msg.type === 'CORRECT' || msg.type === 'CLOSE') && !seenMessageIds.current.has(msg.id)) {
+        seenMessageIds.current.add(msg.id)
+        newNotifs.push({ ...msg, expireAt: Date.now() + 4000 })
+      }
+    })
+
+    if (newNotifs.length > 0) {
+      setChatNotifications(prev => {
+        const next = [...prev, ...newNotifs]
+        return next.slice(-3) // Keep max 3 at a time
+      })
+    }
+  }, [room.chatMessages, room.phase])
+
+  useEffect(() => {
+    if (chatNotifications.length === 0) return
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setChatNotifications(prev => prev.filter(n => n.expireAt > now))
+    }, 500)
+    return () => clearInterval(interval)
+  }, [chatNotifications.length])
   
   // --- LAYOUT CONFIGURATION ---
   // Adjust these flex values to manually change the balance between the canvas and the lower player/chat panel.
@@ -273,6 +305,91 @@ export default function DrawingPhase({ room, onLeave }) {
         
         {/* Visual boundary shadow */}
         <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 20px rgba(0,0,0,0.03)', pointerEvents: 'none' }} />
+
+        {/* Reactions UI */}
+        {room.phase === 'DRAWING' && !isDrawer && !room.reactions?.[sessionId] && (
+          <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '0px', zIndex: 15 }}>
+            <button 
+              onClick={() => getSocket().emit('draw:reaction', 'LIKE')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '0px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: 'none'
+              }}
+            >
+              <img src="/images/svg/thumb_up.svg" alt="Like" width="32" height="32" style={{ display: 'block' }} />
+            </button>
+            <button 
+              onClick={() => getSocket().emit('draw:reaction', 'DISLIKE')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '0px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: 'none'
+              }}
+            >
+              <img src="/images/svg/thumb_down.svg" alt="Dislike" width="32" height="32" style={{ display: 'block' }} />
+            </button>
+          </div>
+        )}
+
+        {/* Chat Notifications UI */}
+        <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', flexDirection: 'column', gap: '6px', zIndex: 15, pointerEvents: 'none', maxWidth: '75%', alignItems: 'flex-end' }}>
+          {chatNotifications.map(notif => {
+            let textColor = '#333333'
+            let content = <><strong style={{ color: 'black', flexShrink: 0 }}>{notif.playerName}:</strong> <span>{notif.message}</span></>
+            
+            if (notif.type === 'SYSTEM') {
+              const text = notif.message || ''
+              if (text.includes('joined')) {
+                textColor = '#359b35'
+              } else if (text.includes('left')) {
+                textColor = '#cc4e14'
+              } else {
+                textColor = '#777777'
+              }
+              content = <strong style={{ color: textColor }}>{notif.message}</strong>
+            } else if (notif.type === 'CORRECT') {
+              textColor = '#359b35'
+              content = <strong style={{ color: textColor }}>{notif.playerName} guessed the word!</strong>
+            } else if (notif.type === 'CLOSE') {
+              textColor = '#b08d00'
+              content = <strong style={{ color: textColor }}>{notif.playerName} is close!</strong>
+            }
+
+            return (
+              <div 
+                key={notif.id}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  padding: '6px 10px',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  fontFamily: 'var(--sk-font-body)',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.2',
+                  animation: 'skFadeIn 200ms ease-out',
+                  wordBreak: 'break-word',
+                  border: '1px solid rgba(0,0,0,0.05)',
+                  display: 'inline-flex',
+                  gap: '4px',
+                  color: textColor
+                }}
+              >
+                {content}
+              </div>
+            )
+          })}
+        </div>
 
         {/* Word Choice Overlay */}
         {room.phase === 'WORD_CHOICE' && (

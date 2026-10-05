@@ -339,6 +339,7 @@ function startDrawingTurn(room, word) {
   room.strokes = []
   room.guessedPlayerIds = []
   room.turnScores = {}
+  room.reactions = {}
   
   // Initialize Hint System
   const numHints = room.configuration.hints ?? 2
@@ -472,6 +473,7 @@ function endDrawRound(room) {
         currentRoom.strokes = []
         currentRoom.guessedPlayerIds = []
         currentRoom.turnScores = {}
+        currentRoom.reactions = {}
         currentRoom.hint = ''
         currentRoom.hintRevealed = null
         
@@ -507,6 +509,7 @@ function endDrawRound(room) {
           currentRoom.strokes = []
           currentRoom.guessedPlayerIds = []
           currentRoom.turnScores = {}
+          currentRoom.reactions = {}
           currentRoom.hint = ''
           currentRoom.hintRevealed = null
           
@@ -1535,6 +1538,43 @@ io.on('connection', (socket) => {
     return value.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim()
   }
 
+  socket.on('draw:reaction', (reactionType) => {
+    if (!currentSessionId) return
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room || room.phase !== 'DRAWING') return
+
+    if (!room.reactions) room.reactions = {}
+
+    // Reject duplicate reactions from the same player for the same drawing turn
+    if (room.reactions[currentSessionId]) return
+
+    if (reactionType === 'LIKE' || reactionType === 'DISLIKE') {
+      room.reactions[currentSessionId] = reactionType
+
+      const player = room.players.find(p => p.id === currentSessionId)
+      if (player) {
+        if (!room.chatMessages) room.chatMessages = []
+        room.chatMessages.push({
+          id: crypto.randomUUID(),
+          playerId: currentSessionId,
+          playerName: player.name,
+          type: 'REACTION',
+          reaction: reactionType,
+          message: reactionType === 'LIKE' ? `${player.name} liked the drawing` : `${player.name} disliked the drawing`
+        })
+        if (room.chatMessages.length > 100) room.chatMessages.shift()
+      }
+
+      broadcastDrawRoomState(room)
+    }
+  })
+
   socket.on('draw:guess', ({ message }) => {
     if (!currentSessionId) return
     let room = null
@@ -1689,6 +1729,7 @@ io.on('connection', (socket) => {
     room.chatMessages = []
     room.guessedPlayerIds = []
     room.turnScores = {}
+    room.reactions = {}
     room.usedWords = []
     
     room.players.forEach(p => {

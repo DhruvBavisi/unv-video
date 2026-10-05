@@ -36,7 +36,7 @@ export default function ChatBox({ room }) {
             fontFamily: 'var(--sk-font-body)', 
             fontWeight: 700, 
             padding: '4px 6px', 
-            background: i % 2 === 0 ? '#ECECEC' : '#FFFFFF',
+            background: i % 2 === 0 ? '#F1F1F1' : '#FFFFFF',
             color: '#333333',
             borderRadius: 0
           }
@@ -61,6 +61,15 @@ export default function ChatBox({ room }) {
             style.background = '#FFFDC2'
             style.color = '#d69e2e'
             content = `${msg.playerName} is close!`
+          } else if (msg.type === 'REACTION') {
+            if (msg.reaction === 'LIKE') {
+              style.background = '#CFFFBD'
+              style.color = '#359b35'
+            } else {
+              style.background = '#FFDCDC'
+              style.color = '#cc4e14'
+            }
+            content = msg.message
           } else {
             // NORMAL CHAT
             content = <span><strong style={{color: 'black'}}>{msg.playerName}:</strong> {msg.message}</span>
