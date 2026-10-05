@@ -3,7 +3,7 @@ import {
   CINEMATIC_CONFIG,
   frameFromScrollProgress,
 } from '../lib/cinematicTimeline.js'
-import { createCinematicScrollTrigger } from '../lib/cinematicScroll.js'
+import { createCinematicScrollTrigger, getCinematicAlignX } from '../lib/cinematicScroll.js'
 import {
   framePath,
   preloadAllFrames,
@@ -52,7 +52,14 @@ export function useFrameCinematic({ sectionRef, canvasRef, onProgress, enabled =
       const img = getFrame(frameNum)
       if (!img || !img.complete || img.naturalWidth === 0) return
       fitCanvas(canvas, ctx, section)
-      drawFrame(canvas, ctx, img, CINEMATIC_CONFIG.frameWidth, CINEMATIC_CONFIG.frameHeight)
+      drawFrame(
+        canvas,
+        ctx,
+        img,
+        CINEMATIC_CONFIG.frameWidth,
+        CINEMATIC_CONFIG.frameHeight,
+        getCinematicAlignX(frameNum, section),
+      )
       // Keep the static fallback visible until a real canvas frame exists.
       canvas.dataset.ready = 'true'
     }
@@ -75,7 +82,16 @@ export function useFrameCinematic({ sectionRef, canvasRef, onProgress, enabled =
       const c2 = c.getContext('2d')
       if (!c2) return
       fitCanvas(c, c2, s)
-      drawFrame(c, c2, first, CINEMATIC_CONFIG.frameWidth, CINEMATIC_CONFIG.frameHeight)
+      // A scroll may already have moved past frame 1 — never paint over it.
+      if (state.current.frameIndex !== 1 && c.dataset.ready === 'true') return
+      drawFrame(
+        c,
+        c2,
+        first,
+        CINEMATIC_CONFIG.frameWidth,
+        CINEMATIC_CONFIG.frameHeight,
+        getCinematicAlignX(1, s),
+      )
       c.dataset.ready = 'true'
     }
     first.src = framePath(1)

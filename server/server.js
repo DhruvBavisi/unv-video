@@ -41,6 +41,11 @@ if (IS_DEV_BOTS_ENABLED) {
 const app = express()
 app.use(cors())
 
+// Liveness probe for the host (Render healthCheckPath) and uptime checks.
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()) })
+})
+
 const httpServer = createServer(app)
 
 function normalizeOrigin(origin) {

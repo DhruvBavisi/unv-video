@@ -1,16 +1,19 @@
-web:
-  type: web
-  name: undercover-server
-  runtime: node
-  buildCommand: npm install
-  startCommand: node server/server.js
-  envVars:
-    - key: NODE_ENV
-      sync: false
-      value: production
-    - key: PORT
-      sync: false
-      value: 10000
-    - key: FRONTEND_ORIGIN
-      sync: false
-      value: https://investigation-room.vercel.app
+services:
+  - type: web
+    name: undercover-server
+    runtime: node
+    # Closest Render region to players in India. A service's region is
+    # fixed at creation, so this only applies to a newly created service.
+    region: singapore
+    # Free instance: sleeps after ~15 min idle and takes up to a minute
+    # to wake. Switch to "starter" to keep it awake.
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/server.js
+    healthCheckPath: /health
+    # PORT is provided by Render.
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_ORIGIN
+        value: https://investigation-room.vercel.app
