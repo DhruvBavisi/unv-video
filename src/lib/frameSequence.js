@@ -101,7 +101,8 @@ export function fitCanvas(canvas, ctx, container) {
   }
 }
 
-export function drawFrame(canvas, ctx, img, srcW, srcH) {
+// alignX: 0 = left edge of the frame visible, 1 = right edge, 0.5 = centred.
+export function drawFrame(canvas, ctx, img, srcW, srcH, alignX = 0.5) {
   if (!img) return
 
   const cw = canvas.width
@@ -113,7 +114,7 @@ export function drawFrame(canvas, ctx, img, srcW, srcH) {
   const scale = Math.max(cw / srcW, ch / srcH)
   const drawW = srcW * scale
   const drawH = srcH * scale
-  const x = (cw - drawW) / 2
+  const x = (cw - drawW) * alignX
   const y = (ch - drawH) / 2
 
   ctx.imageSmoothingEnabled = true

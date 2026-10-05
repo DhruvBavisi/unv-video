@@ -1,7 +1,7 @@
 import Button from '../components/Button.jsx'
 import InstallAppButton from '../components/InstallAppButton.jsx'
 
-const HERO_BACKDROP = '/images/investigation-room/hero-frame.png'
+const HERO_BACKDROP = '/images/investigation-room/hero-frame.webp'
 
 export default function Hero({ onPlay }) {
   return (
