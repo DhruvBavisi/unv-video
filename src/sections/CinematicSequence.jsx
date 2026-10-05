@@ -10,14 +10,15 @@ import {
   getCharacterReveal,
   getRevealProgress,
   cinematicProgressFromScroll,
+  frameFromCinematicProgress,
 } from '../lib/cinematicTimeline.js'
-import { createCinematicScrollTrigger } from '../lib/cinematicScroll.js'
+import { createCinematicScrollTrigger, getCinematicAlignX } from '../lib/cinematicScroll.js'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { framesAvailable, getLoadedFrameCount, getTotalFrameCount } from '../lib/frameSequence.js'
 import { useFrameCinematic } from '../hooks/useFrameCinematic.js'
 
 const VIDEO_SRC = '/videos/Undercover_cinematic_30fps.mp4'
-const VIDEO_FALLBACK = '/images/investigation-room/hero-frame.png'
+const VIDEO_FALLBACK = '/images/investigation-room/hero-frame.webp'
 const END_FRAME = '/images/investigation-room/end-frame.png'
 
 const DEBUG =
@@ -97,6 +98,13 @@ export default function CinematicSequence() {
   // progress (the weighted frame curve), never the raw scroll progress.
   const applyReveal = (cinematicProgress) => {
     const states = getCharacterReveal(cinematicProgress)
+
+    // Video / still fallbacks follow the same crop as the canvas.
+    const section = sectionRef.current
+    if (section) {
+      const alignX = getCinematicAlignX(frameFromCinematicProgress(cinematicProgress), section)
+      section.style.setProperty('--cinematic-pos-x', `${(alignX * 100).toFixed(2)}%`)
+    }
 
     for (const state of states) {
       const labelEl = labelRefs[state.id].current
@@ -232,7 +240,7 @@ export default function CinematicSequence() {
   return (
     <section
       ref={sectionRef}
-      className="cinematic"
+      className={`cinematic${activeCharacter ? ' cinematic--role-active' : ''}`}
       id="characters"
       aria-label="Cinematic investigation room — scroll to advance"
     >

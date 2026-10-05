@@ -102,6 +102,67 @@ export const CHARACTER_SEGMENTS = [
   },
 ]
 
+// ============================================================
+// FOCUS TRACK — horizontal point of interest per frame.
+//
+// The frames are 16:9. On a portrait viewport "cover" keeps only a
+// narrow vertical slice, so a centred crop cuts the character being
+// introduced out of the picture. These keyframes follow the subject
+// (0 = left edge of the frame, 1 = right edge) so the crop can pan
+// with the camera. Measured from the frames themselves; values
+// between keyframes are linearly interpolated.
+// ============================================================
+const FOCUS_KEYFRAMES = [
+  [1, 0.5], // wide establishing shot
+  [40, 0.5],
+  [60, 0.24], // push in on the Civilian
+  [73, 0.27],
+  [105, 0.32],
+  [123, 0.3],
+  [129, 0.28],
+  [145, 0.72], // pan to the Undercover agent
+  [155, 0.6],
+  [180, 0.5],
+  [211, 0.34],
+  [217, 0.3],
+  [226, 0.85], // pan to Mr. White
+  [240, 0.8],
+  [271, 0.8],
+  [290, 0.5], // pull back to the wide room
+  [300, 0.5],
+]
+
+/** Horizontal focus (0..1 across the frame width) for a frame number. */
+export function getFocusX(frame) {
+  const first = FOCUS_KEYFRAMES[0]
+  if (frame <= first[0]) return first[1]
+  for (let i = 1; i < FOCUS_KEYFRAMES.length; i++) {
+    const [f1, x1] = FOCUS_KEYFRAMES[i]
+    if (frame <= f1) {
+      const [f0, x0] = FOCUS_KEYFRAMES[i - 1]
+      return x0 + ((frame - f0) / (f1 - f0)) * (x1 - x0)
+    }
+  }
+  return FOCUS_KEYFRAMES[FOCUS_KEYFRAMES.length - 1][1]
+}
+
+/**
+ * Horizontal alignment (0 = show the left edge, 1 = show the right
+ * edge) that centres `focusX` in a box when the frame is drawn with
+ * "cover". Returns 0.5 when the box is at least as wide as the frame,
+ * i.e. nothing is cropped horizontally. The value doubles as a CSS
+ * object-position percentage for the video / still fallbacks.
+ */
+export function coverAlignX(focusX, boxWidth, boxHeight) {
+  const { frameWidth, frameHeight } = CINEMATIC_CONFIG
+  if (!boxWidth || !boxHeight) return 0.5
+  const scale = Math.max(boxWidth / frameWidth, boxHeight / frameHeight)
+  const overflow = frameWidth * scale - boxWidth
+  if (overflow <= 0.5) return 0.5
+  const offset = focusX * frameWidth * scale - boxWidth / 2
+  return Math.min(1, Math.max(0, offset / overflow))
+}
+
 // Character reveal order — same sequence the cinematic introduces each character.
 export const CHARACTER_ORDER = CHARACTER_SEGMENTS.map((seg) => seg.id)
 
