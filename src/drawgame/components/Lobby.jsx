@@ -145,10 +145,12 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
             <button 
               ref={qrBtnRef}
               className="sk-btn sk-btn--secondary" 
-              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              style={{ padding: '0', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               onClick={() => setShowQR(true)}
+              title="Show QR Code"
+              aria-label="Show QR Code"
             >
-              SHOW QR
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h6v6H4z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6H4z" /><path d="M14 14h6v6h-6z" /></svg>
             </button>
           </div>
           <div className={`sk-code-box ${copied ? 'copied' : ''}`} onClick={handleCopyCode}>

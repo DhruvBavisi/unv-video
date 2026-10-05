@@ -5582,13 +5582,34 @@ input, select, textarea, button { font-size: 16px; }
   opacity: 0.6;
 }
 
+.sk-join-room-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sk-join-room-row .sk-input {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.sk-qr-button {
+  width: 62px;
+  flex: 0 0 62px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px; /* matches .sk-input */
+}
+
 .sk-btn {
   width: 100%;
   background: var(--sk-primary);
   color: white;
   border: none;
-  border-radius: 100px;
-  padding: 18px 24px;
+  border-radius: 10px;
+  padding: 5px 5px;
   font-family: var(--sk-font-display);
   font-size: 1.3rem;
   font-weight: 600;
@@ -5607,7 +5628,7 @@ input, select, textarea, button { font-size: 16px; }
   box-shadow: 0 2px 8px rgba(97, 116, 244, 0.2);
 }
 .sk-btn--secondary {
-  background: var(--sk-surface);
+  background: var(--sk-bg-soft);
   color: var(--sk-text);
   box-shadow: 0 4px 12px rgba(38, 51, 74, 0.05);
   border: 2px solid var(--sk-bg-soft);

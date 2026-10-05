@@ -371,7 +371,7 @@ export default function SkribblApp({ onExit }) {
           {view === 'join' && (
             <div className="sk-card">
               <h2 className="sk-card-title">JOIN GAME</h2>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="sk-join-room-row">
                 <input 
                   ref={joinIdRef}
                   type="text" 
@@ -381,13 +381,12 @@ export default function SkribblApp({ onExit }) {
                   autoFocus
                   maxLength={6}
                   defaultValue={new URLSearchParams(window.location.search).get('room') || ''}
-                  style={{ textTransform: 'uppercase', letterSpacing: '0.2em', flex: 1 }}
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowScanner(true)}
-                  className="sk-btn sk-btn--secondary"
-                  style={{ padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="sk-btn sk-btn--secondary sk-qr-button"
                   title="Scan QR Code"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h6v6H4z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6H4z" /><path d="M14 14h6v6h-6z" /></svg>
