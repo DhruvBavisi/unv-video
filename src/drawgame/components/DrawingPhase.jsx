@@ -5,6 +5,7 @@ import PlayerStrip from './PlayerStrip.jsx'
 import DrawingToolbar, { DRAW_COLORS } from './DrawingToolbar.jsx'
 import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
+import DrawingTopBar from './DrawingTopBar.jsx'
 import { useMobileKeyboardFocus } from '../../hooks/useMobileKeyboardFocus.js'
 
 export default function DrawingPhase({ room, onLeave }) {
@@ -269,31 +270,12 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* TOP BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'calc(12px + env(safe-area-inset-top, 0px)) 20px 12px 20px', alignItems: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 10 }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--sk-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>ROUND {room.round}/{room.totalRounds}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--sk-text)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
-            {isDrawer ? (
-              <span><strong style={{ color: 'var(--sk-primary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{room.selectedWord}</strong></span>
-            ) : (
-              <span style={{ letterSpacing: '0.2em', fontFamily: 'monospace', fontWeight: 800, fontSize: '1.4rem', textTransform: 'uppercase' }}>
-                {room.hint || (room.selectedWord ? room.selectedWord.replace(/[a-zA-Z0-9]/g, '_') : '')}
-              </span>
-            )}
-          </div>
-        
-        <div style={{ 
-          fontSize: '1.2rem', 
-          fontFamily: 'var(--sk-font-display)', 
-          color: topBarColor,
-          background: 'var(--sk-surface)',
-          padding: '4px 12px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-          transition: 'color 300ms ease'
-        }}>
-          {timeRemaining}
-        </div>
-      </div>
+      <DrawingTopBar 
+        room={room}
+        timeRemaining={timeRemaining}
+        isDrawer={isDrawer}
+        onOpenSettings={onLeave}
+      />
 
       {/* CANVAS AREA */}
       <style>{`

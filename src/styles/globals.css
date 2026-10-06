@@ -5927,3 +5927,179 @@ input, select, textarea, button { font-size: 16px; }
 .sk-toggle-track.active .sk-toggle-thumb {
   left: 25px;
 }
+
+/* --- DRAWING TOP BAR --- */
+
+.sk-topbar-wrapper {
+  width: 100%;
+  background: white;
+  position: relative;
+  z-index: 10;
+  border-bottom: 2px solid #2345B5; /* Thin blue divider */
+  padding: 6px 6px 0;
+  /* subtle glitch animation on border can be done here if needed */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sk-topbar-wrapper {
+    animation: sk-topbar-glitch 5s infinite linear;
+  }
+}
+
+@keyframes sk-topbar-glitch {
+  0% { border-bottom-color: #2345B5; }
+  98% { border-bottom-color: #2345B5; transform: translate(0, 0); }
+  98.5% { border-bottom-color: #f0f; transform: translate(1px, -1px); }
+  99% { border-bottom-color: #0ff; transform: translate(-1px, 1px); }
+  99.5% { border-bottom-color: #2345B5; transform: translate(0, 0); }
+  100% { border-bottom-color: #2345B5; }
+}
+
+.sk-topbar-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* LEFT SECTION */
+.sk-topbar-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 60px;
+}
+
+.sk-topbar-clock-wrapper {
+  position: relative;
+  overflow: hidden;
+  width: 40px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sk-topbar-clock-icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.sk-topbar-timer {
+  position: relative;
+  top: 1px;
+  right: 1px;
+  z-index: 2;
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 0.7rem;
+  color: black;
+}
+
+.sk-topbar-timer--danger {
+  color: #ff3333;
+  animation: sk-pulse-danger 1s infinite alternate;
+}
+
+@keyframes sk-pulse-danger {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+.sk-topbar-round {
+  font-family: monospace;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: black;
+  white-space: nowrap;
+}
+
+/* CENTER SECTION */
+.sk-topbar-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sk-topbar-heading {
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: black;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.sk-topbar-charlength {
+  font-size: 0.8rem;
+  position: absolute;
+  top: -5px;
+  right: -10px;
+}
+
+.sk-topbar-word {
+  font-family: monospace;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: black;
+  min-height: 24px;
+  position: relative;
+}
+
+/* RIGHT SECTION */
+.sk-topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+}
+
+.sk-topbar-settings-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sk-topbar-settings-btn:hover {
+  transform: rotate(15deg);
+}
+
+.sk-topbar-settings-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Responsive Scaling */
+@media (max-width: 400px) {
+  .sk-topbar-heading {
+    font-size: 0.9rem;
+  }
+  .sk-topbar-word {
+    font-size: 1.1rem;
+  }
+}
