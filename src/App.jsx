@@ -116,6 +116,7 @@ export default function App() {
       <ModeSelect 
         onSelectUndercover={() => setGameView('undercover')}
         onSelectSkribbl={() => setGameView('skribbl')}
+        onBack={() => setGameView('landing')}
       />
     )
   }

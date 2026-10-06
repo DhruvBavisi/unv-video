@@ -379,7 +379,7 @@ export default function SkribblApp({ onExit }) {
           {view === 'join' && (
             <div className="sk-card">
               <h2 className="sk-card-title">JOIN GAME</h2>
-              <div className="sk-join-room-row">
+              <div className="sk-join-input-wrapper">
                 <input 
                   ref={joinIdRef}
                   type="text" 
@@ -394,7 +394,7 @@ export default function SkribblApp({ onExit }) {
                 <button
                   type="button"
                   onClick={() => setShowScanner(true)}
-                  className="sk-btn sk-btn--secondary sk-qr-button"
+                  className="sk-join-qr-icon"
                   title="Scan QR Code"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h6v6H4z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6H4z" /><path d="M14 14h6v6h-6z" /></svg>
