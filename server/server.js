@@ -244,16 +244,23 @@ function broadcastRoom(room) {
 
 function connectPlayer(socket, sessionId) {
   const oldSocketId = sessionSockets.get(sessionId)
+  sessionSockets.set(sessionId, socket.id)
+  
   if (oldSocketId && oldSocketId !== socket.id) {
     const oldSocket = io.sockets.sockets.get(oldSocketId)
     if (oldSocket) {
       oldSocket.disconnect(true)
     }
   }
-  sessionSockets.set(sessionId, socket.id)
 }
 
-function disconnectPlayer(sessionId) {
+function disconnectPlayer(sessionId, socketId) {
+  if (socketId && sessionSockets.get(sessionId) !== socketId) {
+    return { roomId: null, room: null }
+  }
+
+  sessionSockets.delete(sessionId)
+
   const { roomId, room } = findRoomByPlayer(sessionId)
   if (!room) return { roomId: null, room: null }
 
@@ -302,7 +309,8 @@ function getSafeStateForPlayer(room, playerId) {
     selectedWord: (isDrawer || isReveal) ? room.selectedWord : undefined,
     strokes: undefined,
     turnTimeout: undefined,
-    hintTimer: undefined
+    hintTimer: undefined,
+    playerRecords: undefined
   }
 }
 
@@ -460,6 +468,9 @@ function endDrawRound(room) {
     drawerPoints = Math.round(sum * 0.5)
     drawerPlayer.score += drawerPoints
     room.turnScores[room.currentDrawerId] = drawerPoints
+    if (room.playerRecords && room.playerRecords[room.currentDrawerId]) {
+      room.playerRecords[room.currentDrawerId].score = drawerPlayer.score
+    }
   }
   
   // Apply guesser points to persistent totals exactly once here
@@ -468,6 +479,9 @@ function endDrawRound(room) {
       const p = room.players.find(x => x.id === pid)
       if (p) {
         p.score += pts
+        if (room.playerRecords && room.playerRecords[pid]) {
+          room.playerRecords[pid].score = p.score
+        }
       }
     }
   }
@@ -599,7 +613,11 @@ function generateWordChoices(room) {
   return shuffled.slice(0, count)
 }
 
-function disconnectDrawPlayer(sessionId) {
+function disconnectDrawPlayer(sessionId, socketId) {
+  if (socketId && sessionSockets.get(sessionId) !== socketId) {
+    return
+  }
+
   for (const [rid, dr] of drawRooms) {
     const player = dr.players.find((p) => p.id === sessionId)
     if (player) {
@@ -1267,7 +1285,8 @@ io.on('connection', (socket) => {
         customWords: '',
         useCustomOnly: false
       },
-      usedWords: []
+      usedWords: [],
+      playerRecords: {}
     }
 
     drawRooms.set(roomId, room)
@@ -1278,6 +1297,13 @@ io.on('connection', (socket) => {
     
     const player = room.players[0]
     ensureResumeToken(player)
+    
+    room.playerRecords[sessionId] = {
+      playerId: sessionId,
+      name: trimmed,
+      score: 0,
+      resumeToken: player.resumeToken
+    }
     socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
     
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
@@ -1324,10 +1350,18 @@ io.on('connection', (socket) => {
       name: trimmed,
       isHost: false,
       isConnected: true,
-      spectator: room.status !== 'LOBBY',
+      spectator: false,
       isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
       score: 0
     }
+    
+    const record = room.playerRecords[sessionId]
+    if (record) {
+      newPlayer.name = record.name
+      newPlayer.score = record.score
+      newPlayer.resumeToken = record.resumeToken
+    }
+    
     room.players.push(newPlayer)
 
     currentSessionId = sessionId
@@ -1336,6 +1370,14 @@ io.on('connection', (socket) => {
     connectPlayer(socket, sessionId)
     
     ensureResumeToken(newPlayer)
+    if (!record) {
+      room.playerRecords[sessionId] = {
+        playerId: sessionId,
+        name: trimmed,
+        score: 0,
+        resumeToken: newPlayer.resumeToken
+      }
+    }
     socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name, gameMode: 'skribbl' })
     
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
@@ -1677,8 +1719,11 @@ io.on('connection', (socket) => {
       room.turnScores[currentSessionId] = points
       // player.score += points // DO NOT apply yet, wait for ROUND_REVEAL
       
-      const eligiblePlayers = room.players.filter(p => !p.spectator && p.id !== room.currentDrawerId)
-      const isEarlyFinish = room.guessedPlayerIds.length >= eligiblePlayers.length
+      const eligiblePlayersCount = room.turnOrder 
+        ? Math.max(0, room.turnOrder.length - 1) 
+        : room.players.filter(p => !p.spectator && p.id !== room.currentDrawerId).length
+        
+      const isEarlyFinish = room.guessedPlayerIds.length >= eligiblePlayersCount
       
       if (isEarlyFinish) {
         // Broadcast the message FIRST so it shows in chat, then trigger round end.
@@ -1754,15 +1799,100 @@ io.on('connection', (socket) => {
     room.guessedPlayerIds = []
     room.turnScores = {}
     room.reactions = {}
-    room.usedWords = []
     
     room.players.forEach(p => {
-      p.score = 0
       p.spectator = false
     })
 
     io.to(`draw:${room.id}`).emit('draw:clear-canvas')
     
+    broadcastDrawRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('draw:make-host', ({ targetId }, callback) => {
+    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (targetId === currentSessionId) return callback?.({ error: 'CANNOT_TARGET_SELF' })
+    
+    let room = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        break
+      }
+    }
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
+    
+    const targetPlayer = room.players.find(p => p.id === targetId)
+    if (!targetPlayer) return callback?.({ error: 'TARGET_NOT_FOUND' })
+
+    const requester = room.players.find(p => p.id === currentSessionId)
+    targetPlayer.isHost = true
+    if (requester) requester.isHost = false
+    room.hostId = targetId
+
+    broadcastDrawRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('draw:kick-player', ({ targetId }, callback) => {
+    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (targetId === currentSessionId) return callback?.({ error: 'CANNOT_TARGET_SELF' })
+    
+    let room = null
+    let roomId = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
+        room = dr
+        roomId = rid
+        break
+      }
+    }
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
+    
+    const targetIndex = room.players.findIndex(p => p.id === targetId)
+    if (targetIndex === -1) return callback?.({ error: 'TARGET_NOT_FOUND' })
+
+    io.to(targetId).emit('draw:kicked')
+    
+    room.players.splice(targetIndex, 1)
+
+    const targetSocketId = sessionSockets.get(targetId)
+    if (targetSocketId) {
+      const targetSocket = io.sockets.sockets.get(targetSocketId)
+      if (targetSocket) {
+        targetSocket.leave(`draw:${roomId}`)
+      }
+    }
+
+    if (room.currentDrawerId === targetId) {
+      if (room.phase === 'WORD_CHOICE' || room.phase === 'DRAWING') {
+         endDrawRound(room)
+      }
+    }
+    
+    if (room.turnOrder) {
+      room.turnOrder = room.turnOrder.filter(id => id !== targetId)
+    }
+    if (room.guessedPlayerIds) {
+      room.guessedPlayerIds = room.guessedPlayerIds.filter(id => id !== targetId)
+    }
+    if (room.scores) {
+      delete room.scores[targetId]
+    }
+    if (room.turnScores) {
+      delete room.turnScores[targetId]
+    }
+    
+    const activeRealPlayers = room.players.filter(p => !p.spectator)
+    if (room.phase !== 'LOBBY' && room.phase !== 'GAME_RESULT' && activeRealPlayers.length <= 1) {
+       room.phase = 'GAME_RESULT'
+       if (room.turnTimeout) clearTimeout(room.turnTimeout)
+       if (room.hintTimer) clearInterval(room.hintTimer)
+    }
+
     broadcastDrawRoomState(room)
     callback?.({ success: true })
   })
@@ -2841,8 +2971,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
   socket.on('disconnect', () => {
     if (!currentSessionId) return
-    disconnectPlayer(currentSessionId)
-    disconnectDrawPlayer(currentSessionId)
+    disconnectPlayer(currentSessionId, socket.id)
+    disconnectDrawPlayer(currentSessionId, socket.id)
   })
 
   socket.on('add-dev-bots', (callback) => {

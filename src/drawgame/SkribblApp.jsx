@@ -150,8 +150,15 @@ export default function SkribblApp({ onExit }) {
       })
     }
 
+    const handleKicked = () => {
+      clearSession()
+      setError('You have been kicked from the room.')
+      setView('menu')
+    }
+
     socket.on('draw:room-state', handleRoomState)
     socket.on('draw:error', handleError)
+    socket.on('draw:kicked', handleKicked)
     socket.on('connect', handleConnect)
     socket.on('connect_error', handleConnectError)
     socket.on('disconnect', handleDisconnect)
@@ -166,6 +173,7 @@ export default function SkribblApp({ onExit }) {
     return () => {
       socket.off('draw:room-state', handleRoomState)
       socket.off('draw:error', handleError)
+      socket.off('draw:kicked', handleKicked)
       socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)

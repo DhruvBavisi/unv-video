@@ -131,13 +131,14 @@ export default function QRScannerModal({ onClose, onScan, expectedMode = 'underc
               </button>
             </div>
           ) : (
-            <Scanner 
+              <Scanner 
               key={scannerKey}
               onScan={handleScan} 
               onError={handleError}
               formats={['qr_code']} 
               styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }} 
               components={{ audio: false }}
+              sound={false}
             />
           )}
         </div>

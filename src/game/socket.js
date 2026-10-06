@@ -17,7 +17,9 @@ export function connectSocket(sessionId) {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
-    reconnectionAttempts: 10,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: Infinity,
+    timeout: 20000,
     autoConnect: false,
   })
 

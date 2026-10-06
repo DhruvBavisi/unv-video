@@ -188,7 +188,26 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
                   {p.name}
                   {!p.isConnected && ' (Offline)'}
                 </div>
-                {p.isHost && <div className="sk-badge sk-badge--host">HOST</div>}
+                {p.isHost ? (
+                  <div className="sk-badge sk-badge--host">HOST</div>
+                ) : (
+                  isHost && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => getSocket().emit('draw:make-host', { targetId: p.id })}
+                        style={{ background: 'transparent', border: '1px solid var(--sk-primary)', color: 'var(--sk-primary)', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--sk-font-display)', letterSpacing: '0.05em' }}
+                      >
+                        MAKE HOST
+                      </button>
+                      <button 
+                        onClick={() => getSocket().emit('draw:kick-player', { targetId: p.id })}
+                        style={{ background: 'transparent', border: '1px solid var(--sk-coral)', color: 'var(--sk-coral)', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--sk-font-display)', letterSpacing: '0.05em' }}
+                      >
+                        KICK
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
             ))}
           </div>
