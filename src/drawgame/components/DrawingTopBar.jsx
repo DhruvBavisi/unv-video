@@ -21,8 +21,7 @@ export default function DrawingTopBar({
     hintDisplay = wordToDraw.split('').map((char, index) => (
       <span 
         key={index} 
-        className="sk-topbar-letter" 
-        style={{ animationDelay: `${index * 50}ms` }}
+        className="sk-topbar-letter"
       >
         {char}
       </span>

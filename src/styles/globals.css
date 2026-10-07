@@ -6280,14 +6280,13 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 /* --- DRAWING TOP BAR --- */
-
 .sk-topbar-wrapper {
   width: 100%;
   background: white;
   position: relative;
   z-index: 10;
   border-bottom: 2px solid #2345B5; /* Thin blue divider */
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 6px 1px;
+  padding: 6px 6px 0;
   /* subtle glitch animation on border can be done here if needed */
 }
 
@@ -6418,12 +6417,12 @@ input, select, textarea, button { font-size: 16px; }
 .sk-topbar-letter {
   display: inline-block;
   opacity: 0;
-  animation: sk-topbar-letter-fadein 250ms ease-out forwards;
+  animation: sk-topbar-letter-fadein 600ms ease-out forwards;
 }
 
 @keyframes sk-topbar-letter-fadein {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* RIGHT SECTION */
