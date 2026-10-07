@@ -166,6 +166,7 @@ export function gameReducer(state, action) {
         specialRoleOutcomes: room.specialRoleOutcomes || [],
         revengerDecisionEndsAt: room.revengerDecisionEndsAt || null,
         error: '',
+        localSecret: (room.status === 'LOBBY' || room.status === undefined || !meInRoom) ? null : state.localSecret,
       }
     }
     case 'ROOM_CLOSED': {
@@ -220,6 +221,7 @@ export function gameReducer(state, action) {
         mrWhiteGuesserId: null,
         winner: null,
         specialRoleOutcomes: [],
+        localSecret: null,
       }
     }
     case 'SESSION_RECONNECTED': {
@@ -260,6 +262,7 @@ export function gameReducer(state, action) {
         specialRoleOutcomes: room.specialRoleOutcomes || [],
         revengerDecisionEndsAt: room.revengerDecisionEndsAt || null,
         error: '',
+        localSecret: (room.status === 'LOBBY' || room.status === undefined) ? null : state.localSecret,
       }
     }
     case 'SESSION_NO_ROOM': {
@@ -276,6 +279,7 @@ export function gameReducer(state, action) {
         phase: newPhase,
         membershipState: MEMBERSHIP.NONE,
         error: '',
+        localSecret: null,
       }
     }
     case 'SESSION_EXPIRED': {
@@ -290,6 +294,7 @@ export function gameReducer(state, action) {
         phase: GAME_PHASES.MODE_SELECTION,
         membershipState: MEMBERSHIP.NONE,
         error: 'Your session expired. Please start again.',
+        localSecret: null,
       }
     }
     case 'PLAYER_KICKED': {
@@ -304,6 +309,7 @@ export function gameReducer(state, action) {
         phase: GAME_PHASES.ONLINE_SETUP,
         membershipState: MEMBERSHIP.NONE,
         error: 'You were removed from the room by the host.',
+        localSecret: null,
       }
     }
     case 'CONNECTION_CHANGE': return { ...state, connectionState: action.state }

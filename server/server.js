@@ -199,14 +199,24 @@ function getPublicRoomState(room) {
         : undefined,
       specialRoleData: (() => {
         if (room.gamePhase === 'RESULT') return p.specialRoleData;
+        const isRolePublic = (p.eliminated || room.gamePhase === 'RESULT') ? 
+          ((room.gamePhase === 'REVENGER_DECISION' && room.revengerId === p.id) ? false : true) 
+          : false;
+        
+        if (!isRolePublic) return {};
+
         if (!p.specialRoleData) return {};
         const safeData = { ...p.specialRoleData };
         delete safeData.partnerId;
         delete safeData.partnerName;
         delete safeData.duelId;
+        delete safeData.loverId;
         delete safeData.used;
         delete safeData.falafelTargetId;
         delete safeData.usedThisRound;
+        delete safeData.resolved;
+        delete safeData.decisionMade;
+        delete safeData.joyFoolResolved;
         return safeData;
       })(),
       points: room.gamePhase === 'RESULT' ? (p.points || 0) : 0,
