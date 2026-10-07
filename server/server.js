@@ -868,24 +868,6 @@ function startCluePhase(room) {
 
   onRoundStart(room)
 
-  room.players.forEach(p => {
-    const pSocketId = sessionSockets.get(p.id)
-    if (pSocketId) {
-      const pSocket = io.sockets.sockets.get(pSocketId)
-      if (pSocket) {
-        const word = wordForRole(p.role, room.wordPair)
-        const roleToReveal = (room.configuration.revealRoles || p.role === 'MR_WHITE') ? p.role : null
-        pSocket.emit('role-assigned', { 
-          role: roleToReveal, 
-          word, 
-          specialRole: p.specialRole || null,
-          isFalafelTarget: isSilencedByFalafel(room, p.id),
-          falafelTargetId: p.specialRole === 'falafelVendor' ? p.specialRoleData?.falafelTargetId : null
-        })
-      }
-    }
-  })
-
   console.log('[CLUE] phase started', {
     roomId: room.id,
     round: room.round,

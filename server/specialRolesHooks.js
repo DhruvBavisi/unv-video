@@ -5,6 +5,12 @@ export function onRoundStart(room) {
     vendor.specialRoleData.usedThisRound = false
     vendor.specialRoleData.falafelTargetId = null
   }
+
+  // Reset Goddess of Justice so she can resolve ties in subsequent rounds
+  const goddess = room.players.find(p => p.specialRole === 'goddessOfJustice')
+  if (goddess && goddess.specialRoleData) {
+    goddess.specialRoleData.used = false
+  }
 }
 
 export function onVoteTallied(room, tally) {
