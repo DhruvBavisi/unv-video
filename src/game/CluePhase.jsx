@@ -23,7 +23,7 @@ const ERROR_MESSAGES = {
 const SPECIAL_ROLE_AVATAR_LAYOUT = {
   boomerang: { scale: 1.05, translateY: 0, translateX: 0, themeColor: '#ff4551ff', bgColor: 'radial-gradient(circle at center, #FF727A 30%, #F24853 50%, #C12832 100%)', imageVariant: 'bg', borderColor: '#ff5460ff'},
   duelists: { scale: 1.4, translateY: 10, translateX: 0 },
-  falafelVendor: { scale: 1, translateY: -5, translateX: 6 },
+  falafelVendor: { scale: 1.2, translateY: -1.5, translateX: 0, themeColor: '#FFBC48' },
   ghost: { scale: 1.2, translateY: 0, translateX: 0, themeColor: '#3B82F6', imageVariant: 'bg', bgColor: '#ffffff' },
   goddessOfJustice: { scale: 0.875, translateY: 5, translateX: 0, themeColor: '#22C55E', imageVariant: 'bg-green', bgColor: '#ffffff', },
   joyFool: { scale: 1.1, translateY: 0, translateX: 0,themeColor: '#7C79FC', borderColor: '#8d8bfcff' },
@@ -870,7 +870,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
   const myPlayer = players.find(p => p.id === sessionId)
   const isGhost = localSecret?.specialRole === 'ghost'
-  const canChat = myPlayer && ((!myPlayer.eliminated && !myPlayer.spectator) || isGhost) && !(localSecret?.isFalafelTarget && gamePhase === 'CLUE')
+  const canChat = myPlayer && ((!myPlayer.eliminated && !myPlayer.spectator) || isGhost) && !localSecret?.isFalafelTarget
 
   useEffect(() => {
     window.scrollTo({
@@ -1086,7 +1086,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
         <div className="clue-phase__input-col">
           {clueError && <div className="clue-phase__error" role="alert">{clueError}</div>}
           
-          {localSecret?.isFalafelTarget && gamePhase === 'CLUE' && (
+          {localSecret?.isFalafelTarget && (
             <div className="clue-panel__input" style={{ marginBottom: '16px', padding: '10px 14px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🧆</span>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.95)', lineHeight: 1.4 }}>
