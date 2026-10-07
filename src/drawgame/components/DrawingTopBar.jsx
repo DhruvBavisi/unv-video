@@ -4,18 +4,32 @@ export default function DrawingTopBar({
   room,
   timeRemaining,
   isDrawer,
+  hasGuessed,
   onOpenSettings
 }) {
   const roundText = `Round ${room.round} of ${room.totalRounds}`
   
   // Calculate character length if guesser, or show word if drawer
   const wordToDraw = room.selectedWord || ''
-  const charLength = wordToDraw.length
+  const charLength = wordToDraw.length || (room.hint ? room.hint.length : 0)
   
   // Prepare visual representation
-  const hintDisplay = isDrawer 
-    ? wordToDraw 
-    : (room.hint || wordToDraw.replace(/[a-zA-Z0-9]/g, '_'))
+  let hintDisplay
+  if (isDrawer) {
+    hintDisplay = wordToDraw
+  } else if (hasGuessed && wordToDraw) {
+    hintDisplay = wordToDraw.split('').map((char, index) => (
+      <span 
+        key={index} 
+        className="sk-topbar-letter" 
+        style={{ animationDelay: `${index * 50}ms` }}
+      >
+        {char}
+      </span>
+    ))
+  } else {
+    hintDisplay = room.hint || wordToDraw.replace(/[a-zA-Z0-9]/g, '_')
+  }
 
   return (
     <div className="sk-topbar-wrapper">

@@ -301,12 +301,13 @@ function broadcastDrawRoomState(room) {
 function getSafeStateForPlayer(room, playerId) {
   const isDrawer = room.currentDrawerId === playerId
   const isReveal = room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT'
+  const hasGuessed = room.guessedPlayerIds?.includes(playerId)
   return {
     ...room,
     players: room.players.map(p => ({ ...p })),
     chatMessages: [...(room.chatMessages || [])],
     wordChoices: isDrawer ? room.wordChoices : undefined,
-    selectedWord: (isDrawer || isReveal) ? room.selectedWord : undefined,
+    selectedWord: (isDrawer || isReveal || hasGuessed) ? room.selectedWord : undefined,
     strokes: undefined,
     turnTimeout: undefined,
     hintTimer: undefined,
@@ -387,7 +388,8 @@ function startDrawingTurn(room, word) {
        [revealIndices[i], revealIndices[j]] = [revealIndices[j], revealIndices[i]];
     }
     
-    const hintsToGive = Math.min(numHints, Math.max(0, revealIndices.length - 1))
+    const maxHintsForWord = word.length <= 4 ? 1 : numHints
+    const hintsToGive = Math.min(maxHintsForWord, Math.max(0, revealIndices.length - 1))
     if (hintsToGive > 0) {
       const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (hintsToGive + 1)
       let hintsGiven = 0

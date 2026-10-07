@@ -274,6 +274,7 @@ export default function DrawingPhase({ room, onLeave }) {
         room={room}
         timeRemaining={timeRemaining}
         isDrawer={isDrawer}
+        hasGuessed={room.guessedPlayerIds?.includes(sessionId)}
         onOpenSettings={onLeave}
       />
 
@@ -336,6 +337,7 @@ export default function DrawingPhase({ room, onLeave }) {
         {room.phase === 'DRAWING' && !isDrawer && !room.reactions?.[sessionId] && (
           <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '0px', zIndex: 15 }}>
             <button 
+              onPointerDown={(e) => e.preventDefault()}
               onClick={() => getSocket().emit('draw:reaction', 'LIKE')}
               style={{
                 background: 'transparent',
@@ -351,6 +353,7 @@ export default function DrawingPhase({ room, onLeave }) {
               <img src="/images/svg/thumb_up.svg" alt="Like" width="32" height="32" style={{ display: 'block' }} />
             </button>
             <button 
+              onPointerDown={(e) => e.preventDefault()}
               onClick={() => getSocket().emit('draw:reaction', 'DISLIKE')}
               style={{
                 background: 'transparent',
@@ -395,7 +398,7 @@ export default function DrawingPhase({ room, onLeave }) {
               if (text.includes('liked')) {
                 textColor = '#359b35'
               } else if (text.includes('disliked')) {
-                textColor = '#cc4e14'
+                textColor = '#DC2626'
               } else {
                 textColor = '#777777'
               }
