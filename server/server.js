@@ -868,6 +868,13 @@ function startCluePhase(room) {
 
   onRoundStart(room)
 
+  room.players.forEach(p => {
+    const pSocketId = sessionSockets.get(p.id)
+    if (pSocketId) {
+      syncPlayerPrivateState(room, p, pSocketId)
+    }
+  })
+
   console.log('[CLUE] phase started', {
     roomId: room.id,
     round: room.round,
@@ -951,6 +958,21 @@ function assignWords(room) {
 function wordForRole(role, wordPair) {
   if (!wordPair) return null
   return role === 'MR_WHITE' ? null : (role === 'UNDERCOVER' ? wordPair.undercoverWord : wordPair.civilianWord)
+}
+
+function syncPlayerPrivateState(room, player, socketOrId) {
+  if (!player || !room.wordPair) return
+  const targetSocket = typeof socketOrId === 'string' ? io.sockets.sockets.get(socketOrId) : socketOrId
+  if (!targetSocket) return
+
+  const roleToReveal = (room.configuration.revealRoles || player.role === 'MR_WHITE') ? player.role : null
+  targetSocket.emit('role-assigned', { 
+    role: roleToReveal, 
+    word: wordForRole(player.role, room.wordPair), 
+    specialRole: player.specialRole || null,
+    isFalafelTarget: isSilencedByFalafel(room, player.id),
+    falafelTargetId: player.specialRole === 'falafelVendor' ? player.specialRoleData?.falafelTargetId : null
+  })
 }
 
 // After a roster change, make sure the host slot points at a live player.
@@ -1065,16 +1087,7 @@ io.on('connection', (socket) => {
     socket.emit('session-reconnected', getPublicRoomState(room))
 
     if (room.wordPair) {
-      const role = player?.role || null
-      const word = wordForRole(role, room.wordPair)
-      const roleToReveal = (room.configuration.revealRoles || role === 'MR_WHITE') ? role : null
-      socket.emit('role-assigned', { 
-        role: roleToReveal, 
-        word, 
-        specialRole: player?.specialRole || null,
-        isFalafelTarget: isSilencedByFalafel(room, player.id),
-        falafelTargetId: player?.specialRole === 'falafelVendor' ? player?.specialRoleData?.falafelTargetId : null
-      })
+      syncPlayerPrivateState(room, player, socket)
     }
 
     broadcastRoom(room)
@@ -1186,16 +1199,7 @@ io.on('connection', (socket) => {
       socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'undercover' })
 
       if (room.wordPair) {
-        const role = existing.role || null
-        const word = wordForRole(role, room.wordPair)
-        const roleToReveal = (room.configuration.revealRoles || role === 'MR_WHITE') ? role : null
-        socket.emit('role-assigned', { 
-          role: roleToReveal, 
-          word, 
-          specialRole: existing.specialRole || null,
-          isFalafelTarget: isSilencedByFalafel(room, existing.id),
-          falafelTargetId: existing.specialRole === 'falafelVendor' ? existing.specialRoleData?.falafelTargetId : null
-        })
+        syncPlayerPrivateState(room, existing, socket)
       }
 
       callback?.({ room: publicState, resumeToken: existing.resumeToken, playerName: existing.name })
@@ -2189,18 +2193,7 @@ io.on('connection', (socket) => {
     room.players.forEach((p) => {
       const pSocketId = sessionSockets.get(p.id)
       if (pSocketId) {
-        const pSocket = io.sockets.sockets.get(pSocketId)
-        if (pSocket) {
-          const word = wordForRole(p.role, room.wordPair)
-          const roleToReveal = (room.configuration.revealRoles || p.role === 'MR_WHITE') ? p.role : null
-          pSocket.emit('role-assigned', { 
-            role: roleToReveal, 
-            word, 
-            specialRole: p.specialRole || null,
-            isFalafelTarget: isSilencedByFalafel(room, p.id),
-            falafelTargetId: p.specialRole === 'falafelVendor' ? p.specialRoleData?.falafelTargetId : null
-          })
-        }
+        syncPlayerPrivateState(room, p, pSocketId)
       }
     })
 
@@ -2306,18 +2299,9 @@ io.on('connection', (socket) => {
     assignSpecialRoles(room)
 
     room.players.forEach((p) => {
-      const word = wordForRole(p.role, room.wordPair)
-
       const socketId = sessionSockets.get(p.id)
       if (socketId) {
-        const roleToReveal = (room.configuration.revealRoles || p.role === 'MR_WHITE') ? p.role : null
-        io.to(socketId).emit('role-assigned', { 
-          role: roleToReveal, 
-          word, 
-          specialRole: p.specialRole,
-          isFalafelTarget: isSilencedByFalafel(room, p.id),
-          falafelTargetId: p.specialRole === 'falafelVendor' ? p.specialRoleData?.falafelTargetId : null
-        })
+        syncPlayerPrivateState(room, p, socketId)
       }
     })
 
@@ -2462,27 +2446,13 @@ io.on('connection', (socket) => {
     // Send updated private state to Vendor
     const vendorSocketId = sessionSockets.get(currentSessionId)
     if (vendorSocketId) {
-      const roleToReveal = (room.configuration.revealRoles || vendor.role === 'MR_WHITE') ? vendor.role : null
-      io.to(vendorSocketId).emit('role-assigned', { 
-        role: roleToReveal, 
-        word: wordForRole(vendor.role, room.wordPair), 
-        specialRole: vendor.specialRole,
-        isFalafelTarget: false,
-        falafelTargetId: targetId
-      })
+      syncPlayerPrivateState(room, vendor, vendorSocketId)
     }
 
     // Send updated private state to Target
     const targetSocketId = sessionSockets.get(targetId)
     if (targetSocketId) {
-      const roleToReveal = (room.configuration.revealRoles || target.role === 'MR_WHITE') ? target.role : null
-      io.to(targetSocketId).emit('role-assigned', { 
-        role: roleToReveal, 
-        word: wordForRole(target.role, room.wordPair), 
-        specialRole: target.specialRole,
-        isFalafelTarget: true,
-        falafelTargetId: null
-      })
+      syncPlayerPrivateState(room, target, targetSocketId)
     }
 
     if (room.currentTurnPlayerId === targetId) {

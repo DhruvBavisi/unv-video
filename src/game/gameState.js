@@ -137,18 +137,8 @@ export function gameReducer(state, action) {
           ? MEMBERSHIP.NONE
           : meInRoom ? MEMBERSHIP.JOINED : state.membershipState
 
-      let newLocalSecret = state.localSecret
-      if (room.round && state.round && room.round > state.round && state.localSecret) {
-        newLocalSecret = {
-          ...state.localSecret,
-          isFalafelTarget: false,
-          falafelTargetId: null
-        }
-      }
-
       return {
         ...state,
-        localSecret: newLocalSecret,
         roomId: meInRoom ? room.roomId : '',
         hostId: meInRoom ? room.hostId : null,
         players: room.players,
