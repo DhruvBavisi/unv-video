@@ -6398,10 +6398,14 @@ input, select, textarea, button { font-size: 16px; }
 }
 
 .sk-topbar-charlength {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   position: absolute;
   top: -5px;
   right: -10px;
+}
+
+.sk-topbar-charlength--double {
+  right: -8px;
 }
 
 .sk-topbar-word {

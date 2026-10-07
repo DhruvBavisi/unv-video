@@ -56,7 +56,9 @@ export default function DrawingTopBar({
           </div>
           <div className="sk-topbar-word">
             {hintDisplay}
-            <span className="sk-topbar-charlength">{charLength > 0 ? charLength : ''}</span>
+            <span className={`sk-topbar-charlength ${charLength >= 10 ? 'sk-topbar-charlength--double' : ''}`}>
+              {charLength > 0 ? charLength : ''}
+            </span>
           </div>
         </div>
 

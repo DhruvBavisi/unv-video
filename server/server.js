@@ -366,7 +366,10 @@ function startDrawingTurn(room, word) {
   room.reactions = {}
   
   // Initialize Hint System
-  const numHints = room.configuration.hints ?? 2
+  let numHints = room.configuration.hints ?? 2
+  if (word && word.length >= 10) {
+    numHints = 3
+  }
   const isHidden = typeof room.configuration.gameMode === 'string' && room.configuration.gameMode.toUpperCase() === 'HIDDEN'
   
   if (isHidden || numHints <= 0 || !word) {
@@ -1603,7 +1606,8 @@ io.on('connection', (socket) => {
 
   function normalizeGuess(value) {
     if (typeof value !== 'string') return ''
-    return value.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim()
+    // Remove all non-alphanumeric characters, including spaces and hyphens
+    return value.toLowerCase().replace(/[^a-z0-9]/gi, '')
   }
 
   socket.on('draw:reaction', (reactionType) => {
