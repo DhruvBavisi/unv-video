@@ -105,6 +105,6 @@ export const SPECIAL_ROLES = [
     ],
     mobileDescription: "Each round, 1 player must describe their secret word with gestures instead of speaking (only in person or with video)",
     avatar: '/images/characters/mrmeme.png',
-    implemented: false
+    implemented: true
   }
 ];
