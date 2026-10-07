@@ -91,7 +91,7 @@ export const SPECIAL_ROLES = [
       "Can give a falafel to one player per round.",
       "The player eating the falafel cannot speak for the remainder of the round."
     ],
-    mobileDescription: "He receives a random ability each game. Try your luck and see what surprises await!",
+    mobileDescription: "Once per round, give one player a falafel that prevents them from speaking for the rest of the round.",
     avatar: '/images/characters/falafalvendor.png',
     implemented: true
   },

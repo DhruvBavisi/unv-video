@@ -779,9 +779,11 @@ function FalafelVendorPanel({ players, myPlayerId, isVendor, falafelTargetId, on
   if (falafelTargetId) {
     const targetPlayer = players.find(p => p.id === falafelTargetId);
     return (
-      <div className="clue-panel__input" style={{ marginTop: '16px', background: 'rgba(217, 119, 6, 0.15)', borderColor: 'rgba(217, 119, 6, 0.3)' }}>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase' }}>Falafel Given</h3>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>You gave the falafel to <strong>{targetPlayer?.name}</strong>. They cannot speak this round.</p>
+      <div className="clue-panel__input" style={{ marginTop: '16px', padding: '10px 14px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🧆</span>
+        <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
+          You gave the falafel to <strong style={{ color: '#eab308' }}>{targetPlayer?.name}</strong>.
+        </p>
       </div>
     );
   }
@@ -789,13 +791,13 @@ function FalafelVendorPanel({ players, myPlayerId, isVendor, falafelTargetId, on
   const activePlayers = players.filter(p => !p.eliminated && !p.spectator && p.id !== myPlayerId);
 
   return (
-    <div className="clue-panel__input" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(217, 119, 6, 0.4)' }}>
+    <div className="clue-panel__input" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: '6px', padding: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Give Falafel</h3>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>1 per round</span>
+        <span style={{ fontSize: '0.9rem', color: '#eab308', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Give Falafel</span>
+        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>1 per round</span>
       </div>
-      <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>Select a player to silence them for the remainder of this round.</p>
-      <div className="clue-panel__voting-list" style={{ padding: '4px 0', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+      
+      <div className="clue-panel__voting-list" style={{ padding: '4px 0', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
         {activePlayers.map((p) => {
           const isSelected = p.id === selectedTarget;
           return (
@@ -803,20 +805,34 @@ function FalafelVendorPanel({ players, myPlayerId, isVendor, falafelTargetId, on
               key={p.id}
               className={`voting-card ${isSelected ? 'voting-card--selected' : ''}`}
               onClick={() => setSelectedTarget(p.id)}
-              style={{ minHeight: '40px', padding: '6px 12px' }}
+              style={{ 
+                minHeight: '36px', 
+                padding: '6px 12px',
+                background: isSelected ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255,255,255,0.05)',
+                borderColor: isSelected ? '#eab308' : 'transparent',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
             >
-              <span className="voting-card__name">{p.name}</span>
+              <span className="voting-card__name" style={{ color: isSelected ? '#fff' : 'rgba(255,255,255,0.8)' }}>{p.name}</span>
             </button>
           )
         })}
       </div>
+      
       <Button 
         variant="primary" 
         onClick={() => {
           if (selectedTarget) onSubmit(selectedTarget);
         }}
         disabled={!selectedTarget || submitting}
-        style={{ background: '#f59e0b', color: '#000', border: 'none' }}
+        style={{ 
+          background: selectedTarget ? '#eab308' : 'rgba(234, 179, 8, 0.3)', 
+          color: selectedTarget ? '#000' : 'rgba(255,255,255,0.5)', 
+          border: 'none', 
+          marginTop: '4px',
+          fontWeight: 600
+        }}
       >
         {submitting ? 'Giving...' : 'Give Falafel'}
       </Button>
@@ -1071,9 +1087,12 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
           {clueError && <div className="clue-phase__error" role="alert">{clueError}</div>}
           
           {localSecret?.isFalafelTarget && gamePhase === 'CLUE' && (
-            <div className="clue-panel__input" style={{ marginBottom: '16px', background: 'rgba(217, 119, 6, 0.15)', borderColor: 'rgba(217, 119, 6, 0.3)', padding: '12px' }}>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase' }}>FALAFEL — YOU CANNOT SPEAK THIS ROUND</h3>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>A Falafel Vendor gave you a falafel. You are too busy eating to give a clue or chat.</p>
+            <div className="clue-panel__input" style={{ marginBottom: '16px', padding: '10px 14px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}>🧆</span>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.95)', lineHeight: 1.4 }}>
+                <strong style={{ color: '#eab308', letterSpacing: '0.05em', marginRight: '6px' }}>SILENCED &mdash;</strong>
+                You cannot speak this round.
+              </p>
             </div>
           )}
 
