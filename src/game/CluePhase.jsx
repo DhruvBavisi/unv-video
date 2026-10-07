@@ -1084,7 +1084,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
             onSubmit={handleSubmitClue}
           />
 
-          {gamePhase === 'CLUE' && localSecret?.specialRole === 'falafelVendor' && (
+          {gamePhase === 'CLUE' && localSecret?.specialRole === 'falafelVendor' && !myPlayer?.eliminated && !myPlayer?.spectator && (
             <FalafelVendorPanel
               players={players}
               myPlayerId={sessionId}
