@@ -93,7 +93,7 @@ export const SPECIAL_ROLES = [
     ],
     mobileDescription: "He receives a random ability each game. Try your luck and see what surprises await!",
     avatar: '/images/characters/falafalvendor.png',
-    implemented: false
+    implemented: true
   },
   {
     key: "mrMeme",

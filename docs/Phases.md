@@ -502,16 +502,14 @@ Changes eligibility for post-elimination participation — most invasive role re
 For all user text inputs (e.g., Clue inputs, Chat, Mr. White Guess), the client uses a `window.visualViewport` resize listener hook (`useMobileKeyboardFocus`) to guarantee the focused input scrolls itself into view directly above the iOS virtual keyboard, preventing inputs from being hidden behind the keyboard when it opens.
 
 ## PHASE 33 — The Falafel Vendor
-Needs a concrete effect definition before an agent can build it — the source only says "protection or sabotage," not the mechanics.
+- **Status: Implemented ✅**
 
-- When enabled with ≥4 active players, assign the `falafel-vendor` trait to one active player.
-- `onRoundStart`: before clues begin, the Vendor privately chooses another active player to give a "falafel" to.
-- ASSUMPTION (needs product decision before building): define "protection" and "sabotage" concretely for this game, e.g.:
-  - Protection candidate: the recipient's vote cannot be redirected/nullified this round, or the recipient is immune to being the tie-break target.
-  - Sabotage candidate: the recipient's clue this round is hidden from everyone except the Vendor until the next round, or the recipient's vote this round is discarded.
-  - Whether the Vendor knows which effect they're giving, or it's randomized and hidden even from the Vendor (source says "try your luck," implying it may be random/blind).
-- Do not start implementation until this is resolved with the product owner; treat this phase as spec-then-build, not build-from-the-page-alone.
-- Minimum 4 active players (per source).
+- When enabled with ≥4 active players, assign the `falafelVendor` trait to one active player.
+- Mechanics: 1 falafel per round. The Falafel Vendor privately chooses an active player to give a falafel to during the clue phase.
+- The player who receives the falafel cannot speak for the remainder of that round (cannot submit clues and cannot chat).
+- The silenced player is skipped in the clue turn order.
+- This is enforced server-side. The Vendor receives local status of who they gave it to, and the Target receives a local banner indicating they are silenced.
+- Minimum 4 active players.
 
 ## PHASE 34 — Mr. Meme
 Needs an online-play adaptation decision — the source assumes players are physically co-located and can see gestures; this product is an online room, not in-person.

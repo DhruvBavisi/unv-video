@@ -4,11 +4,12 @@
 > This is not the original requirements document.
 
 ## Current Phase
+**Phase 33 — The Falafel Vendor**
+
+The Falafel Vendor special role has been implemented natively into the existing clue pipeline. The Vendor can privately choose an active player to silence for the remainder of the round. The silenced player is skipped in the clue turn order and cannot submit chat messages. The Vendor receives a persistent status indicating who they targeted, and the target receives a localized visual banner instructing them that they are silenced. Server authority is maintained.
+
+## Previous Phase
 **Phase 32 — The Ghost UI & Mobile Polish**
-
-The Ghost special role implementation has been refined to provide proper post-elimination feedback. When the Ghost is eliminated, they now receive a private "YOU ARE NOW A GHOST" message within the existing `EliminationOverlay`, clearly instructing them that their voting privileges remain active. When a Ghost successfully casts and locks a vote, a small `ghost-bg.png` visual marker is rendered on the target's player card to broadcast the Ghost's choice to all users. Ghost server authority, participant visibility rules, and chat logic were preserved without side effects.
-
-Additionally, a global iOS/Mobile keyboard visibility fix was deployed via the `useMobileKeyboardFocus` hook. This enforces a `window.visualViewport` listener across all game text inputs (`ClueInput`, `ChatFeed`, `MrWhiteGuessPhase`, `EliminationOverlay`, `SkribblApp` lobbies, and `DrawingPhase` guesses) so the active input is reliably scrolled into view above the virtual keyboard without breaking Android or Desktop.
 
 ## Previous Phase
 **Phase 28 — The Revenger**

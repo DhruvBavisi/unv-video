@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import Button from '../components/Button.jsx'
-import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote, emitUnlockVote } from './gameState.js'
+import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote, emitUnlockVote, emitGiveFalafel } from './gameState.js'
 import { getRoleImage, getRoleImageAlt } from './roleImages.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../shared/game-limits.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
@@ -771,6 +771,59 @@ function GoddessPanel({ tiedPlayers, myPlayerId, isGoddess, onSubmit, submitting
   )
 }
 
+function FalafelVendorPanel({ players, myPlayerId, isVendor, falafelTargetId, onSubmit, submitting }) {
+  const [selectedTarget, setSelectedTarget] = useState(null)
+  
+  if (!isVendor) return null;
+  
+  if (falafelTargetId) {
+    const targetPlayer = players.find(p => p.id === falafelTargetId);
+    return (
+      <div className="clue-panel__input" style={{ marginTop: '16px', background: 'rgba(217, 119, 6, 0.15)', borderColor: 'rgba(217, 119, 6, 0.3)' }}>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase' }}>Falafel Given</h3>
+        <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>You gave the falafel to <strong>{targetPlayer?.name}</strong>. They cannot speak this round.</p>
+      </div>
+    );
+  }
+
+  const activePlayers = players.filter(p => !p.eliminated && !p.spectator && p.id !== myPlayerId);
+
+  return (
+    <div className="clue-panel__input" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(217, 119, 6, 0.4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Give Falafel</h3>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>1 per round</span>
+      </div>
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>Select a player to silence them for the remainder of this round.</p>
+      <div className="clue-panel__voting-list" style={{ padding: '4px 0', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+        {activePlayers.map((p) => {
+          const isSelected = p.id === selectedTarget;
+          return (
+            <button
+              key={p.id}
+              className={`voting-card ${isSelected ? 'voting-card--selected' : ''}`}
+              onClick={() => setSelectedTarget(p.id)}
+              style={{ minHeight: '40px', padding: '6px 12px' }}
+            >
+              <span className="voting-card__name">{p.name}</span>
+            </button>
+          )
+        })}
+      </div>
+      <Button 
+        variant="primary" 
+        onClick={() => {
+          if (selectedTarget) onSubmit(selectedTarget);
+        }}
+        disabled={!selectedTarget || submitting}
+        style={{ background: '#f59e0b', color: '#000', border: 'none' }}
+      >
+        {submitting ? 'Giving...' : 'Give Falafel'}
+      </Button>
+    </div>
+  )
+}
+
 export default function CluePhase({ state, socketRef, onSourceRect }) {
   const [submitting, setSubmitting] = useState(false)
   const [clueError, setClueError] = useState('')
@@ -801,7 +854,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
   const myPlayer = players.find(p => p.id === sessionId)
   const isGhost = localSecret?.specialRole === 'ghost'
-  const canChat = myPlayer && ((!myPlayer.eliminated && !myPlayer.spectator) || isGhost)
+  const canChat = myPlayer && ((!myPlayer.eliminated && !myPlayer.spectator) || isGhost) && !(localSecret?.isFalafelTarget && gamePhase === 'CLUE')
 
   useEffect(() => {
     window.scrollTo({
@@ -830,6 +883,23 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
       return () => clearTimeout(timer)
     }
   }, [chatError])
+
+  const handleGiveFalafel = useCallback(async (targetId) => {
+    if (submitLockRef.current) return
+    submitLockRef.current = true
+    setSubmitting(true)
+    setClueError('')
+
+    const response = await emitGiveFalafel(socketRef.current, targetId)
+    if (!response?.success) {
+      setClueError(response?.error || 'Failed to give falafel.')
+      submitLockRef.current = false
+      setSubmitting(false)
+    } else {
+      submitLockRef.current = false
+      setSubmitting(false)
+    }
+  }, [socketRef])
 
   const handleSubmitClue = useCallback(async (clueText) => {
     if (submitLockRef.current) return
@@ -999,12 +1069,31 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
 
         <div className="clue-phase__input-col">
           {clueError && <div className="clue-phase__error" role="alert">{clueError}</div>}
+          
+          {localSecret?.isFalafelTarget && gamePhase === 'CLUE' && (
+            <div className="clue-panel__input" style={{ marginBottom: '16px', background: 'rgba(217, 119, 6, 0.15)', borderColor: 'rgba(217, 119, 6, 0.3)', padding: '12px' }}>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: '#f59e0b', textTransform: 'uppercase' }}>FALAFEL — YOU CANNOT SPEAK THIS ROUND</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>A Falafel Vendor gave you a falafel. You are too busy eating to give a clue or chat.</p>
+            </div>
+          )}
+
           <ClueInput
             isMyTurn={isMyTurn}
             gamePhase={gamePhase}
             submitting={submitting}
             onSubmit={handleSubmitClue}
           />
+
+          {gamePhase === 'CLUE' && localSecret?.specialRole === 'falafelVendor' && (
+            <FalafelVendorPanel
+              players={players}
+              myPlayerId={sessionId}
+              isVendor={true}
+              falafelTargetId={localSecret?.falafelTargetId}
+              onSubmit={handleGiveFalafel}
+              submitting={submitting}
+            />
+          )}
         </div>
 
         <aside className="clue-phase__comm">

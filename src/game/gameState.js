@@ -309,10 +309,10 @@ export function gameReducer(state, action) {
     case 'CONNECTION_CHANGE': return { ...state, connectionState: action.state }
     case 'JOIN_FAILED': return { ...state, error: action.error, membershipState: MEMBERSHIP.NONE }
     case 'ROLE_ASSIGNED': {
-      console.log('[ROLE] role assigned privately', { role: action.role, word: action.word, specialRole: action.specialRole })
+      console.log('[ROLE] role assigned privately', { role: action.role, word: action.word, specialRole: action.specialRole, isFalafelTarget: action.isFalafelTarget, falafelTargetId: action.falafelTargetId })
       return {
         ...state,
-        localSecret: { role: action.role, word: action.word, specialRole: action.specialRole },
+        localSecret: { role: action.role, word: action.word, specialRole: action.specialRole, isFalafelTarget: action.isFalafelTarget, falafelTargetId: action.falafelTargetId },
       }
     }
     case 'CHAT_MESSAGE': {
@@ -368,9 +368,9 @@ export function initSocket(sid) {
       dispatchRef?.({ type: 'SESSION_EXPIRED' })
     })
 
-    socket.on('role-assigned', ({ role, word, specialRole }) => {
-      console.log('[ROLE] role-assigned received', { role, word, specialRole })
-      dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word, specialRole })
+    socket.on('role-assigned', ({ role, word, specialRole, isFalafelTarget, falafelTargetId }) => {
+      console.log('[ROLE] role-assigned received', { role, word, specialRole, isFalafelTarget, falafelTargetId })
+      dispatchRef?.({ type: 'ROLE_ASSIGNED', role, word, specialRole, isFalafelTarget, falafelTargetId })
     })
 
     socket.on('session-token', ({ resumeToken, roomId, playerName, gameMode }) => {
@@ -518,6 +518,12 @@ export function emitSubmitMrWhiteGuess(socket, guess) {
     socket.emit('submit-mr-white-guess', { guess }, (response) => {
       resolve(response)
     })
+  })
+}
+
+export function emitGiveFalafel(socket, targetId) {
+  return new Promise((resolve) => {
+    socket.emit('unv:give-falafel', { targetId }, (response) => resolve(response))
   })
 }
 

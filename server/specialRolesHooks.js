@@ -1,5 +1,10 @@
 export function onRoundStart(room) {
-  // Hook for future special-role phase mechanics
+  // Reset Falafel Vendor state at the start of each round
+  const vendor = room.players.find(p => p.specialRole === 'falafelVendor')
+  if (vendor && vendor.specialRoleData) {
+    vendor.specialRoleData.usedThisRound = false
+    vendor.specialRoleData.falafelTargetId = null
+  }
 }
 
 export function onVoteTallied(room, tally) {

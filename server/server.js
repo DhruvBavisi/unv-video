@@ -821,6 +821,16 @@ function assignSpecialRoles(room) {
       }
     }
   }
+
+  const falafelMeta = SPECIAL_ROLES.find(r => r.key === 'falafelVendor')
+  if (specialRolesConfig.falafelVendor === true || specialRolesConfig.falafelVendor?.enabled === true) {
+    if (room.players.length >= falafelMeta.minPlayers) {
+      const vendors = assignRole('falafelVendor', 1)
+      if (vendors.length > 0) {
+        vendors[0].specialRoleData = { usedThisRound: false, falafelTargetId: null }
+      }
+    }
+  }
 }
 
 function startCluePhase(room) {
@@ -876,10 +886,22 @@ function startVotePhase(room) {
   console.log('[VOTE] phase started', { roomId: room.id })
 }
 
+function isSilencedByFalafel(room, playerId) {
+  if (!playerId) return false
+  const vendor = room.players.find(p => p.specialRole === 'falafelVendor')
+  return vendor && vendor.specialRoleData && vendor.specialRoleData.falafelTargetId === playerId
+}
+
 function advanceTurn(room) {
   room.turnIndex++
   if (room.turnIndex < room.turnOrder.length) {
     room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+    
+    if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+      console.log('[CLUE] skipping silenced player', { roomId: room.id, playerId: room.currentTurnPlayerId })
+      return advanceTurn(room)
+    }
+
     console.log('[CLUE] turn advanced', {
       roomId: room.id,
       turnIndex: room.turnIndex,
@@ -2352,6 +2374,10 @@ io.on('connection', (socket) => {
       return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     }
 
+    if (isSilencedByFalafel(room, currentSessionId)) {
+      return callback?.({ success: false, error: 'SILENCED_BY_FALAFEL' })
+    }
+
     const clue = String(rawClue || '').trim()
 
     if (!clue) {
@@ -2389,6 +2415,57 @@ io.on('connection', (socket) => {
     advanceTurn(room)
   })
 
+  socket.on('unv:give-falafel', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = rooms.get(currentRoomId)
+    if (!room || room.gamePhase !== 'CLUE') return callback?.({ success: false, error: 'NOT_CLUE_PHASE' })
+
+    const vendor = room.players.find(p => p.id === currentSessionId)
+    if (!vendor || vendor.specialRole !== 'falafelVendor') return callback?.({ success: false, error: 'NOT_VENDOR' })
+    if (vendor.specialRoleData?.usedThisRound) return callback?.({ success: false, error: 'ALREADY_USED' })
+
+    const target = room.players.find(p => p.id === targetId)
+    if (!target || target.eliminated || target.spectator || targetId === currentSessionId) {
+      return callback?.({ success: false, error: 'INVALID_TARGET' })
+    }
+
+    vendor.specialRoleData.usedThisRound = true
+    vendor.specialRoleData.falafelTargetId = targetId
+
+    // Send updated private state to Vendor
+    const vendorSocketId = sessionSockets.get(currentSessionId)
+    if (vendorSocketId) {
+      let roleToReveal = vendor.role
+      if (!room.configuration.revealRoles && vendor.role !== 'MR_WHITE') roleToReveal = vendor.role // or whatever logic is used. actually let's just send the necessary fields.
+      io.to(vendorSocketId).emit('role-assigned', { 
+        role: vendor.role, 
+        word: vendor.role === 'MR_WHITE' ? null : room.wordPair?.word, 
+        specialRole: vendor.specialRole,
+        isFalafelTarget: false,
+        falafelTargetId: targetId
+      })
+    }
+
+    // Send updated private state to Target
+    const targetSocketId = sessionSockets.get(targetId)
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('role-assigned', { 
+        role: target.role, 
+        word: target.role === 'MR_WHITE' ? null : room.wordPair?.word, 
+        specialRole: target.specialRole,
+        isFalafelTarget: true,
+        falafelTargetId: null
+      })
+    }
+
+    if (room.currentTurnPlayerId === targetId) {
+      advanceTurn(room)
+    } else {
+      broadcastRoom(room)
+    }
+    callback?.({ success: true })
+  })
+
   socket.on('send-chat-message', ({ text: rawText }, callback) => {
     if (!currentSessionId || !currentRoomId) {
       return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
@@ -2411,6 +2488,10 @@ io.on('connection', (socket) => {
     const isGhostSpectator = player?.eliminated === true && player?.specialRole === 'ghost'
     if (!isGhostSpectator && (player.eliminated || player.spectator)) {
       return callback?.({ success: false, error: 'ELIMINATED_PLAYERS_CANNOT_CHAT' })
+    }
+
+    if (isSilencedByFalafel(room, currentSessionId)) {
+      return callback?.({ success: false, error: 'SILENCED_BY_FALAFEL' })
     }
 
     const text = String(rawText || '').trim()
