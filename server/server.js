@@ -2480,10 +2480,9 @@ io.on('connection', (socket) => {
     // Send updated private state to Vendor
     const vendorSocketId = sessionSockets.get(currentSessionId)
     if (vendorSocketId) {
-      let roleToReveal = vendor.role
-      if (!room.configuration.revealRoles && vendor.role !== 'MR_WHITE') roleToReveal = vendor.role // or whatever logic is used. actually let's just send the necessary fields.
+      const roleToReveal = (room.configuration.revealRoles || vendor.role === 'MR_WHITE') ? vendor.role : null
       io.to(vendorSocketId).emit('role-assigned', { 
-        role: vendor.role, 
+        role: roleToReveal, 
         word: wordForRole(vendor.role, room.wordPair), 
         specialRole: vendor.specialRole,
         isFalafelTarget: false,
@@ -2494,8 +2493,9 @@ io.on('connection', (socket) => {
     // Send updated private state to Target
     const targetSocketId = sessionSockets.get(targetId)
     if (targetSocketId) {
+      const roleToReveal = (room.configuration.revealRoles || target.role === 'MR_WHITE') ? target.role : null
       io.to(targetSocketId).emit('role-assigned', { 
-        role: target.role, 
+        role: roleToReveal, 
         word: wordForRole(target.role, room.wordPair), 
         specialRole: target.specialRole,
         isFalafelTarget: true,
@@ -2994,16 +2994,12 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
       // Next round preparation
       room.round++
-      room.gamePhase = 'CLUE'
       room.votes = {}
       room.lockedVotes = []
       room.voteResult = null
+      room.eliminationResult = null
       
-      const newActive = getActivePlayers(room)
-      room.turnOrder = shuffle(newActive.map((p) => p.id))
-      room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
-      room.turnIndex = 0
-      room.submittedCluePlayerIds = []
+      startCluePhase(room)
     }
     broadcastRoom(room)
   }
@@ -3084,16 +3080,12 @@ ELIMINATION RESULT=`, room.eliminationResult)
         const active = getActivePlayers(room)
         console.log('[ELIMINATION NEXT]', { roomId: room.id, round: room.round + 1, activePlayers: active.length })
         room.round++
-        room.gamePhase = 'CLUE'
         room.votes = {}
         room.lockedVotes = []
         room.voteResult = null
         room.eliminationResult = null
         
-        room.turnOrder = shuffle(active.map((p) => p.id))
-        room.currentTurnPlayerId = room.turnOrder.length > 0 ? room.turnOrder[0] : null
-        room.turnIndex = 0
-        room.submittedCluePlayerIds = []
+        startCluePhase(room)
       } else {
         room.eliminationResult = null
       }
