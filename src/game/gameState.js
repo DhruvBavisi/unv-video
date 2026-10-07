@@ -47,7 +47,6 @@ export function createInitialState() {
     gamePhase: null,
     votes: {},
     lockedVotes: [],
-    lockedVotes: [],
     voteResult: null,
     eliminationResult: null,
     mrWhiteGuesserId: null,

@@ -512,14 +512,11 @@ For all user text inputs (e.g., Clue inputs, Chat, Mr. White Guess), the client 
 - Minimum 4 active players.
 
 ## PHASE 34 — Mr. Meme
-Needs an online-play adaptation decision — the source assumes players are physically co-located and can see gestures; this product is an online room, not in-person.
+- **Status: Implemented ✅**
 
-- ASSUMPTION (needs product decision before building): the site's rule is "describe your word with gestures instead of speaking," which has no direct equivalent in a text-clue online game. Candidate adaptations, pick one:
-  - The selected player's clue this round must be an emoji-only clue (no letters/words), enforced by the same clue-validation layer as the 3-word-max rule.
-  - The selected player's clue this round is temporarily replaced by a short webcam/gesture capture if the product later adds video — explicitly out of scope for the current text/canvas architecture and should not be attempted until a video layer exists.
-  - Skip Mr. Meme for the online mode entirely and reserve it for the future Pass & Play (in-person) mode, where physical gestures are actually visible.
-- Given the current architecture (Architecture.md) has no camera/video-chat capability, the emoji-only-clue adaptation is the only option buildable without new infrastructure — recommend confirming that adaptation, or deferring this role to Pass & Play.
-- `onRoundStart`: if adopted, randomly select one active player each round to be "possessed"; that player's Clues-tab input is constrained to emoji characters only for their turn.
+- When enabled, assign the `mrMeme` trait to one active player at the start of the game.
+- The role is passive and operates on the honor system: the player must only communicate using memes, emojis, or internet slang throughout the entire game.
+- No active server-side enforcement or round-based rotation is required, matching the passive constraints of roles like Joy Fool.
 - No minimum player count specified by source.
 
 ## PHASE 35 — Special Roles QA & Balancing
