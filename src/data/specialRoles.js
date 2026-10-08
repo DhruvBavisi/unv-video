@@ -103,8 +103,8 @@ export const SPECIAL_ROLES = [
     rules: [
       "Must only communicate using memes, emojis, or internet slang."
     ],
-    mobileDescription: "Must only communicate using memes, emojis, or internet slang throughout the game.",
+    mobileDescription: "Each round, 1 player must describe their secret word with gestures instead of speaking (only in person or with video)",
     avatar: '/images/characters/mrmeme.png',
-    implemented: true
+    implemented: false
   }
 ];

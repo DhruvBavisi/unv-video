@@ -844,15 +844,6 @@ function assignSpecialRoles(room) {
     }
   }
 
-  const memeMeta = SPECIAL_ROLES.find(r => r.key === 'mrMeme')
-  if (specialRolesConfig.mrMeme === true || specialRolesConfig.mrMeme?.enabled === true) {
-    if (room.players.length >= memeMeta.minPlayers) {
-      const memes = assignRole('mrMeme', 1)
-      if (memes.length > 0) {
-        memes[0].specialRoleData = {}
-      }
-    }
-  }
 }
 
 function startCluePhase(room) {
