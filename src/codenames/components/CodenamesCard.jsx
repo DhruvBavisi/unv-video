@@ -18,7 +18,11 @@ export default function CodenamesCard({ card }) {
 
   return (
     <div className={classNames}>
-      <span className="card-word">{card.word}</span>
+      <div className="card-inner-frame">
+        <div className="card-word-panel">
+          <span className="card-word">{card.word}</span>
+        </div>
+      </div>
     </div>
   )
 }
