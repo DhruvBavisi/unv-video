@@ -708,8 +708,13 @@ function removePlayer(sessionId) {
   if (idx === -1) return { roomId: null, room: null }
 
   const wasHost = room.players[idx].isHost
+  
+  cleanupPlayerBeforeRemove(room, sessionId, idx)
+
   room.players.splice(idx, 1)
   sessionSockets.delete(sessionId)
+
+  cleanupPlayerAfterRemove(room)
 
   // Check if room should be destroyed (no players at all, or only bots remain)
   if (checkAndDestroyEmptyRoom(roomId, room)) {
@@ -724,6 +729,109 @@ function removePlayer(sessionId) {
     }
   }
   return { roomId, room }
+}
+
+function cleanupPlayerBeforeRemove(room, targetId, targetIndex) {
+  const targetPlayer = room.players[targetIndex]
+  const kickedTurnIndex = room.turnOrder ? room.turnOrder.indexOf(targetId) : -1
+
+  // Remove from active game structures
+  room.turnOrder = (room.turnOrder || []).filter(id => id !== targetId)
+  room.submittedCluePlayerIds = (room.submittedCluePlayerIds || []).filter(id => id !== targetId)
+  room.skippedCluePlayerIds = (room.skippedCluePlayerIds || []).filter(id => id !== targetId)
+  if (room.mrWhiteQueue) {
+    room.mrWhiteQueue = room.mrWhiteQueue.filter(id => id !== targetId)
+  }
+  
+  if (room.votes && room.votes[targetId]) {
+    delete room.votes[targetId]
+  }
+  const affectedVoterIds = []
+  for (const voterId in room.votes) {
+    if (room.votes[voterId] === targetId) {
+      affectedVoterIds.push(voterId)
+      delete room.votes[voterId]
+    }
+  }
+  room.lockedVotes = (room.lockedVotes || []).filter(
+    id => id !== targetId && !affectedVoterIds.includes(id)
+  )
+
+  if (room.gamePhase === 'CLUE') {
+    if (room.currentTurnPlayerId === targetId) {
+      if (room.turnIndex < room.turnOrder.length) {
+        room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+        if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+          advanceTurn(room)
+        }
+      } else {
+        startVotePhase(room)
+      }
+    } else {
+      if (kickedTurnIndex !== -1 && room.turnIndex !== undefined && kickedTurnIndex < room.turnIndex) {
+        room.turnIndex--
+      }
+    }
+  } else if (room.gamePhase === 'MR_WHITE_GUESS' && room.mrWhiteGuesserId === targetId) {
+    room.mrWhiteGuessSubmitted = false
+    room.mrWhiteLiveGuess = ''
+    room.mrWhiteGuesserId = null
+    advanceAfterMrWhiteWrongGuess(room.id, room.gameVersion)
+  } else if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === targetId) {
+    room.revengerId = null
+    room.revengerDecisionEndsAt = null
+    room.gamePhase = 'ELIMINATION'
+    if (targetPlayer.specialRoleData) {
+      targetPlayer.specialRoleData.decisionMade = true
+      targetPlayer.specialRoleData.resolved = true
+    }
+    room.specialRoleOutcomes = room.specialRoleOutcomes || []
+    room.specialRoleOutcomes.push({
+      role: 'revenger',
+      revengerName: targetPlayer.name,
+      targetName: 'no one',
+      message: `REVENGER\n${targetPlayer.name} faded away without taking anyone down`
+    })
+    advanceFromElimination(room.id, room.gameVersion)
+  } else if (room.gamePhase === 'GODDESS_DECISION') {
+    if (room.goddessId === targetId) {
+      room.votes = {}
+      room.lockedVotes = []
+      room.voteResult = null
+      room.votingAttempt = (room.votingAttempt || 1) + 1
+      room.gamePhase = 'VOTE'
+      room.goddessId = null
+    } else if (room.voteResult && room.voteResult.tiedPlayers && room.voteResult.tiedPlayers.includes(targetId)) {
+      room.voteResult.tiedPlayers = room.voteResult.tiedPlayers.filter(id => id !== targetId)
+      if (room.voteResult.tiedPlayers.length === 1) {
+        const remainingTargetId = room.voteResult.tiedPlayers[0]
+        const remainingTarget = room.players.find(p => p.id === remainingTargetId)
+        const goddess = room.players.find(p => p.id === room.goddessId)
+        if (remainingTarget && goddess) {
+          executeGoddessDecision(room, goddess, remainingTarget)
+        }
+      } else if (room.voteResult.tiedPlayers.length === 0) {
+        room.votes = {}
+        room.lockedVotes = []
+        room.voteResult = null
+        room.votingAttempt = (room.votingAttempt || 1) + 1
+        room.gamePhase = 'VOTE'
+        room.goddessId = null
+      }
+    }
+  } else if (room.gamePhase === 'ELIMINATION' && room.eliminationResult?.playerId === targetId) {
+    room.eliminationResult = null
+    advanceFromElimination(room.id, room.gameVersion)
+  }
+}
+
+function cleanupPlayerAfterRemove(room) {
+  if (room.status === 'ACTIVE' && room.gamePhase !== 'RESULT') {
+    evaluateWinCondition(room)
+  }
+  if (room.gamePhase === 'VOTE') {
+    checkAndResolveVotes(room)
+  }
 }
 
 // Destroy a room if it has zero real (non-bot) players.
@@ -3218,99 +3326,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (targetIndex === -1) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
 
     const targetPlayer = room.players[targetIndex]
-
-    const kickedTurnIndex = room.turnOrder ? room.turnOrder.indexOf(targetId) : -1
-
-    // Remove from active game structures
-    room.turnOrder = (room.turnOrder || []).filter(id => id !== targetId)
-    room.submittedCluePlayerIds = (room.submittedCluePlayerIds || []).filter(id => id !== targetId)
-    room.skippedCluePlayerIds = (room.skippedCluePlayerIds || []).filter(id => id !== targetId)
     
-    if (room.votes && room.votes[targetId]) {
-      delete room.votes[targetId]
-    }
-    const affectedVoterIds = []
-    for (const voterId in room.votes) {
-      if (room.votes[voterId] === targetId) {
-        affectedVoterIds.push(voterId)
-        delete room.votes[voterId]
-      }
-    }
-    room.lockedVotes = (room.lockedVotes || []).filter(
-      id => id !== targetId && !affectedVoterIds.includes(id)
-    )
-
-    if (room.gamePhase === 'CLUE') {
-      if (room.currentTurnPlayerId === targetId) {
-        if (room.turnIndex < room.turnOrder.length) {
-          room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
-          if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
-            advanceTurn(room)
-          }
-        } else {
-          startVotePhase(room)
-        }
-      } else {
-        if (kickedTurnIndex !== -1 && room.turnIndex !== undefined && kickedTurnIndex < room.turnIndex) {
-          room.turnIndex--
-        }
-      }
-    } else if (room.gamePhase === 'MR_WHITE_GUESS' && room.mrWhiteGuesserId === targetId) {
-      room.mrWhiteGuessSubmitted = false
-      room.mrWhiteLiveGuess = ''
-      room.mrWhiteGuesserId = null
-      advanceAfterMrWhiteWrongGuess(room.id, room.gameVersion)
-    } else if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === targetId) {
-      room.revengerId = null
-      room.revengerDecisionEndsAt = null
-      room.gamePhase = 'ELIMINATION'
-      if (targetPlayer.specialRoleData) {
-        targetPlayer.specialRoleData.decisionMade = true
-        targetPlayer.specialRoleData.resolved = true
-      }
-      room.specialRoleOutcomes = room.specialRoleOutcomes || []
-      room.specialRoleOutcomes.push({
-        role: 'revenger',
-        revengerName: targetPlayer.name,
-        targetName: 'no one',
-        message: `REVENGER\n${targetPlayer.name} faded away without taking anyone down`
-      })
-      advanceFromElimination(room.id, room.gameVersion)
-    } else if (room.gamePhase === 'GODDESS_DECISION') {
-      if (room.goddessId === targetId) {
-        room.votes = {}
-        room.lockedVotes = []
-        room.voteResult = null
-        room.votingAttempt = (room.votingAttempt || 1) + 1
-        room.gamePhase = 'VOTE'
-        room.goddessId = null
-      } else if (room.voteResult && room.voteResult.tiedPlayers && room.voteResult.tiedPlayers.includes(targetId)) {
-        room.voteResult.tiedPlayers = room.voteResult.tiedPlayers.filter(id => id !== targetId)
-        if (room.voteResult.tiedPlayers.length === 1) {
-          const remainingTargetId = room.voteResult.tiedPlayers[0]
-          const remainingTarget = room.players.find(p => p.id === remainingTargetId)
-          const goddess = room.players.find(p => p.id === room.goddessId)
-          if (remainingTarget && goddess) {
-            executeGoddessDecision(room, goddess, remainingTarget)
-          }
-        }
-      }
-    } else if (room.gamePhase === 'ELIMINATION' && room.eliminationResult?.playerId === targetId) {
-      room.eliminationResult = null
-      advanceFromElimination(room.id, room.gameVersion)
-    }
+    cleanupPlayerBeforeRemove(room, targetId, targetIndex)
 
     // Completely remove target from room
     room.players.splice(targetIndex, 1)
 
-    // Check win condition if active
-    if (room.status === 'ACTIVE' && room.gamePhase !== 'RESULT') {
-      evaluateWinCondition(room)
-    }
-
-    if (room.gamePhase === 'VOTE') {
-      checkAndResolveVotes(room)
-    }
+    cleanupPlayerAfterRemove(room)
 
     const targetSocketId = sessionSockets.get(targetId)
     if (targetSocketId) {
