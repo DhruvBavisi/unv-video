@@ -3791,62 +3791,96 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
   })
 
-  socket.on('codenames:select-team', ({ team }, callback) => {
+  socket.on('codenames:join-team-role', ({ team, role }, callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
-    if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
+    if (team !== 'red' && team !== 'blue') return callback?.({ success: false, error: 'INVALID_TEAM' })
+    if (role !== 'SPYMASTER' && role !== 'OPERATIVE') return callback?.({ success: false, error: 'INVALID_ROLE' })
 
     const player = room.players.find(p => p.id === currentSessionId)
     if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
 
-    // Remove from old team
+    if (role === 'SPYMASTER' && room.spymasters[team] && room.spymasters[team] !== currentSessionId) {
+       return callback?.({ success: false, error: 'SPYMASTER_TAKEN' })
+    }
+
     if (player.team && room.teams[player.team]) {
       room.teams[player.team] = room.teams[player.team].filter(id => id !== currentSessionId)
-      // Free spymaster slot if they had it
       if (room.spymasters[player.team] === currentSessionId) {
         room.spymasters[player.team] = null
       }
     }
 
     player.team = team
-    if (team) {
-      if (!room.teams[team]) room.teams[team] = []
-      room.teams[team].push(currentSessionId)
-      // When joining a team, default to OPERATIVE if no role, or reset to OPERATIVE
-      player.role = 'OPERATIVE'
-    } else {
-      player.role = null
+    player.role = role
+    room.teams[team].push(currentSessionId)
+    if (role === 'SPYMASTER') {
+      room.spymasters[team] = currentSessionId
     }
 
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
-  socket.on('codenames:select-role', ({ role }, callback) => {
+  socket.on('codenames:reset-teams', (callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
     if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
-    if (role !== 'SPYMASTER' && role !== 'OPERATIVE') return callback?.({ success: false, error: 'INVALID_ROLE' })
 
-    const player = room.players.find(p => p.id === currentSessionId)
-    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
-    if (!player.team) return callback?.({ success: false, error: 'NO_TEAM_SELECTED' })
+    room.players.forEach(p => {
+      p.team = null
+      p.role = null
+    })
+    room.teams = { red: [], blue: [] }
+    room.spymasters = { red: null, blue: null }
 
-    if (role === 'SPYMASTER') {
-      if (room.spymasters[player.team] && room.spymasters[player.team] !== currentSessionId) {
-        return callback?.({ success: false, error: 'SPYMASTER_TAKEN' })
-      }
-      room.spymasters[player.team] = currentSessionId
-    } else {
-      if (room.spymasters[player.team] === currentSessionId) {
-        room.spymasters[player.team] = null
-      }
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:randomize-teams', (callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+
+    const realPlayers = room.players.filter(p => p.isBot !== true)
+    for (let i = realPlayers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [realPlayers[i], realPlayers[j]] = [realPlayers[j], realPlayers[i]]
     }
 
-    player.role = role
+    room.teams = { red: [], blue: [] }
+    room.spymasters = { red: null, blue: null }
+    room.players.forEach(p => { p.team = null; p.role = null })
+
+    const half = Math.ceil(realPlayers.length / 2)
+    realPlayers.forEach((p, index) => {
+      p.team = index < half ? 'red' : 'blue'
+      p.role = 'OPERATIVE'
+      room.teams[p.team].push(p.id)
+    })
+
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:update-settings', (settings, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+
+    if (settings.timer !== undefined) room.timer = settings.timer
+    if (settings.mode !== undefined) room.mode = settings.mode // CLASSIC / DUET
+    if (settings.wordPack !== undefined) room.wordPack = settings.wordPack // ENGLISH
+    
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
