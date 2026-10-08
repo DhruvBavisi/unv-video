@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: 'script',
       manifest: {
         name: 'UNDERCOVER',
         short_name: 'UNDERCOVER',
