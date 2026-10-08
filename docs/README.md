@@ -1,46 +1,63 @@
+# Project Documentation
 
-# UNDERCOVER — Project Documentation
+Documentation is organized by game mode so each mode has an independent source of truth.
 
-This folder contains the current product, architecture, design, rules and implementation roadmap for the project.
+## Structure
 
-## Core Documentation
-- [Architecture.md](./Architecture.md)
-- [Design.md](./Design.md)
-- [Memory.md](./Memory.md)
-- [PRD.md](./PRD.md)
-- [Phases.md](./Phases.md)
-- [Rules.md](./Rules.md)
+```
+docs/
+├── README.md
+├── undercover/
+│   ├── Architecture.md
+│   ├── Design.md
+│   ├── Memory.md
+│   ├── PRD.md
+│   ├── Phases.md
+│   └── Rules.md
+├── skribbl/
+│   ├── Architecture.md
+│   ├── Design.md
+│   ├── Memory.md
+│   ├── PRD.md
+│   ├── Phases.md
+│   └── Rules.md
+└── codenames/
+    ├── Architecture.md
+    ├── Design.md
+    ├── Memory.md
+    ├── PRD.md
+    ├── Phases.md
+    └── Rules.md
+```
 
-## Current Playable Modes
-1. **Undercover** — primary investigation game.
-2. **Draw & Guess / Skribbl** — separate drawing/guessing game sharing the Socket.IO infrastructure.
+## Mode Status
 
-Both modes use server-authoritative room state and stable reconnect identity.
+| Mode | Status | Client | Server State |
+|---|---|---|---|
+| Undercover | Implemented | `src/game/` | `rooms` |
+| Skribbl / Draw & Guess | Implemented | `src/drawgame/` | `drawRooms` |
+| Codenames | Planned | `src/codenames/` | planned dedicated room state |
 
-## Undercover Current Special Roles
-Implemented:
-- Joy Fool
-- Duelists
-- Lovers
-- Revenger
-- Boomerang
-- Goddess of Justice
-- Ghost
-- Falafel Vendor
-- Mr. Meme
+## Shared Infrastructure
 
-## Reconnection Rule
-Network/socket disconnect is not Leave Game. Players remain in their rooms and can reconnect using their resume token. Explicit Leave Game and host kick are the removal paths.
+All modes use the shared Socket.IO/session foundation where applicable:
+- `src/game/socket.js`
+- `src/game/identity.js`
+- shared server Socket.IO instance
+- session ID
+- resume token
+- explicit Leave Game / host kick lifecycle
 
-## Planned Next Mode — Codenames
-Codenames is specified but not yet implemented.
+Game-specific state and events must remain isolated.
 
-Six dedicated Codenames documents are maintained in [codenames/](./codenames/):
-- [Architecture.md](./codenames/Architecture.md)
-- [Design.md](./codenames/Design.md)
-- [Memory.md](./codenames/Memory.md)
-- [PRD.md](./codenames/PRD.md)
-- [Phases.md](./codenames/Phases.md)
-- [Rules.md](./codenames/Rules.md)
+## Documentation Rule
 
-The Codenames documents define the initial implementation contract and must remain consistent with the existing shared Socket.IO/session architecture.
+When changing a mode, update that mode's six documents first.
+
+When changing shared infrastructure, review all three mode Architecture and Rules documents plus this README.
+
+Do not mix game-specific requirements into another mode's documentation.
+
+## Codenames Status
+
+Codenames is specification-only. Its six documents define the implementation contract but do not claim runtime code exists.
