@@ -157,12 +157,11 @@ export default function CodenamesApp({ onExit }) {
         <h1>CODENAMES</h1>
       </div>
       
-      {room.status === 'LOBBY' ? (
+      {(room.status === 'LOBBY' || room.status === 'SETUP') ? (
         <CodenamesLobby 
           room={room} 
           playerId={sessionId}
           onLeave={handleLeave} 
-          onStart={() => {}} // not implemented in phase 2
         />
       ) : (
         <CodenamesBoard board={room.board} />

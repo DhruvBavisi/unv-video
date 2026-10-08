@@ -260,14 +260,16 @@ function getCodenamesPublicState(room) {
     phase: room.phase,
     hostId: room.hostId,
     teams: room.teams,
-    spymasters: room.spymasters,
+    spymasterSlots: {
+      redTaken: !!(room.spymasters && room.spymasters.red),
+      blueTaken: !!(room.spymasters && room.spymasters.blue)
+    },
     players: room.players.map(p => ({
       id: p.id,
       name: p.name,
       isHost: p.isHost,
       isConnected: p.isConnected,
-      team: p.team,
-      role: (room.spymasters && (room.spymasters.red === p.id || room.spymasters.blue === p.id)) ? 'SPYMASTER' : undefined
+      team: p.team
     }))
   }
 }

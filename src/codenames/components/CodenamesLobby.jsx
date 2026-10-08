@@ -51,8 +51,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
   const canStart = room.teams?.red?.length > 0 && 
                    room.teams?.blue?.length > 0 &&
-                   room.spymasters?.red &&
-                   room.spymasters?.blue &&
+                   room.spymasterSlots?.redTaken &&
+                   room.spymasterSlots?.blueTaken &&
                    unassignedPlayers.length === 0
 
   const renderPlayer = (p) => {
@@ -82,33 +82,46 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         <button onClick={handleCopyUrl} style={{ marginTop: '5px', fontSize: '0.9rem', cursor: 'pointer' }}>Copy Link</button>
       </div>
 
-      <div className="lobby-controls">
-        <div className="control-group">
-          <h3>Team</h3>
-          <button className={player.team === 'red' ? 'active red' : ''} onClick={() => handleSelectTeam('red')}>Red Team</button>
-          <button className={player.team === 'blue' ? 'active blue' : ''} onClick={() => handleSelectTeam('blue')}>Blue Team</button>
-          <button className={!player.team ? 'active' : ''} onClick={() => handleSelectTeam(null)}>Unassigned</button>
-        </div>
-
-        {player.team && (
+      {room.status === 'LOBBY' ? (
+        <div className="lobby-controls">
           <div className="control-group">
-            <h3>Role</h3>
-            <button 
-              className={player.role === 'OPERATIVE' ? 'active' : ''} 
-              onClick={() => handleSelectRole('OPERATIVE')}
-            >
-              Operative
-            </button>
-            <button 
-              className={player.role === 'SPYMASTER' ? 'active' : ''} 
-              onClick={() => handleSelectRole('SPYMASTER')}
-              disabled={room.spymasters && room.spymasters[player.team] && room.spymasters[player.team] !== playerId}
-            >
-              Spymaster {room.spymasters && room.spymasters[player.team] && room.spymasters[player.team] !== playerId ? '(Taken)' : ''}
-            </button>
+            <h3>Team</h3>
+            <button className={player.team === 'red' ? 'active red' : ''} onClick={() => handleSelectTeam('red')}>Red Team</button>
+            <button className={player.team === 'blue' ? 'active blue' : ''} onClick={() => handleSelectTeam('blue')}>Blue Team</button>
+            <button className={!player.team ? 'active' : ''} onClick={() => handleSelectTeam(null)}>Unassigned</button>
           </div>
-        )}
-      </div>
+
+          {player.team && (
+            <div className="control-group">
+              <h3>Role</h3>
+              <button 
+                className={player.role === 'OPERATIVE' ? 'active' : ''} 
+                onClick={() => handleSelectRole('OPERATIVE')}
+              >
+                Operative
+              </button>
+              {(() => {
+                const isTaken = room.spymasterSlots && room.spymasterSlots[`${player.team}Taken`]
+                const isMine = player.role === 'SPYMASTER'
+                return (
+                  <button 
+                    className={isMine ? 'active' : ''} 
+                    onClick={() => handleSelectRole('SPYMASTER')}
+                    disabled={isTaken && !isMine}
+                  >
+                    Spymaster {isTaken && !isMine ? '(Taken)' : ''}
+                  </button>
+                )
+              })()}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="lobby-controls" style={{ textAlign: 'center' }}>
+          <h3>Game Setup (Phase 4 Pending)</h3>
+          <p>The game has started. Waiting for the board to generate...</p>
+        </div>
+      )}
       
       <div className="team-panel">
         <div className="team-box team-red">
@@ -138,7 +151,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
       )}
       
       <div className="lobby-actions">
-        {isHost && (
+        {isHost && room.status === 'LOBBY' && (
           <button 
             className="start-btn" 
             onClick={handleStartGame} 
