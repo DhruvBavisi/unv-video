@@ -408,9 +408,16 @@ function disconnectPlayer(sessionId, socketId) {
 }
 
 function broadcastDrawRoomState(room) {
-  // Sanitize state per player
   for (const p of room.players) {
-    io.to(p.id).emit('draw:room-state', getSafeStateForPlayer(room, p.id))
+    try {
+      io.to(p.id).emit('draw:room-state', getSafeStateForPlayer(room, p.id))
+    } catch (err) {
+      console.error('[DRAW] broadcast failed', {
+        roomId: room.id,
+        playerId: p.id,
+        err
+      })
+    }
   }
 }
 
@@ -438,7 +445,10 @@ function getSafeStateForPlayer(room, playerId) {
     selectedWord: (isDrawer || isReveal || hasGuessed) ? room.selectedWord : undefined,
     strokes: undefined,
     turnTimeout: undefined,
+    wordChoiceTimeout: undefined,
     hintTimer: undefined,
+    revealTimeout: undefined,
+    nextTurnTimeout: undefined,
     playerRecords: undefined
   }
 }
@@ -483,6 +493,10 @@ function updateRoomHintString(room) {
 function startDrawingTurn(room, word, isResume = false) {
   if (room.turnTimeout) { clearTimeout(room.turnTimeout); room.turnTimeout = null; }
   if (room.hintTimer) { clearInterval(room.hintTimer); room.hintTimer = null; }
+  if (room.wordChoiceTimeout) {
+    clearTimeout(room.wordChoiceTimeout)
+    room.wordChoiceTimeout = null
+  }
 
   if (!isResume) {
     room.selectedWord = word
@@ -2059,6 +2073,15 @@ io.on('connection', (socket) => {
       broadcastDrawRoomState(room)
       callback?.({ success: true })
     } catch (error) {
+      if (room.wordChoiceTimeout) {
+        clearTimeout(room.wordChoiceTimeout)
+        room.wordChoiceTimeout = null
+      }
+      room.status = 'LOBBY'
+      room.phase = 'LOBBY'
+      room.currentDrawerId = null
+      room.wordChoices = []
+
       console.error('[DRAW] Failed to start game', {
         roomId: room.id,
         sessionId: currentSessionId,
@@ -4082,6 +4105,14 @@ const HOST = '0.0.0.0'
 httpServer.on('error', (error) => {
   console.error('[SERVER] HTTP server error:', error)
   process.exit(1)
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[SERVER] uncaughtException', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[SERVER] unhandledRejection', reason)
 })
 
 const shutdown = (signal) => {

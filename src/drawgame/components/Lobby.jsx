@@ -83,6 +83,7 @@ function CustomWordsSettings({ room, isHost, onUpdateConfig }) {
 export default function Lobby({ room, onLeave, onUpdateConfig }) {
   const { sessionId } = ensureIdentity()
   const isHost = room.hostId === sessionId
+  const [startError, setStartError] = useState('')
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
   const [showQR, setShowQR] = useState(false)
@@ -106,10 +107,27 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
 
   const hostDisabled = !isHost
 
+  const START_ERRORS = {
+    NO_SESSION: 'Your connection session expired. Please reconnect.',
+    ROOM_NOT_FOUND: 'Room not found.',
+    GAME_ALREADY_STARTED: 'The game has already started.',
+    NOT_ENOUGH_PLAYERS: 'At least 2 players are required to start.',
+    NO_WORDS_AVAILABLE: 'No unused words are available for this game.',
+    START_GAME_FAILED: 'The game could not be started. Please try again.'
+  }
+
   const handleStartGame = () => {
     if (!isHost) return
+    setStartError('')
     const socket = getSocket()
-    socket.emit('draw:start-game')
+    socket.emit('draw:start-game', (res) => {
+      if (res && res.success === false) {
+        setStartError(
+          START_ERRORS[res.error] ||
+          'Something went wrong starting the game.'
+        )
+      }
+    })
   }
 
   const handleAddBots = () => {
@@ -299,6 +317,11 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
             {isHost ? (room.players.length < 2 ? 'NEED MORE PLAYERS' : 'START GAME') : 'WAITING FOR HOST'}
           </button>
         </div>
+        {startError && (
+          <div role="alert" className="sk-error">
+            {startError}
+          </div>
+        )}
       </div>
     </div>
   )
