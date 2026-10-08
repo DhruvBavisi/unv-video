@@ -28,7 +28,7 @@ const SPECIAL_ROLE_AVATAR_LAYOUT = {
   goddessOfJustice: { scale: 0.875, translateY: 5, translateX: 0, themeColor: '#22C55E', imageVariant: 'bg-green', bgColor: '#ffffff', },
   joyFool: { scale: 1.1, translateY: 0, translateX: 0,themeColor: '#7C79FC', borderColor: '#8d8bfcff' },
   lovers: { scale: 1.3, translateY: 21, translateX: 0,  bgColor: '#ffffff', themeColor: '#F15990' },
-  mrMeme: { scale: 1, translateY: -5, translateX: 12 },
+  mrMeme: { scale: 1.1, translateY: 0, translateX: 0, themeColor: '#3FBAFE', borderColor: '#b2e4ffff' },
   revenger: { scale: 1, translateY: 5, translateX: 1.5, bgColor: '#ffffff',themeColor: '#06B6D4' }
 }
 
