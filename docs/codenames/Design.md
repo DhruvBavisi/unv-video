@@ -1,17 +1,17 @@
 # CODENAMES — Design
 
 ## Status
-**Phase 4 implemented.**
+**UI/UX Pass implemented (post-Phase 4).**
 
 ## Design Goal
-Create a premium, clean board-game experience that is visually distinct from Undercover's classified investigation aesthetic and from Skribbl's drawing UI.
+Create a premium, clean board-game experience that exactly mirrors the classic 2015-era Codenames visual language. No futuristic/glass UI, no 2025 modern CGE redesign, just the classic cream cards, deep blue/grey background, and strong red/blue team colors.
 
 Priorities:
-1. Board readability
-2. Team clarity
-3. Hidden-information privacy
-4. Fast clue/reveal interaction
-5. Excellent mobile layout
+1. Complete fidelity to the classic reference screenshots (colors, borders, typography).
+2. Mobile-first layout mirroring the vertical reference composition (safe-area handling, header scaling).
+3. Fluid, responsive Codenames board that remains readable on small screens.
+4. Integrated QR code sharing using existing components.
+5. Consistent design system extending from the Landing/Create screen down to the board itself.
 
 ## Board
 The core game board is a 5×5 grid of 25 word cards.
