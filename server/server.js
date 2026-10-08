@@ -3225,10 +3225,16 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (room.votes && room.votes[targetId]) {
       delete room.votes[targetId]
     }
+    const affectedVoterIds = []
     for (const voterId in room.votes) {
-      if (room.votes[voterId] === targetId) delete room.votes[voterId]
+      if (room.votes[voterId] === targetId) {
+        affectedVoterIds.push(voterId)
+        delete room.votes[voterId]
+      }
     }
-    room.lockedVotes = (room.lockedVotes || []).filter(id => id !== targetId)
+    room.lockedVotes = (room.lockedVotes || []).filter(
+      id => id !== targetId && !affectedVoterIds.includes(id)
+    )
 
     if (room.gamePhase === 'CLUE') {
       if (room.currentTurnPlayerId === targetId) {
@@ -3296,6 +3302,10 @@ ELIMINATION RESULT=`, room.eliminationResult)
     // Check win condition if active
     if (room.status === 'ACTIVE' && room.gamePhase !== 'RESULT') {
       evaluateWinCondition(room)
+    }
+
+    if (room.gamePhase === 'VOTE') {
+      checkAndResolveVotes(room)
     }
 
     const targetSocketId = sessionSockets.get(targetId)
