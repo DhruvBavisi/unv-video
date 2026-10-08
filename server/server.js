@@ -1347,6 +1347,17 @@ io.on('connection', (socket) => {
       syncPlayerPrivateState(room, player, socket)
     }
 
+    // Resume special role timers
+    if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === sessionId && room.revengerDecisionRemainingMs !== undefined) {
+      room.revengerDecisionEndsAt = Date.now() + room.revengerDecisionRemainingMs
+      scheduleRevengerTimeout(room.id, sessionId, room.revengerDecisionRemainingMs)
+      room.revengerDecisionRemainingMs = undefined
+    } else if (room.gamePhase === 'GODDESS_DECISION' && room.goddessId === sessionId && room.goddessDecisionRemainingMs !== undefined) {
+      room.goddessDecisionEndsAt = Date.now() + room.goddessDecisionRemainingMs
+      scheduleGoddessTimeout(room.id, sessionId, room.goddessDecisionRemainingMs)
+      room.goddessDecisionRemainingMs = undefined
+    }
+
     broadcastRoom(room)
   })
 
