@@ -305,7 +305,7 @@ function getCodenamesPrivateState(room, playerId) {
 }
 
 function broadcastCodenamesRoomState(room) {
-  const roomName = \`codenames:${room.id}\`
+  const roomName = `codenames:${room.id}`
   const socketsInRoom = io.sockets.adapter.rooms.get(roomName)
   if (!socketsInRoom) return
   
