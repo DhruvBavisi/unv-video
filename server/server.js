@@ -2086,6 +2086,8 @@ io.on('connection', (socket) => {
       }
       room.configuration.civilians = room.configuration.totalPlayers - room.configuration.undercover - room.configuration.mrWhite
 
+      room.gameVersion = (room.gameVersion || 0) + 1
+
       room.status = 'LOBBY'
       room.phase = 'LOBBY'
       room.gamePhase = 'LOBBY'
@@ -2329,6 +2331,8 @@ io.on('connection', (socket) => {
     if (room.status !== 'LOBBY') return
     if (room.players.length !== room.configuration.totalPlayers) return
     if (!room.players.every((p) => p.status === 'READY')) return
+
+    room.gameVersion = (room.gameVersion || 0) + 1
 
     room.status = 'ACTIVE'
     room.phase = 'ACTIVE'
