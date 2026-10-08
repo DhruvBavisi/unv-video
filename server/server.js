@@ -297,11 +297,29 @@ function disconnectPlayer(sessionId, socketId) {
         const p = currentRoom.players.find(x => x.id === turnContext.playerId)
         if (p && !p.isConnected) {
           console.log(`[CLUE] Player ${turnContext.playerId} disconnected during turn. Advancing.`)
-          if (!currentRoom.submittedCluePlayerIds) currentRoom.submittedCluePlayerIds = []
-          if (!currentRoom.submittedCluePlayerIds.includes(turnContext.playerId)) {
-            currentRoom.submittedCluePlayerIds.push(turnContext.playerId)
-            advanceTurn(currentRoom)
+          if (!currentRoom.skippedCluePlayerIds) currentRoom.skippedCluePlayerIds = []
+          if (!currentRoom.skippedCluePlayerIds.includes(turnContext.playerId)) {
+            currentRoom.skippedCluePlayerIds.push(turnContext.playerId)
           }
+          advanceTurn(currentRoom)
+        }
+      }, 15000)
+    } else if (room.gamePhase === 'VOTE') {
+      checkAndResolveVotes(room)
+    } else if (room.gamePhase === 'MR_WHITE_GUESS' && room.mrWhiteGuesserId === sessionId) {
+      const version = room.gameVersion
+      setTimeout(() => {
+        const currentRoom = rooms.get(roomId)
+        if (!currentRoom || currentRoom.gamePhase !== 'MR_WHITE_GUESS' || currentRoom.gameVersion !== version) return
+        if (currentRoom.mrWhiteGuesserId !== sessionId) return
+        
+        const p = currentRoom.players.find(x => x.id === sessionId)
+        if (p && !p.isConnected) {
+          console.log(`[MR_WHITE] Player ${sessionId} disconnected during guess. Advancing.`)
+          currentRoom.mrWhiteGuessSubmitted = false
+          currentRoom.mrWhiteLiveGuess = ''
+          currentRoom.mrWhiteGuesserId = null
+          advanceAfterMrWhiteWrongGuess(currentRoom.id, currentRoom.gameVersion)
         }
       }, 15000)
     }
@@ -2625,72 +2643,85 @@ io.on('connection', (socket) => {
     const eligibleVoters = room.players.filter((p) => {
       if (p.status !== 'PLAYING') return false
       const ghostSpec = p.eliminated === true && p.specialRole === 'ghost'
-      return ghostSpec || (!p.eliminated && !p.spectator)
+      if (!(ghostSpec || (!p.eliminated && !p.spectator))) return false
+      return p.isConnected || (room.lockedVotes || []).includes(p.id)
     })
-    const votingComplete = room.lockedVotes.length === eligibleVoters.length
     
-    console.log('[VOTING DEBUG]')
-    console.log(`room=${room.id}`)
-    console.log(`round=${room.round}`)
-    console.log(`attempt=${room.votingAttempt || 1}`)
-    console.log(`eligibleVoters=${eligibleVoters.length}`)
-    console.log(`confirmedVoters=${room.lockedVotes.length}`)
-    console.log(`remainingVoters=${eligibleVoters.length - room.lockedVotes.length}`)
-    console.log(`votingComplete=${votingComplete}`)
-
+    const votingComplete = room.lockedVotes.length >= eligibleVoters.length
     if (votingComplete) {
-      console.log('resolving=true')
-      // Resolve votes
-      const voteCounts = {}
-      for (const voterId of room.lockedVotes) {
-        const targetId = room.votes[voterId]
-        voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
+      checkAndResolveVotes(room)
+    } else {
+      broadcastRoom(room)
+    }
+    
+    callback?.({ success: true })
+  })
+
+  function checkAndResolveVotes(room) {
+    if (room.gamePhase !== 'VOTE') return
+    
+    const eligibleVoters = room.players.filter((p) => {
+      if (p.status !== 'PLAYING') return false
+      const ghostSpec = p.eliminated === true && p.specialRole === 'ghost'
+      if (!(ghostSpec || (!p.eliminated && !p.spectator))) return false
+      return p.isConnected || (room.lockedVotes || []).includes(p.id)
+    })
+    
+    const votingComplete = room.lockedVotes.length >= eligibleVoters.length
+    if (!votingComplete) return
+    
+    console.log('resolving=true')
+    // Resolve votes
+    const voteCounts = {}
+    for (const voterId of room.lockedVotes) {
+      const targetId = room.votes[voterId]
+      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1
+    }
+    
+    let finalVoteCounts = voteCounts
+    const tallyResult = onVoteTallied(room, voteCounts)
+    if (tallyResult && tallyResult.redirectedTally) {
+      finalVoteCounts = tallyResult.redirectedTally
+    }
+    
+    let maxVotes = 0
+    let mostVoted = []
+    
+    for (const [targetId, count] of Object.entries(finalVoteCounts)) {
+      if (count > maxVotes) {
+        maxVotes = count
+        mostVoted = [targetId]
+      } else if (count === maxVotes) {
+        mostVoted.push(targetId)
       }
-      
-      let finalVoteCounts = voteCounts
-      const tallyResult = onVoteTallied(room, voteCounts)
-      if (tallyResult && tallyResult.redirectedTally) {
-        finalVoteCounts = tallyResult.redirectedTally
-      }
-      
-      let maxVotes = 0
-      let mostVoted = []
-      
-      for (const [targetId, count] of Object.entries(finalVoteCounts)) {
-        if (count > maxVotes) {
-          maxVotes = count
-          mostVoted = [targetId]
-        } else if (count === maxVotes) {
-          mostVoted.push(targetId)
+    }
+    
+    if (mostVoted.length === 1) {
+      // Clear majority
+      const eliminatedId = mostVoted[0]
+      const eliminatedPlayer = room.players.find(p => p.id === eliminatedId)
+      if (eliminatedPlayer) {
+        eliminatedPlayer.eliminated = true
+        eliminatedPlayer.spectator = true
+        const cascaded = onElimination(room, eliminatedId) || []
+        
+        const newlyEliminated = [eliminatedPlayer, ...cascaded]
+        room.mrWhiteQueue = newlyEliminated.filter(p => p.role === 'MR_WHITE').map(p => p.id)
+        
+        room.voteResult = { tie: false, eliminated: eliminatedId }
+        room.gamePhase = 'ELIMINATION'
+        room.eliminationResult = {
+          playerId: eliminatedId,
+          playerName: eliminatedPlayer.name,
+          role: eliminatedPlayer.role,
+          voteCount: maxVotes,
+          isVoteElimination: true,
+          startedAt: Date.now(),
+          specialRole: eliminatedPlayer.specialRole,
+          specialRoleOutcomes: room.specialRoleOutcomes
         }
-      }
-      
-      if (mostVoted.length === 1) {
-        // Clear majority
-        const eliminatedId = mostVoted[0]
-        const eliminatedPlayer = room.players.find(p => p.id === eliminatedId)
-        if (eliminatedPlayer) {
-          eliminatedPlayer.eliminated = true
-          eliminatedPlayer.spectator = true
-          const cascaded = onElimination(room, eliminatedId) || []
-          
-          const newlyEliminated = [eliminatedPlayer, ...cascaded]
-          room.mrWhiteQueue = newlyEliminated.filter(p => p.role === 'MR_WHITE').map(p => p.id)
-          
-          room.voteResult = { tie: false, eliminated: eliminatedId }
-          room.gamePhase = 'ELIMINATION'
-          room.eliminationResult = {
-            playerId: eliminatedId,
-            playerName: eliminatedPlayer.name,
-            role: eliminatedPlayer.role,
-            voteCount: maxVotes,
-            isVoteElimination: true,
-            startedAt: Date.now(),
-            specialRole: eliminatedPlayer.specialRole,
-            specialRoleOutcomes: room.specialRoleOutcomes
-          }
-          
-          console.log(`[ELIMINATION DEBUG]
+        
+        console.log(`[ELIMINATION DEBUG]
 VOTE RESOLVED
 room=${room.id}
 round=${room.round}
@@ -2698,70 +2729,67 @@ eliminatedPlayerId=${eliminatedId}
 eliminatedPlayerName=${eliminatedPlayer.name}
 role=${eliminatedPlayer.role}`)
 
-          console.log(`[ELIMINATION DEBUG]
+        console.log(`[ELIMINATION DEBUG]
 SERVER PHASE=${room.gamePhase}
 ELIMINATION RESULT=`, room.eliminationResult)
 
-          const activePlayersRemaining = getActivePlayers(room).length
-          console.log('[ELIMINATION]', {
-            roomId: room.id,
-            player: eliminatedId,
-            role: eliminatedPlayer.role,
-            activePlayersRemaining,
-          })
+        const activePlayersRemaining = getActivePlayers(room).length
+        console.log('[ELIMINATION]', {
+          roomId: room.id,
+          player: eliminatedId,
+          role: eliminatedPlayer.role,
+          activePlayersRemaining,
+        })
 
-          broadcastRoom(room)
-          
-          const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
-          const delay = hasMrWhite ? 5000 : 6500
-          
-          const version = room.gameVersion
-          setTimeout(() => {
-            advanceFromElimination(room.id, version)
-          }, delay)
-        }
-      } else {
-        // Tie
-        room.voteResult = { tie: true, tiedPlayers: mostVoted }
+        broadcastRoom(room)
         
-        const goddess = room.players.find(p => p.specialRole === 'goddessOfJustice')
-        if (goddess && !goddess.specialRoleData?.used) {
-          room.gamePhase = 'GODDESS_DECISION'
-          room.goddessId = goddess.id
-          
-          const version = room.gameVersion
-          setTimeout(() => {
-            const currentRoom = rooms.get(room.id)
-            if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
-            if (currentRoom.goddessId !== goddess.id) return
-            
-            const currentGoddess = currentRoom.players.find(p => p.id === goddess.id)
-            if (currentGoddess && currentGoddess.specialRoleData) {
-              currentGoddess.specialRoleData.used = true
-            }
-            
-            currentRoom.votes = {}
-            currentRoom.lockedVotes = []
-            currentRoom.voteResult = null
-            currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
-            currentRoom.gamePhase = 'VOTE'
-            currentRoom.goddessId = null
-            broadcastRoom(currentRoom)
-          }, 15000)
-        } else {
-          // No special-role decision is required: immediately start the next vote attempt.
-          room.votes = {}
-          room.lockedVotes = []
-          room.voteResult = null
-          room.votingAttempt = (room.votingAttempt || 1) + 1
-          room.gamePhase = 'VOTE'
-        }
+        const hasMrWhite = newlyEliminated.some(p => p.role === 'MR_WHITE')
+        const delay = hasMrWhite ? 5000 : 6500
+        
+        const version = room.gameVersion
+        setTimeout(() => {
+          advanceFromElimination(room.id, version)
+        }, delay)
       }
+    } else {
+      // Tie
+      room.voteResult = { tie: true, tiedPlayers: mostVoted }
+      
+      const goddess = room.players.find(p => p.specialRole === 'goddessOfJustice')
+      if (goddess && !goddess.specialRoleData?.used) {
+        room.gamePhase = 'GODDESS_DECISION'
+        room.goddessId = goddess.id
+        
+        const version = room.gameVersion
+        setTimeout(() => {
+          const currentRoom = rooms.get(room.id)
+          if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
+          if (currentRoom.goddessId !== goddess.id) return
+          
+          const currentGoddess = currentRoom.players.find(p => p.id === goddess.id)
+          if (currentGoddess && currentGoddess.specialRoleData) {
+            currentGoddess.specialRoleData.used = true
+          }
+          
+          currentRoom.votes = {}
+          currentRoom.lockedVotes = []
+          currentRoom.voteResult = null
+          currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
+          currentRoom.gamePhase = 'VOTE'
+          currentRoom.goddessId = null
+          broadcastRoom(currentRoom)
+        }, 15000)
+      } else {
+        // No special-role decision is required: immediately start the next vote attempt.
+        room.votes = {}
+        room.lockedVotes = []
+        room.voteResult = null
+        room.votingAttempt = (room.votingAttempt || 1) + 1
+        room.gamePhase = 'VOTE'
+      }
+      broadcastRoom(room)
     }
-    
-    broadcastRoom(room)
-    callback?.({ success: true })
-  })
+  }
 
   socket.on('unlock-vote', (callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
