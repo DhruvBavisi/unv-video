@@ -86,3 +86,27 @@ Use `codenames:` event prefixes and a dedicated room-state namespace.
 
 ## Scope
 The initial implementation is online-only. Voice/video and Pass & Play are out of scope unless separately approved.
+
+## CLASSIC CODENAMES UI LOCK
+The project must reproduce the visual language of the original/classic Codenames board-game experience (2015-era/classic edition), NOT the newer 2025 refreshed Codenames visual design.
+
+Preserve these principles:
+- classic 5×5 rectangular word-card board
+- traditional Red / Blue / Neutral / Assassin card states
+- restrained board-game/card styling
+- warm paper/card-like visual treatment
+- simple classic typography and hierarchy
+- clear physical-board-inspired spacing and borders
+- minimal decoration
+- responsive adaptation for desktop/mobile is allowed
+
+Explicitly prohibit:
+- 2025 refreshed Codenames visual style
+- futuristic UI
+- glassmorphism
+- excessive gradients
+- neon gaming UI
+- Undercover's black/gold investigation styling
+- copying proprietary Codenames artwork/assets
+
+Recreate the classic visual language using the project's own CSS/components/assets.

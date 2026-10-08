@@ -108,8 +108,6 @@ export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSele
             </div>
           </div>
 
-        </div>
-
           {/* CODENAMES PANEL */}
           <div className="mode-select__panel mode-select__panel--sk" onClick={onSelectCodenames}>
             
