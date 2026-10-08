@@ -3157,6 +3157,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
     const targetPlayer = room.players[targetIndex]
 
+    const kickedTurnIndex = room.turnOrder ? room.turnOrder.indexOf(targetId) : -1
+
     // Remove from active game structures
     room.turnOrder = (room.turnOrder || []).filter(id => id !== targetId)
     room.submittedCluePlayerIds = (room.submittedCluePlayerIds || []).filter(id => id !== targetId)
@@ -3170,22 +3172,20 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
     room.lockedVotes = (room.lockedVotes || []).filter(id => id !== targetId)
 
-    if (room.currentTurnPlayerId === targetId) {
-      // Advance turn if the kicked player was currently playing
-      // Since turnIndex is currently at the kicked player, we can just point to the next player
-      // or rather, because we removed them from turnOrder, the next player is now at turnIndex
-      if (room.turnIndex < room.turnOrder.length) {
-        room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+    if (room.gamePhase === 'CLUE') {
+      if (room.currentTurnPlayerId === targetId) {
+        if (room.turnIndex < room.turnOrder.length) {
+          room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+          if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+            advanceTurn(room)
+          }
+        } else {
+          startVotePhase(room)
+        }
       } else {
-        startVotePhase(room)
-      }
-    } else {
-      // Adjust turnIndex if the kicked player was before the current player
-      const originalIndex = room.turnOrder.findIndex(id => id === targetId) // Note: already removed above, this is wrong.
-      // Better way: we don't know where they were. We should just re-find the current player's index.
-      if (room.currentTurnPlayerId) {
-        const newIndex = room.turnOrder.indexOf(room.currentTurnPlayerId)
-        if (newIndex !== -1) room.turnIndex = newIndex
+        if (kickedTurnIndex !== -1 && room.turnIndex !== undefined && kickedTurnIndex < room.turnIndex) {
+          room.turnIndex--
+        }
       }
     }
 
