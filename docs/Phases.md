@@ -531,3 +531,43 @@ Do not begin until every enabled-by-default-off role above has been individually
 - Verify host-only control, per-role locking at investigation start, and correct enable/disable gating below each role's minimum player count.
 - Verify Play Again correctly resets all special-role assignments, traits, points, and used/unused flags alongside the existing reset scope from Phase 20.
 - Re-run the full Phase 23 QA matrix with a representative set of Special Roles enabled to confirm the base game is unaffected when a given role is OFF.
+
+
+# CURRENT STATUS ADDENDUM — 2026-10-08
+
+The phase list above is retained as historical implementation planning. The following status is authoritative for the current repository.
+
+## Special-Role Completion Status
+Implemented server/client special roles:
+- Phase 26 — Joy Fool: Implemented
+- Phase 27 — Duelists: Implemented
+- Phase 28 — Lovers: Implemented
+- Phase 29 — Revenger: Implemented
+- Phase 30 — Boomerang: Implemented
+- Phase 31 — Goddess of Justice: Implemented
+- Phase 32 — Ghost: Implemented
+- Phase 33 — Falafel Vendor: Implemented
+- Phase 34 — Mr. Meme: Implemented
+
+The special-role framework is server-authoritative and uses private state synchronization plus sanitized public state.
+
+## Lifecycle / Reconnection Completion
+The current implementation also includes:
+- resume-token authentication for existing-player reconnects
+- automatic Socket.IO reconnect through `register`
+- explicit `join-room` reconnect support
+- disconnected-player retention
+- explicit-only player removal
+- host reassignment when necessary
+- preservation of points and player identity
+- timer pause/resume for Skribbl Word Choice/Drawing
+- timer pause/resume for Undercover Revenger/Goddess decisions
+
+Do not reintroduce stale-player auto-removal, 60-second disconnect eviction, or "disconnect means leave" behavior.
+
+## Draw & Guess
+Draw & Guess is implemented and uses shared Socket.IO infrastructure with `draw:` event names and isolated draw-room state.
+
+## Next Planned Game
+Codenames is the next planned game mode. Its specification is maintained separately in `docs/codenames/`. Codenames implementation must not modify working Undercover or Draw & Guess state machines unnecessarily.
+

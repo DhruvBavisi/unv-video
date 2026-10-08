@@ -1,33 +1,46 @@
-# UNDERCOVER — Updated Game Documentation
 
-These documents update the project roadmap from a cinematic landing experience into the original playable Online Mode.
+# UNDERCOVER — Project Documentation
 
-Updated files:
-- Architecture.md
-- Design.md
-- Memory.md
-- Phases.md
-- PRD.md
-- Rules.md
+This folder contains the current product, architecture, design, rules and implementation roadmap for the project.
 
-The Online Mode rules are based on the approved role distribution and gameplay decisions:
-- Civilian receives Word A.
-- Undercover receives similar Word B.
-- Mr. White receives no word.
-- Maximum 3-word clues.
-- No duplicate clues across the investigation.
-- Random clue sequence each round.
-- Mr. White cannot be first in Round 1 only.
-- Everyone active votes; self-voting prohibited.
-- Ties cause revoting with no elimination.
-- Eliminated Mr. White immediately gets a free-text word guess.
-- Undercover wins only when UC is strictly greater than CI.
-- Surviving Mr. White wins jointly with Civilians when the investigation ends in a Civilian victory.
-- Eliminated and mid-game-joining players become spectators.
-- Mid-game joiners enter the lobby automatically at the next round.
-- Players can reconnect using the same Room ID.
-- Players can join via deep link (e.g. `/?room=ABC123`).
-- Players can share the room via QR code or direct copy from the lobby.
-- Installed PWA supports Android and iOS Home Screen native app experience.
-- Play Again reuses the same Room ID.
-- Pass & Play is deferred.
+## Core Documentation
+- [Architecture.md](./Architecture.md)
+- [Design.md](./Design.md)
+- [Memory.md](./Memory.md)
+- [PRD.md](./PRD.md)
+- [Phases.md](./Phases.md)
+- [Rules.md](./Rules.md)
+
+## Current Playable Modes
+1. **Undercover** — primary investigation game.
+2. **Draw & Guess / Skribbl** — separate drawing/guessing game sharing the Socket.IO infrastructure.
+
+Both modes use server-authoritative room state and stable reconnect identity.
+
+## Undercover Current Special Roles
+Implemented:
+- Joy Fool
+- Duelists
+- Lovers
+- Revenger
+- Boomerang
+- Goddess of Justice
+- Ghost
+- Falafel Vendor
+- Mr. Meme
+
+## Reconnection Rule
+Network/socket disconnect is not Leave Game. Players remain in their rooms and can reconnect using their resume token. Explicit Leave Game and host kick are the removal paths.
+
+## Planned Next Mode — Codenames
+Codenames is specified but not yet implemented.
+
+Six dedicated Codenames documents are maintained in [codenames/](./codenames/):
+- [Architecture.md](./codenames/Architecture.md)
+- [Design.md](./codenames/Design.md)
+- [Memory.md](./codenames/Memory.md)
+- [PRD.md](./codenames/PRD.md)
+- [Phases.md](./codenames/Phases.md)
+- [Rules.md](./codenames/Rules.md)
+
+The Codenames documents define the initial implementation contract and must remain consistent with the existing shared Socket.IO/session architecture.

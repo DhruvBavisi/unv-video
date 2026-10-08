@@ -287,3 +287,56 @@ Avoid:
 - distracting game-show effects
 
 UNDERCOVER should feel premium, tense, investigative, and deliberate.
+
+
+## Current Implementation Synchronization — 2026-10-08
+
+### Special Roles
+The playable UI now supports the implemented special-role system. Role-specific UI must follow server-authoritative private state and reveal timing. Do not expose another player's special role through roster styling, DOM attributes, accessible labels, or client payloads.
+
+Implemented roles:
+- Joy Fool
+- Duelists
+- Lovers
+- Revenger
+- Boomerang
+- Goddess of Justice
+- Ghost
+- Falafel Vendor
+- Mr. Meme
+
+The special-role controls remain host-controlled and role availability is constrained by server-side rules. Special-role state must reset correctly when a new investigation starts.
+
+### Reconnection UX
+A reconnect is a restoration of the existing game, not a new join. The UI should preserve the current phase and the player's existing points, role/private state and available action.
+
+For special-role decision phases, Revenger and Goddess timers resume from their stored remaining duration after automatic reconnect.
+
+### Draw & Guess Design
+Draw & Guess is a second playable mode sharing the project's Socket.IO infrastructure. Its UI is isolated from Undercover under `src/drawgame/`.
+
+Core visual requirements:
+- cheerful/premium game styling rather than the Undercover black-and-gold investigation palette
+- mobile-first drawing surface
+- color palette with fill support
+- Skribbl-like chat
+- word-selection overlay dims the drawing surface
+- canvas clears for the next drawer
+- round-end points are shown in descending order
+- dense player score lists may use two columns instead of unnecessary scrolling
+- drawer points can be presented at the center of the canvas at the end of the drawing section
+
+### Mobile Safe Area
+Installed/PWA views must not place the top navigation beneath the iOS Dynamic Island/notch. Respect `env(safe-area-inset-top)` and reserve the top inset before rendering the main content.
+
+### Future Codenames UI
+Codenames should not inherit the Undercover black/gold visual language. Its planned UI should be a clean, highly legible board-game interface with:
+- 5×5 word board
+- clear Red/Blue team identity
+- distinct Spymaster vs Operative presentation
+- visible clue/number panel
+- turn indicator
+- compact player/team roster
+- strong but restrained card reveal animation
+- mobile-first board sizing with no horizontal overflow
+- no client-side exposure of the hidden board key

@@ -214,3 +214,49 @@ Handle and explicitly define behavior for:
 
 ## Development Order
 Do not implement Pass & Play yet. Online Mode must be completed and QA-tested first.
+
+
+## CURRENT IMPLEMENTATION RULES — 2026-10-08
+
+### Socket Lifecycle
+- Socket disconnect is never equivalent to Leave Game.
+- Never automatically remove a player because of network loss, refresh, browser close, or Socket.IO disconnect.
+- Only explicit Leave Game or host kick removes a player.
+- Existing-player reconnect requires the player's private resume token.
+- Reconnect must restore the same player identity, points and authoritative game state.
+- Do not create duplicate players on reconnect.
+- Do not introduce a stale-player grace-period deletion mechanism.
+
+### Timer Resume
+When a timer is paused because its controlling player disconnected, store remaining milliseconds and restore exactly that duration after authenticated reconnect.
+
+Never use truthiness checks for remaining durations because `0` is valid.
+Never reset a resumed timer to its original full duration.
+
+Current affected timers:
+- Undercover Revenger decision
+- Undercover Goddess of Justice decision
+- Skribbl Word Choice
+- Skribbl Drawing
+
+### Special Roles
+Current implemented special roles:
+Joy Fool, Duelists, Lovers, Revenger, Boomerang, Goddess of Justice, Ghost, Falafel Vendor and Mr. Meme.
+
+All role assignment and authoritative outcomes belong on the server. Public state must not leak private special-role data before its defined reveal moment.
+
+### Draw & Guess
+Draw & Guess is a separate mode sharing Socket.IO. Use `draw:` event prefixes and isolated draw-room state. Do not couple draw turns or scoring to Undercover phases.
+
+### Codenames
+Codenames documentation is specification-only until implementation begins.
+
+When implementing it:
+- reuse the shared Socket.IO connection/session architecture
+- use `codenames:` event prefixes
+- keep Codenames room state isolated
+- make the server authoritative
+- never broadcast the complete board key to Operatives
+- use per-player state for Spymaster visibility
+- preserve resume-token reconnect behavior
+- do not modify existing Undercover/Draw & Guess lifecycle behavior unless required by a shared infrastructure fix

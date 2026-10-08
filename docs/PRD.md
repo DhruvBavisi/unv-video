@@ -212,3 +212,46 @@ PLAY NOW enters the game/lobby layer; it must not couple gameplay state to cinem
 The site should feel cinematic, provide frame-accurate stutter-free scrolling, work responsively, maintain exact video-time synchronization for all character reveals, and provide a robust playable Online Mode with secure role/word privacy, deterministic state transitions, reconnect recovery, spectator handling, tie-safe voting, Mr. White guessing, correct win conditions, and same-room Play Again.
 
 Pass & Play is intentionally deferred until its rules and flow are separately defined.
+
+
+## Current Implementation Addendum — 2026-10-08
+
+### Existing Playable Modes
+The product currently contains two playable online game modes sharing the Socket.IO infrastructure:
+1. Undercover
+2. Draw & Guess / Skribbl
+
+Each mode has isolated room/game state while sharing connection identity and reconnect principles.
+
+### Lifecycle Requirements Now Implemented
+- Socket/network disconnect does not remove a player.
+- Explicit Leave Game removes a player.
+- Host kick removes a player.
+- Resume-token authentication restores an existing player identity.
+- Reconnect preserves points and current game state.
+- Undercover Revenger/Goddess decision timers resume from stored remaining time after automatic reconnect.
+- Draw & Guess Word Choice/Drawing timers resume after automatic reconnect.
+- Duplicate player creation on reconnect is prohibited.
+
+### Special Roles
+The Undercover product now includes these implemented special roles:
+Joy Fool, Duelists, Lovers, Revenger, Boomerang, Goddess of Justice, Ghost, Falafel Vendor and Mr. Meme.
+
+All special-role behavior remains server-authoritative and privacy-sensitive.
+
+### Planned Codenames Mode
+Codenames is approved as the next planned game mode and is documented separately under `docs/codenames/`.
+
+It will:
+- reuse the existing React/Vite application
+- reuse the existing Socket.IO connection/session infrastructure
+- use a dedicated server-side Codenames room map
+- use `codenames:`-prefixed socket events
+- support stable reconnect/resume-token identity
+- keep the 25-card key private from Operatives
+- support two teams: Red and Blue
+- support Spymaster and Operative roles
+- use a server-authoritative turn/clue/reveal state machine
+- remain isolated from Undercover and Draw & Guess room state
+
+Codenames is specification-only until its implementation phases are started.

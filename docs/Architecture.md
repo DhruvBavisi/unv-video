@@ -338,3 +338,71 @@ Gameplay uses normal application layout, not cinematic scroll control. Mobile mu
 
 ## Future
 Pass & Play is deliberately separated from Online Mode and must not be implemented until its rules are approved.
+
+
+## Current Implementation Synchronization — 2026-10-08
+
+This section is the source-of-truth addendum for architecture implemented after the original gameplay documentation.
+
+### Shared Socket / Session Architecture
+The project now uses one Socket.IO server architecture for the playable modes. Undercover and Skribbl/Draw & Guess share the server process and connection/session infrastructure while keeping mode-specific room state separate.
+
+- Undercover rooms use the existing room map and normal game events.
+- Draw & Guess rooms use a separate draw-room map and `draw:`-prefixed events.
+- Stable `sessionId` + private `resumeToken` identify a player across reconnects.
+- Automatic Socket.IO reconnect uses the existing `register` event.
+- Existing-player attachment requires the matching resume token; a guessed session ID cannot attach to another player's identity.
+- A reconnect restores the same player object, ID, name, points, role state, room and current game phase.
+- Network disconnect is not a leave action.
+- Only explicit Leave Game or host kick removes a player.
+- Disconnected players are retained; room cleanup must never treat "all real players disconnected" as equivalent to explicit leaving.
+- Host reassignment only occurs when the current host is unavailable and another connected player can take the host slot.
+
+### Disconnect / Timer Preservation
+Undercover special-role decision timers are authoritative and pause while the affected player is disconnected.
+
+- Revenger stores `revengerDecisionRemainingMs` during disconnect.
+- Goddess of Justice stores `goddessDecisionRemainingMs` during disconnect.
+- Automatic `register` reconnect and explicit `join-room` reconnect both restore the timer from the stored remaining milliseconds.
+- `0` is a valid remaining duration and must not be replaced by the original duration.
+- Skribbl drawer timers use the same pause/resume principle for Word Choice and Drawing.
+
+### Special-Role Architecture
+Special roles are assigned server-side through the unified special-role framework and resolved through hooks in `server/specialRolesHooks.js`.
+
+Implemented roles currently include:
+- Joy Fool
+- Duelists
+- Lovers
+- Revenger
+- Boomerang
+- Goddess of Justice
+- Ghost
+- Falafel Vendor
+- Mr. Meme
+
+Special-role identity/data remains private unless that role's rules explicitly define a reveal moment. Public room state is sanitized accordingly.
+
+### Draw & Guess Architecture
+Draw & Guess is a separate game mode under `src/drawgame/` with shared Socket.IO infrastructure. Server state includes drawer, turn order, word choice, drawing timer, strokes, guesses, hints, scoring and round transitions.
+
+Reconnect preserves:
+- drawer identity
+- current phase
+- selected word when already chosen
+- strokes
+- guesses
+- hints
+- scores
+- remaining Word Choice/Drawing time
+
+Explicit leave/kick is separate from socket disconnect.
+
+### PWA / Mobile Constraints
+The installed web app uses standalone display mode and must respect mobile safe-area insets. Text inputs remain at least 16px and focused inputs use the visual viewport behavior documented in the Design document.
+
+### Future Game Modes
+Codenames is now documented as a planned third playable mode. It is **documentation/specification only** at this point; no Codenames runtime code is claimed to exist in this commit.
+
+The intended architecture is:
+`src/codenames/` for React UI, shared Socket.IO connection/session infrastructure, and a server-side Codenames room map with `codenames:`-prefixed events. Codenames private board identities must be delivered per player because Spymasters can see the key while Operatives cannot.

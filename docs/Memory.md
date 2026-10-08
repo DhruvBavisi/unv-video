@@ -174,3 +174,48 @@ No new Room ID is required.
 
 ## Current Implementation Principle
 Build Online Mode incrementally. First establish authoritative game rules/state and room lifecycle, then add each phase. Do not build Pass & Play yet.
+
+
+## Current Implementation Snapshot — 2026-10-08
+
+### Completed Online/Special-Role Work
+The following server-authoritative special roles are implemented:
+- Joy Fool
+- Duelists
+- Lovers
+- Revenger
+- Boomerang
+- Goddess of Justice
+- Ghost
+- Falafel Vendor
+- Mr. Meme
+
+The implementation uses `assignSpecialRoles(room)`, special-role hooks, private state synchronization and public-state sanitization.
+
+### Reconnection / Lifecycle Snapshot
+The current lifecycle rule is strict:
+
+**Socket disconnect = disconnected, not removed.**
+
+A player remains in the room indefinitely until:
+- the player explicitly leaves, or
+- the host explicitly kicks the player.
+
+Reconnect uses the stored resume token and restores the same identity and state. This includes existing points and active special-role decision state.
+
+Recent fixes also make automatic Socket.IO reconnect resume:
+- Skribbl Word Choice timer
+- Skribbl Drawing timer
+- Undercover Revenger decision timer
+- Undercover Goddess of Justice decision timer
+
+Room cleanup must not delete a room merely because every real player is temporarily disconnected.
+
+### Draw & Guess Snapshot
+Draw & Guess is implemented as a separate game mode using the shared Socket.IO connection. Its room state, scoring, drawing turns, word choice, hints, chat and timer lifecycle are kept separate from Undercover state.
+
+### Current Special-Role Documentation State
+Phase 34 (Mr. Meme) is implemented with the online adaptation used by the current codebase. The documentation should no longer describe Mr. Meme as an unimplemented product decision; the exact server/client behavior should remain aligned with the implementation rather than introducing a new webcam dependency.
+
+### Codenames Planning
+Codenames is a new planned game mode. It is not implemented yet. The six documents under `docs/codenames/` define the approved initial product/technical specification and should be updated as implementation decisions are made.
