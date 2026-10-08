@@ -734,10 +734,6 @@ function removeDrawPlayer(sessionId) {
   const wasHost = foundRoom.players[idx].isHost
   const isDrawer = foundRoom.currentDrawerId === sessionId
   
-  if (isDrawer && (foundRoom.phase === 'WORD_CHOICE' || foundRoom.phase === 'DRAWING')) {
-    endDrawRound(foundRoom)
-  }
-  
   if (foundRoom.currentDrawerId === sessionId) {
     foundRoom.currentDrawerId = null
   }
@@ -760,6 +756,10 @@ function removeDrawPlayer(sessionId) {
     drawRooms.delete(foundRoomId)
     io.to(`draw:${foundRoomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
     return { roomId: foundRoomId, room: null }
+  }
+
+  if (isDrawer && (foundRoom.phase === 'WORD_CHOICE' || foundRoom.phase === 'DRAWING')) {
+    endDrawRound(foundRoom)
   }
 
   if (wasHost) {
