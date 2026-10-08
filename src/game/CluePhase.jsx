@@ -160,7 +160,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
   )
 }
 
-function TurnIndicator({ currentTurnPlayerId, myPlayerId, players, gamePhase }) {
+function TurnIndicator({ currentTurnPlayerId, myPlayerId, players, gamePhase, isMrMeme }) {
   const isMyTurn = currentTurnPlayerId === myPlayerId
   const currentPlayer = players.find((p) => p.id === currentTurnPlayerId)
   const playerName = currentPlayer?.name || 'Unknown'
@@ -180,7 +180,11 @@ function TurnIndicator({ currentTurnPlayerId, myPlayerId, players, gamePhase }) 
       <div className="clue-panel__turn clue-panel__turn--active">
         <span className="online-kicker">Your turn</span>
         <h2>Your turn</h2>
-        <p>Give one clue related to your word.</p>
+        {isMrMeme ? (
+          <p>Give one clue using <strong>memes, emojis, or internet slang</strong>.</p>
+        ) : (
+          <p>Give one clue related to your word.</p>
+        )}
       </div>
     )
   }
@@ -194,7 +198,7 @@ function TurnIndicator({ currentTurnPlayerId, myPlayerId, players, gamePhase }) 
   )
 }
 
-function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit }) {
+function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit, isMrMeme }) {
   const [text, setText] = useState('')
   const inputRef = useRef(null)
   const charCount = text.length
@@ -224,6 +228,11 @@ function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit }) {
     }
   }, [isMyTurn])
 
+  let placeholder = 'Waiting...'
+  if (canSubmit) {
+    placeholder = isMrMeme ? 'Type meme, emoji, or slang...' : 'Type your clue here...'
+  }
+
   return (
     <div className={`clue-panel__input ${isMyTurn ? 'clue-panel__input--active' : ''}`}>
       <label className="clue-panel__input-label">Clue</label>
@@ -234,7 +243,7 @@ function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={canSubmit ? 'Type your clue here...' : 'Waiting...'}
+          placeholder={placeholder}
           maxLength={MAX_CLUE_LENGTH + 10}
           disabled={!canSubmit}
           className="clue-panel__text-input"
@@ -1032,6 +1041,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                   myPlayerId={sessionId}
                   players={players}
                   gamePhase={gamePhase}
+                  isMrMeme={localSecret?.specialRole === 'mrMeme'}
                 />
                 <ClueOrderDisplay
                   turnOrder={turnOrder}
@@ -1107,6 +1117,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
             gamePhase={gamePhase}
             submitting={submitting}
             onSubmit={handleSubmitClue}
+            isMrMeme={localSecret?.specialRole === 'mrMeme'}
           />
 
           {gamePhase === 'CLUE' && localSecret?.specialRole === 'falafelVendor' && !myPlayer?.eliminated && !myPlayer?.spectator && (

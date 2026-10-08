@@ -99,7 +99,7 @@ export const SPECIAL_ROLES = [
     key: "mrMeme",
     name: "Mr. Meme",
     minPlayers: 3,
-    description: "Mr. Meme must communicate using memes, emojis, or internet slang.",
+    description: "An eccentric investigator who only communicates in memes, emojis, or internet slang.",
     rules: [
       "Mr. Meme must communicate using memes, emojis, or internet slang."
     ],
