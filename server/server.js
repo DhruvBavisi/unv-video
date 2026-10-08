@@ -4044,8 +4044,26 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
 })
 
-const PORT = process.env.PORT || 3001
-httpServer.listen(PORT, () => {
-  console.log(`UNDERCOVER server running on port ${PORT}`)
+const PORT = Number(process.env.PORT) || 3001
+const HOST = '0.0.0.0'
+
+httpServer.on('error', (error) => {
+  console.error('[SERVER] HTTP server error:', error)
+  process.exit(1)
+})
+
+const shutdown = (signal) => {
+  console.log(`[SERVER] ${signal} received; shutting down gracefully`)
+  httpServer.close(() => {
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10000).unref()
+}
+
+process.once('SIGTERM', () => shutdown('SIGTERM'))
+process.once('SIGINT', () => shutdown('SIGINT'))
+
+httpServer.listen(PORT, HOST, () => {
+  console.log(`UNDERCOVER server running on ${HOST}:${PORT}`)
   console.log(`CORS allowed origin: ${allowedOrigin}`)
 })
