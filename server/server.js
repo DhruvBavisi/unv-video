@@ -866,7 +866,14 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
   if (!room) return
   const player = room.players.find((p) => p.id === sessionId)
   if (player) player.isConnected = false
-  broadcastCodenamesRoomState(room)
+  
+  const connectedRealPlayers = room.players.filter(p => !p.isBot && p.isConnected)
+  if (connectedRealPlayers.length === 0) {
+    codenamesRooms.delete(roomId)
+    io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
+  } else {
+    broadcastCodenamesRoomState(room)
+  }
 }
 
 function removeCodenamesPlayer(sessionId) {
@@ -886,15 +893,16 @@ function removeCodenamesPlayer(sessionId) {
       if (room.spymasters.blue === sessionId) room.spymasters.blue = null
     }
 
-    const realPlayers = room.players.filter(p => !p.isBot)
-    if (realPlayers.length === 0) {
+    const connectedRealPlayers = room.players.filter(p => !p.isBot && p.isConnected)
+    if (connectedRealPlayers.length === 0) {
       codenamesRooms.delete(roomId)
       io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
       return { roomId, room: null }
     }
     if (wasHost && room.players.length > 0) {
-      room.players[0].isHost = true
-      room.hostId = room.players[0].id
+      const nextHost = room.players.find(p => p.isConnected && !p.isBot) || room.players[0]
+      nextHost.isHost = true
+      room.hostId = nextHost.id
     }
     broadcastCodenamesRoomState(room)
   }
