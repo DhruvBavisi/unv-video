@@ -252,6 +252,63 @@ function findDrawRoomByPlayer(sessionId) {
   return { roomId: null, room: null }
 }
 
+
+function getCodenamesPublicState(room) {
+  return {
+    id: room.id,
+    status: room.status,
+    phase: room.phase,
+    hostId: room.hostId,
+    teams: room.teams,
+    spymasters: room.spymasters,
+    players: room.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      isConnected: p.isConnected,
+      team: p.team,
+      role: (room.spymasters && (room.spymasters.red === p.id || room.spymasters.blue === p.id)) ? 'SPYMASTER' : undefined
+    }))
+  }
+}
+
+function getCodenamesPrivateState(room, playerId) {
+  const publicState = getCodenamesPublicState(room)
+  const myPlayer = room.players.find(p => p.id === playerId)
+  if (myPlayer) {
+    const pubPlayer = publicState.players.find(p => p.id === playerId)
+    if (pubPlayer) {
+      pubPlayer.role = myPlayer.role
+    }
+  }
+  return publicState
+}
+
+function broadcastCodenamesRoomState(room) {
+  const roomName = \`codenames:${room.id}\`
+  const socketsInRoom = io.sockets.adapter.rooms.get(roomName)
+  if (!socketsInRoom) return
+  
+  for (const socketId of socketsInRoom) {
+    const socket = io.sockets.sockets.get(socketId)
+    if (!socket) continue
+    
+    let playerId = null
+    for (const [sId, sckId] of sessionSockets.entries()) {
+      if (sckId === socketId) {
+        playerId = sId
+        break
+      }
+    }
+    
+    if (playerId && room.players.some(p => p.id === playerId)) {
+      socket.emit('codenames:room-state', getCodenamesPrivateState(room, playerId))
+    } else {
+      socket.emit('codenames:room-state', getCodenamesPublicState(room))
+    }
+  }
+}
+
 function findCodenamesRoomByPlayer(sessionId) {
   for (const [roomId, room] of codenamesRooms) {
     if (room.players.some((p) => p.id === sessionId)) {
@@ -789,7 +846,7 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
   if (!room) return
   const player = room.players.find((p) => p.id === sessionId)
   if (player) player.isConnected = false
-  io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+  broadcastCodenamesRoomState(room)
 }
 
 function removeCodenamesPlayer(sessionId) {
@@ -819,7 +876,7 @@ function removeCodenamesPlayer(sessionId) {
       room.players[0].isHost = true
       room.hostId = room.players[0].id
     }
-    io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
   }
   return { roomId, room }
 }
@@ -1402,8 +1459,7 @@ io.on('connection', (socket) => {
     if (isCodenamesRoom) {
       socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
       console.log('[ROOM] codenames session reconnected', { sessionId, roomId })
-      socket.emit('codenames:room-state', room)
-      io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+      broadcastCodenamesRoomState(room)
       return
     }
     reassignHostIfNeeded(room)
@@ -3578,7 +3634,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     socket.join(`codenames:${roomId}`)
     
     socket.emit('session-token', { resumeToken: room.players[0].resumeToken, roomId, playerName: trimmed, gameMode: 'codenames' })
-    socket.emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3640,7 +3696,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     socket.join(`codenames:${roomId}`)
     
     socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
-    io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3660,7 +3716,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     targetPlayer.isHost = true
     room.hostId = targetId
 
-    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3695,7 +3751,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       sessionSockets.delete(targetId)
     }
 
-    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3736,7 +3792,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       player.role = null
     }
 
-    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3763,7 +3819,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
 
     player.role = role
-    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
@@ -3786,7 +3842,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     room.status = 'SETUP'
     room.phase = 'ROLES'
 
-    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
 
