@@ -54,6 +54,18 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
     socket.emit('codenames:randomize-teams')
   }
 
+  const handleDevAddBots = (count = 1) => {
+    if (!isHost) return
+    const socket = connectSocket(playerId)
+    socket.emit('codenames:dev-add-bots', { count })
+  }
+
+  const handleDevRemoveBots = () => {
+    if (!isHost) return
+    const socket = connectSocket(playerId)
+    socket.emit('codenames:dev-remove-bots')
+  }
+
   const handleUpdateTimer = (val) => {
     if (!isHost) return
     const socket = connectSocket(playerId)
@@ -104,7 +116,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         <div className={`cn-avatar-circle ${p.id === playerId ? 'is-me' : ''}`}>
           <div className="cn-avatar-placeholder"></div>
         </div>
-        <div className="cn-avatar-name">{p.name}</div>
+        <div className="cn-avatar-name">{p.name} {p.isBot && <span style={{ color: '#aaa', fontSize: '0.6rem' }}>[BOT]</span>}</div>
       </div>
     )
   }
@@ -178,6 +190,13 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           <button className="cn-outline-btn" onClick={handleResetTeams} disabled={!isHost}>Reset teams</button>
           <button className="cn-outline-btn" onClick={handleRandomizeTeams} disabled={!isHost}>Randomize teams</button>
         </div>
+        {import.meta.env.DEV && (
+          <div className="cn-settings-actions" style={{ marginTop: '10px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+            <button className="cn-outline-btn" style={{ borderColor: '#555', color: '#999', fontSize: '0.7rem' }} onClick={() => handleDevAddBots(1)} disabled={!isHost}>DEV: Add Bot</button>
+            <button className="cn-outline-btn" style={{ borderColor: '#555', color: '#999', fontSize: '0.7rem' }} onClick={() => handleDevAddBots(3)} disabled={!isHost}>DEV: Add 3 Bots</button>
+            <button className="cn-outline-btn" style={{ borderColor: '#555', color: '#999', fontSize: '0.7rem' }} onClick={handleDevRemoveBots} disabled={!isHost}>DEV: Remove Bots</button>
+          </div>
+        )}
       </div>
 
       <div className="cn-team-grid">

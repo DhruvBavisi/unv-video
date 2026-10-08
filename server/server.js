@@ -271,7 +271,8 @@ function getCodenamesPublicState(room) {
       isHost: p.isHost,
       isConnected: p.isConnected,
       team: p.team,
-      role: p.role
+      role: p.role,
+      isBot: !!p.isBot
     })),
     currentTeam: room.currentTeam,
     startingTeam: room.startingTeam,
@@ -3852,21 +3853,21 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
     if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
-    const realPlayers = room.players.filter(p => p.isBot !== true)
-    if (realPlayers.length < 2) return callback?.({ success: false, error: 'NOT_ENOUGH_PLAYERS' })
+    const allPlayers = [...room.players]
+    if (allPlayers.length < 2) return callback?.({ success: false, error: 'NOT_ENOUGH_PLAYERS' })
 
-    for (let i = realPlayers.length - 1; i > 0; i--) {
+    for (let i = allPlayers.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [realPlayers[i], realPlayers[j]] = [realPlayers[j], realPlayers[i]]
+      [allPlayers[i], allPlayers[j]] = [allPlayers[j], allPlayers[i]]
     }
 
     room.teams = { red: [], blue: [] }
     room.spymasters = { red: null, blue: null }
     room.players.forEach(p => { p.team = null; p.role = null })
 
-    const half = Math.ceil(realPlayers.length / 2)
-    const redGroup = realPlayers.slice(0, half)
-    const blueGroup = realPlayers.slice(half)
+    const half = Math.ceil(allPlayers.length / 2)
+    const redGroup = allPlayers.slice(0, half)
+    const blueGroup = allPlayers.slice(half)
 
     const redSpy = redGroup[Math.floor(Math.random() * redGroup.length)]
     const blueSpy = blueGroup[Math.floor(Math.random() * blueGroup.length)]
@@ -3900,6 +3901,62 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (settings.mode !== undefined) room.mode = settings.mode // CLASSIC / DUET
     if (settings.wordPack !== undefined) room.wordPack = settings.wordPack // ENGLISH
     
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
+  // DEV BOTS
+  socket.on('codenames:dev-add-bots', ({ count = 1 }, callback) => {
+    if (process.env.NODE_ENV === 'production') return callback?.({ success: false, error: 'NOT_ALLOWED_IN_PRODUCTION' })
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+
+    const totalPlayers = room.players.length
+    if (totalPlayers + count > 19) return callback?.({ success: false, error: 'ROOM_FULL' })
+
+    for (let i = 0; i < count; i++) {
+      let botNum = 1
+      while(room.players.some(p => p.name === `Bot ${botNum}`)) {
+        botNum++
+      }
+      const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      room.players.push({
+        id: botId,
+        name: `Bot ${botNum}`,
+        isHost: false,
+        isConnected: true,
+        isBot: true,
+        team: null,
+        role: null
+      })
+    }
+
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:dev-remove-bots', (callback) => {
+    if (process.env.NODE_ENV === 'production') return callback?.({ success: false, error: 'NOT_ALLOWED_IN_PRODUCTION' })
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+
+    const botIds = room.players.filter(p => p.isBot).map(p => p.id)
+    room.players = room.players.filter(p => !p.isBot)
+
+    // Remove from teams and spymasters
+    botIds.forEach(botId => {
+      if (room.teams.red.includes(botId)) room.teams.red = room.teams.red.filter(id => id !== botId)
+      if (room.teams.blue.includes(botId)) room.teams.blue = room.teams.blue.filter(id => id !== botId)
+      if (room.spymasters.red === botId) room.spymasters.red = null
+      if (room.spymasters.blue === botId) room.spymasters.blue = null
+    })
+
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
