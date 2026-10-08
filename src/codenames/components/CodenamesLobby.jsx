@@ -101,12 +101,6 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   const blueOpCount = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').length
   const redOpCount = room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE').length
 
-  const blueSpy = room.players.find(p => p.team === 'blue' && p.role === 'SPYMASTER')
-  const redSpy = room.players.find(p => p.team === 'red' && p.role === 'SPYMASTER')
-
-  const isBlueSpyTaken = !!blueSpy && blueSpy.id !== playerId
-  const isRedSpyTaken = !!redSpy && redSpy.id !== playerId
-
   const currentTimer = room.timer || 'OFF'
 
   const renderAvatar = (p) => {
@@ -223,12 +217,11 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         <div className={`cn-team-card blue spymaster ${player.team === 'blue' && player.role === 'SPYMASTER' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">SPYMASTERS</div>
           <div className="cn-team-card-content cn-team-card-players">
-             {blueSpy && renderAvatar(blueSpy)}
+            {room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER').map(renderAvatar)}
           </div>
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('blue', 'SPYMASTER')}
-            disabled={isBlueSpyTaken}
           >
             JOIN TEAM
           </button>
@@ -237,12 +230,11 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         <div className={`cn-team-card red spymaster ${player.team === 'red' && player.role === 'SPYMASTER' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">SPYMASTERS</div>
           <div className="cn-team-card-content cn-team-card-players">
-             {redSpy && renderAvatar(redSpy)}
+            {room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER').map(renderAvatar)}
           </div>
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('red', 'SPYMASTER')}
-            disabled={isRedSpyTaken}
           >
             JOIN TEAM
           </button>

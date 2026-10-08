@@ -262,8 +262,8 @@ function getCodenamesPublicState(room) {
     hostId: room.hostId,
     teams: room.teams,
     spymasterSlots: {
-      redTaken: !!(room.spymasters && room.spymasters.red),
-      blueTaken: !!(room.spymasters && room.spymasters.blue)
+      redTaken: room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER'),
+      blueTaken: room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER')
     },
     players: room.players.map(p => ({
       id: p.id,
@@ -3849,9 +3849,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const player = room.players.find(p => p.id === currentSessionId)
     if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
 
-    if (role === 'SPYMASTER' && room.spymasters[team] && room.spymasters[team] !== currentSessionId) {
-       return callback?.({ success: false, error: 'SPYMASTER_TAKEN' })
-    }
+
 
     if (player.team && room.teams[player.team]) {
       room.teams[player.team] = room.teams[player.team].filter(id => id !== currentSessionId)
@@ -4016,8 +4014,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!room.teams.red || room.teams.red.length === 0) return callback?.({ success: false, error: 'RED_TEAM_EMPTY' })
     if (!room.teams.blue || room.teams.blue.length === 0) return callback?.({ success: false, error: 'BLUE_TEAM_EMPTY' })
 
-    if (!room.spymasters.red) return callback?.({ success: false, error: 'RED_SPYMASTER_MISSING' })
-    if (!room.spymasters.blue) return callback?.({ success: false, error: 'BLUE_SPYMASTER_MISSING' })
+    if (!room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER')) return callback?.({ success: false, error: 'RED_SPYMASTER_MISSING' })
+    if (!room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER')) return callback?.({ success: false, error: 'BLUE_SPYMASTER_MISSING' })
 
     const unassigned = room.players.find(p => !p.team || !p.role)
     if (unassigned) return callback?.({ success: false, error: 'UNASSIGNED_PLAYERS' })
