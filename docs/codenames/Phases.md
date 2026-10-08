@@ -10,20 +10,20 @@ All phases below are planned. Do not mark a phase complete until the correspondi
 - [x] Preserve existing Undercover/Draw & Guess behavior.
 
 ## Phase 2 — Codenames Room Lifecycle
-- Dedicated Codenames room state.
-- Create/join/leave.
-- Host handling.
-- Explicit removal only.
-- Stable session identity.
-- Resume-token authentication.
-- Reconnect without duplicate players.
+- [x] Dedicated Codenames room state.
+- [x] Create/join/leave.
+- [x] Host handling.
+- [x] Explicit removal only.
+- [x] Stable session identity.
+- [x] Resume-token authentication.
+- [x] Reconnect without duplicate players.
 
 ## Phase 3 — Teams & Roles
-- Red/Blue teams.
-- One Spymaster per team.
-- Operatives.
-- Server-authoritative assignments.
-- Private role state.
+- [x] Red/Blue teams.
+- [x] One Spymaster per team.
+- [x] Operatives.
+- [x] Server-authoritative assignments.
+- [x] Private role state.
 
 ## Phase 4 — Board Generation
 - Generate 25 unique words.

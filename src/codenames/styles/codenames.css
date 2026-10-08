@@ -75,6 +75,134 @@
   background-color: #cceeff;
 }
 
+.lobby-room-code {
+  padding: 10px;
+  background: #eee;
+  border-radius: 4px;
+  color: #333;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.lobby-controls {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 4px;
+  background: #fdfdfd;
+}
+
+.control-group h3 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+}
+
+.control-group button {
+  padding: 8px 16px;
+  border: 1px solid #999;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.control-group button.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+.control-group button.active.red {
+  background: #c33;
+  border-color: #c33;
+}
+
+.control-group button.active.blue {
+  background: #369;
+  border-color: #369;
+}
+
+.control-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.team-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.player-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  font-size: 0.95rem;
+}
+
+.player-me {
+  font-weight: bold;
+}
+
+.player-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.player-actions button {
+  font-size: 0.75rem;
+  padding: 2px 5px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.team-unassigned {
+  margin: 10px;
+  background-color: #eee;
+}
+
+.empty-slot {
+  font-style: italic;
+  color: #777;
+  padding: 5px 0;
+}
+
+.lobby-actions {
+  margin-top: 30px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.start-btn {
+  padding: 10px 20px;
+  background: #333;
+  color: #fff;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 600px) {
   .codenames-board {
     gap: 5px;
