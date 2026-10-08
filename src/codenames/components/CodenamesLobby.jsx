@@ -81,8 +81,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
   const canStart = room.teams?.red?.length > 0 && 
                    room.teams?.blue?.length > 0 &&
-                   room.spymasters?.red &&
-                   room.spymasters?.blue &&
+                   room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER') &&
+                   room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER') &&
                    unassignedPlayers.length === 0
 
   // Team counts for display
@@ -92,8 +92,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   const blueSpy = room.players.find(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpy = room.players.find(p => p.team === 'red' && p.role === 'SPYMASTER')
 
-  const isBlueSpyTaken = !!room.spymasters?.blue && room.spymasters.blue !== playerId
-  const isRedSpyTaken = !!room.spymasters?.red && room.spymasters.red !== playerId
+  const isBlueSpyTaken = !!blueSpy && blueSpy.id !== playerId
+  const isRedSpyTaken = !!redSpy && redSpy.id !== playerId
 
   const currentTimer = room.timer || 'OFF'
 

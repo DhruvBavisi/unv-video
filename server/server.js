@@ -270,7 +270,8 @@ function getCodenamesPublicState(room) {
       name: p.name,
       isHost: p.isHost,
       isConnected: p.isConnected,
-      team: p.team
+      team: p.team,
+      role: p.role
     })),
     currentTeam: room.currentTeam,
     startingTeam: room.startingTeam,
