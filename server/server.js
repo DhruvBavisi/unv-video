@@ -3796,8 +3796,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
-    if (team !== 'red' && team !== 'blue') return callback?.({ success: false, error: 'INVALID_TEAM' })
-    if (role !== 'SPYMASTER' && role !== 'OPERATIVE') return callback?.({ success: false, error: 'INVALID_ROLE' })
+    if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
+    if (role !== 'SPYMASTER' && role !== 'OPERATIVE' && role !== null) return callback?.({ success: false, error: 'INVALID_ROLE' })
 
     const player = room.players.find(p => p.id === currentSessionId)
     if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
@@ -3815,9 +3815,11 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
     player.team = team
     player.role = role
-    room.teams[team].push(currentSessionId)
-    if (role === 'SPYMASTER') {
-      room.spymasters[team] = currentSessionId
+    if (team) {
+      room.teams[team].push(currentSessionId)
+      if (role === 'SPYMASTER') {
+        room.spymasters[team] = currentSessionId
+      }
     }
 
     broadcastCodenamesRoomState(room)
@@ -3850,6 +3852,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     const realPlayers = room.players.filter(p => p.isBot !== true)
+    if (realPlayers.length < 2) return callback?.({ success: false, error: 'NOT_ENOUGH_PLAYERS' })
+
     for (let i = realPlayers.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [realPlayers[i], realPlayers[j]] = [realPlayers[j], realPlayers[i]]
@@ -3860,10 +3864,24 @@ ELIMINATION RESULT=`, room.eliminationResult)
     room.players.forEach(p => { p.team = null; p.role = null })
 
     const half = Math.ceil(realPlayers.length / 2)
-    realPlayers.forEach((p, index) => {
-      p.team = index < half ? 'red' : 'blue'
-      p.role = 'OPERATIVE'
-      room.teams[p.team].push(p.id)
+    const redGroup = realPlayers.slice(0, half)
+    const blueGroup = realPlayers.slice(half)
+
+    const redSpy = redGroup[Math.floor(Math.random() * redGroup.length)]
+    const blueSpy = blueGroup[Math.floor(Math.random() * blueGroup.length)]
+
+    redGroup.forEach(p => {
+      p.team = 'red'
+      p.role = p.id === redSpy.id ? 'SPYMASTER' : 'OPERATIVE'
+      room.teams.red.push(p.id)
+      if (p.role === 'SPYMASTER') room.spymasters.red = p.id
+    })
+
+    blueGroup.forEach(p => {
+      p.team = 'blue'
+      p.role = p.id === blueSpy.id ? 'SPYMASTER' : 'OPERATIVE'
+      room.teams.blue.push(p.id)
+      if (p.role === 'SPYMASTER') room.spymasters.blue = p.id
     })
 
     broadcastCodenamesRoomState(room)

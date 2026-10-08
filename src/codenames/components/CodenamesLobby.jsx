@@ -128,7 +128,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
       <div className="cn-spectator-strip">
         <div className="cn-spectator-content">
-          <div className="cn-spectator-icon">
+          <div className="cn-spectator-icon" onClick={() => handleSelectTeam(null, null)} style={{ cursor: 'pointer', border: '2px solid white', borderRadius: '50%', padding: '2px', display: 'flex' }}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
               <circle cx="12" cy="12" r="3"></circle>
@@ -183,8 +183,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
       <div className="cn-team-grid">
         <div className={`cn-team-card blue ${player.team === 'blue' && player.role === 'OPERATIVE' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">OPERATIVES</div>
-          <div className="cn-team-card-content">
-            <div className="cn-team-count">{blueOpCount > 0 ? blueOpCount : ''}</div>
+          <div className="cn-team-card-content cn-team-card-players">
+            {room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').map(renderAvatar)}
           </div>
           <button className="cn-join-btn" onClick={() => handleSelectTeam('blue', 'OPERATIVE')}>
             JOIN TEAM
@@ -193,8 +193,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
         <div className={`cn-team-card red ${player.team === 'red' && player.role === 'OPERATIVE' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">OPERATIVES</div>
-          <div className="cn-team-card-content">
-            <div className="cn-team-count">{redOpCount > 0 ? redOpCount : ''}</div>
+          <div className="cn-team-card-content cn-team-card-players">
+            {room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE').map(renderAvatar)}
           </div>
           <button className="cn-join-btn" onClick={() => handleSelectTeam('red', 'OPERATIVE')}>
             JOIN TEAM
@@ -203,8 +203,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
         <div className={`cn-team-card blue spymaster ${player.team === 'blue' && player.role === 'SPYMASTER' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">SPYMASTERS</div>
-          <div className="cn-team-card-content">
-             {blueSpy && <div className="cn-spy-name">{blueSpy.name}</div>}
+          <div className="cn-team-card-content cn-team-card-players">
+             {blueSpy && renderAvatar(blueSpy)}
           </div>
           <button 
             className="cn-join-btn" 
@@ -217,8 +217,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
         <div className={`cn-team-card red spymaster ${player.team === 'red' && player.role === 'SPYMASTER' ? 'selected' : ''}`}>
           <div className="cn-team-card-header">SPYMASTERS</div>
-          <div className="cn-team-card-content">
-             {redSpy && <div className="cn-spy-name">{redSpy.name}</div>}
+          <div className="cn-team-card-content cn-team-card-players">
+             {redSpy && renderAvatar(redSpy)}
           </div>
           <button 
             className="cn-join-btn" 
@@ -274,7 +274,9 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
               <div className="cn-player-list">
                 {room.players.map(p => (
                   <div key={p.id} className="cn-player-list-item">
-                    <span>{p.name} {p.id === room.hostId ? '👑' : ''}</span>
+                    <div style={{ transform: 'scale(0.8)', transformOrigin: 'left center' }}>
+                      {renderAvatar(p)}
+                    </div>
                     {isHost && p.id !== playerId && (
                       <div className="cn-player-actions">
                         <button onClick={() => handleMakeHost(p.id)}>Make Host</button>
