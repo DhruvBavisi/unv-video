@@ -495,247 +495,6 @@
   padding: 15px;
 }
 
-/* GAME PAGE REBUILD (MOBILE FIRST) */
-.cn-game-page {
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 2vh, 12px);
-  min-height: 100dvh;
-  padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(10px, env(safe-area-inset-left));
-  box-sizing: border-box;
-}
-
-/* 2. TOP NAVIGATION BAR */
-.cn-game-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-.cn-nav-left, .cn-nav-right {
-  display: flex;
-  gap: 8px;
-}
-.cn-nav-btn {
-  background: var(--cn-bg-secondary);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.4);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  font-size: 1rem;
-}
-.cn-news-badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  background: red;
-  border-radius: 50%;
-  border: 1px solid white;
-}
-
-/* 3. TEAM + GAME LOG AREA */
-.cn-game-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 4px;
-  width: 100%;
-}
-.cn-team-col {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 0 0 28%;
-}
-.cn-team-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-radius: 8px;
-  padding: 4px;
-  flex: 1;
-  position: relative;
-  border: 2px solid rgba(255,255,255,0.2);
-}
-.cn-team-col.blue .cn-team-panel { background: var(--cn-blue-base); }
-.cn-team-col.red .cn-team-panel { background: var(--cn-red-base); }
-
-.cn-team-title {
-  font-size: clamp(0.5rem, 2vw, 0.7rem);
-  font-weight: 900;
-  color: white;
-  text-align: center;
-  margin-bottom: 2px;
-}
-.cn-team-players {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-  min-height: 40px;
-}
-.cn-team-score {
-  font-size: clamp(1.2rem, 5vw, 1.8rem);
-  font-weight: 900;
-  color: white;
-  line-height: 1;
-  margin-top: 2px;
-}
-
-.cn-spy-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: var(--cn-panel-bg);
-  border-radius: 8px;
-  padding: 4px;
-  min-height: 50px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-.cn-spy-join-btn {
-  background: linear-gradient(180deg, #70d618 0%, #46af00 100%);
-  border: none;
-  border-bottom: 2px solid #2e7500;
-  color: white;
-  font-weight: 900;
-  font-size: clamp(0.55rem, 2vw, 0.7rem);
-  padding: 4px 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.cn-game-log {
-  flex: 0 0 40%;
-  background: #1a1a1a;
-  border: 2px solid #333;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 4px;
-}
-.cn-log-title {
-  font-size: 0.7rem;
-  color: #888;
-  font-weight: bold;
-}
-
-/* 4. CURRENT GAME STATUS / TURN MESSAGE */
-.cn-status-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  width: 100%;
-}
-.cn-status-text {
-  font-size: clamp(0.8rem, 3.5vw, 1.2rem);
-  font-weight: 900;
-  color: white;
-  text-transform: uppercase;
-  text-align: center;
-}
-.cn-help-btn {
-  position: absolute;
-  right: 0;
-  background: #209931;
-  color: white;
-  border: 2px solid white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-/* 5. 5 × 5 CODENAMES BOARD */
-.cn-board-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(2px, 1vw, 6px);
-  width: 100%;
-  flex: 1; /* allow it to grow if needed, or maintain ratio */
-}
-.codenames-card {
-  background: var(--cn-card-bg);
-  border: 1px solid var(--cn-card-border);
-  border-bottom: clamp(1px, 0.5vw, 3px) solid var(--cn-card-depth);
-  border-radius: clamp(3px, 1vw, 6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 4/3;
-  font-family: var(--cn-font-main);
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--cn-text-dark);
-  font-size: clamp(0.5rem, 2.2vw, 1rem);
-  text-align: center;
-  padding: 2px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  box-sizing: border-box;
-  word-break: break-word;
-  line-height: 1.1;
-  cursor: default;
-}
-.codenames-card.revealed { color: #fff; box-shadow: none; border-bottom-width: 1px; transform: translateY(1px); }
-.codenames-card.revealed.category-red { background: var(--cn-red-base); border-color: var(--cn-red-dark); }
-.codenames-card.revealed.category-blue { background: var(--cn-blue-base); border-color: var(--cn-blue-dark); }
-.codenames-card.revealed.category-neutral { background: var(--cn-neutral-base); color: #333; border-color: var(--cn-neutral-dark); }
-.codenames-card.revealed.category-assassin { background: var(--cn-assassin-base); border-color: var(--cn-assassin-dark); }
-
-.codenames-card.spymaster.category-red { box-shadow: inset 0 0 0 max(3px, 1vw) var(--cn-red-base); }
-.codenames-card.spymaster.category-blue { box-shadow: inset 0 0 0 max(3px, 1vw) var(--cn-blue-base); }
-.codenames-card.spymaster.category-neutral { box-shadow: inset 0 0 0 max(3px, 1vw) var(--cn-neutral-base); }
-.codenames-card.spymaster.category-assassin { box-shadow: inset 0 0 0 max(3px, 1vw) var(--cn-assassin-base); }
-
-/* 6. LOWER SPACE / NEWS TICKER AREA */
-.cn-ticker-area {
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  height: 24px;
-  background: white;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.cn-ticker-label {
-  background: black;
-  color: white;
-  font-weight: 900;
-  font-size: 0.7rem;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-  padding-right: 15px;
-}
-.cn-ticker-text {
-  flex: 1;
-  color: black;
-  font-size: 0.8rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
 /* MODALS */
 .cn-modal-overlay {
   position: fixed;
@@ -1052,25 +811,40 @@
   background: #fdf5e6; /* light cream */
   border: 1px solid #d4c4a8; /* tan border */
   border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
   overflow: hidden;
   position: relative;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   aspect-ratio: 4 / 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.card-top {
+  flex: 1;
+}
+
+.card-bottom {
+  height: 40%;
+  background: #deb887; /* dark tan */
+  border-top: 1px solid rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-word {
-  background: #deb887; /* dark tan */
   color: white;
-  width: 100%;
   text-align: center;
   font-weight: 800;
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(0.7rem, 2.5vw, 1.1rem);
-  padding: 4px 0;
-  border-top: 1px solid rgba(0,0,0,0.1);
 }
 
 .codenames-card.revealed {
@@ -1078,16 +852,17 @@
 }
 
 .codenames-card.revealed.category-blue { background: #187bcd; }
-.codenames-card.revealed.category-blue .card-word { background: #105996; }
+.codenames-card.revealed.category-blue .card-bottom { background: #105996; }
 
 .codenames-card.revealed.category-red { background: #d34633; }
-.codenames-card.revealed.category-red .card-word { background: #a23122; }
+.codenames-card.revealed.category-red .card-bottom { background: #a23122; }
 
 .codenames-card.revealed.category-neutral { background: #dcdcdc; }
-.codenames-card.revealed.category-neutral .card-word { background: #a9a9a9; color: #333; }
+.codenames-card.revealed.category-neutral .card-bottom { background: #a9a9a9; }
+.codenames-card.revealed.category-neutral .card-word { color: #333; }
 
 .codenames-card.revealed.category-assassin { background: #222; }
-.codenames-card.revealed.category-assassin .card-word { background: #000; }
+.codenames-card.revealed.category-assassin .card-bottom { background: #000; }
 
 .codenames-card.spymaster.category-blue { box-shadow: inset 0 0 0 4px #187bcd; }
 .codenames-card.spymaster.category-red { box-shadow: inset 0 0 0 4px #d34633; }

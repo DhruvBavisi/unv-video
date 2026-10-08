@@ -8,9 +8,22 @@ export default function CodenamesBoard({ room }) {
     return <div className="codenames-board-empty">Waiting for board...</div>
   }
 
-  // Calculate scores (unrevealed cards for each team)
-  // For reference matching, we just use static values or derive from actual game state.
-  // The user specifies: "The status text must come from the existing game state. Do not hardcode the displayed game state."
+  let blueScore = '-'
+  let redScore = '-'
+  if (board) {
+    const canSeeHidden = board.some(c => c.category && !c.revealed)
+    if (canSeeHidden) {
+      blueScore = board.filter(c => c.category === 'blue' && !c.revealed).length
+      redScore = board.filter(c => c.category === 'red' && !c.revealed).length
+    } else if (room.startingTeam) {
+      const totalBlue = room.startingTeam === 'blue' ? 9 : 8
+      const totalRed = room.startingTeam === 'red' ? 9 : 8
+      const revealedBlue = board.filter(c => c.revealed && c.category === 'blue').length
+      const revealedRed = board.filter(c => c.revealed && c.category === 'red').length
+      blueScore = totalBlue - revealedBlue
+      redScore = totalRed - revealedRed
+    }
+  }
   
   const blueOpCount = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').length
   const redOpCount = room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE').length
@@ -64,7 +77,7 @@ export default function CodenamesBoard({ room }) {
             </div>
           </div>
           <div className="cn-score-section blue-score">
-            <div className="cn-score-number">9</div>
+            <div className="cn-score-number">{blueScore}</div>
             {/* If there's an active operative or something, render them here. For now just placeholder avatar logic if needed */}
           </div>
           <div className="cn-bottom-panel blue-spy">
@@ -95,7 +108,7 @@ export default function CodenamesBoard({ room }) {
           </div>
           <div className="cn-score-section red-score">
             {/* The reference has a small portrait next to score */}
-            <div className="cn-score-number">8</div>
+            <div className="cn-score-number">{redScore}</div>
           </div>
           <div className="cn-bottom-panel red-spy">
             <div className="cn-panel-header">SPYMASTERS</div>

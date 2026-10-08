@@ -18,7 +18,12 @@ export default function CodenamesCard({ card }) {
 
   return (
     <div className={classNames}>
-      <span className="card-word">{card.word}</span>
+      <div className="card-inner">
+        <div className="card-top"></div>
+        <div className="card-bottom">
+          <span className="card-word">{card.word}</span>
+        </div>
+      </div>
     </div>
   )
 }
