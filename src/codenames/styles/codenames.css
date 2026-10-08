@@ -823,3 +823,303 @@
   width: 100%;
   height: 100%;
 }
+
+/* ==========================================================================
+   2. MAIN GAME PAGE (EXACT REFERENCE)
+   ========================================================================== */
+
+.cn-game-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  background-color: #0c121d; /* Dark navy/blue-black */
+  color: white;
+  padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom);
+  box-sizing: border-box;
+  font-family: 'Fredoka', sans-serif;
+  overflow: hidden;
+}
+
+/* TOP NAV */
+.cn-game-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  margin-top: 10px;
+}
+
+.cn-nav-left, .cn-nav-right {
+  display: flex;
+  gap: 10px;
+}
+
+.cn-nav-btn {
+  background: #090e17;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  padding: 0 10px;
+  cursor: pointer;
+  position: relative;
+}
+
+.cn-players-badge {
+  margin-left: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+/* TEAM & GAME LOG AREA */
+.cn-game-info-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  height: 25vh; /* Proportional to mobile screen */
+  min-height: 140px;
+  max-height: 200px;
+}
+
+.cn-team-col {
+  flex: 0 0 27%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cn-game-log-col {
+  flex: 1;
+}
+
+.cn-top-panel {
+  flex: 1;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cn-panel-header {
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.cn-panel-content {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.blue-panel {
+  background: linear-gradient(180deg, #187bcd 0%, #105996 100%);
+}
+
+.red-panel {
+  background: linear-gradient(180deg, #d34633 0%, #a23122 100%);
+}
+
+/* SCORES */
+.cn-score-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 2px 0;
+}
+
+.cn-score-number {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.blue-score .cn-score-number { color: #5bc0ff; }
+.red-score .cn-score-number { color: #ff6b6b; }
+
+/* SPYMASTERS */
+.cn-bottom-panel {
+  flex: 0.8;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.blue-spy {
+  background: #187bcd;
+  border: 2px solid #32cd32; /* Green active highlight */
+}
+
+.red-spy {
+  background: #a23122;
+  opacity: 0.7;
+}
+
+.cn-spy-join-btn {
+  background: #32cd32;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  width: 90%;
+}
+
+/* GAME LOG */
+.cn-game-log {
+  background: #2a2a2c;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+}
+
+.cn-log-header {
+  font-size: 0.6rem;
+  color: #777;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+/* STATUS ROW */
+.cn-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 12px;
+  min-height: 30px;
+}
+
+.cn-status-text {
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+  width: 100%;
+}
+
+.cn-help-btn {
+  position: absolute;
+  right: 0;
+  background: #2a8a2a;
+  border: 2px solid white;
+  color: white;
+  font-weight: bold;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* BOARD */
+.cn-board-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  width: 100%;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* CARDS */
+.codenames-card {
+  background: #fdf5e6; /* light cream */
+  border: 1px solid #d4c4a8; /* tan border */
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  aspect-ratio: 4 / 3;
+}
+
+.card-word {
+  background: #deb887; /* dark tan */
+  color: white;
+  width: 100%;
+  text-align: center;
+  font-weight: 800;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(0.7rem, 2.5vw, 1.1rem);
+  padding: 4px 0;
+  border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.codenames-card.revealed {
+  opacity: 0.6;
+}
+
+.codenames-card.revealed.category-blue { background: #187bcd; }
+.codenames-card.revealed.category-blue .card-word { background: #105996; }
+
+.codenames-card.revealed.category-red { background: #d34633; }
+.codenames-card.revealed.category-red .card-word { background: #a23122; }
+
+.codenames-card.revealed.category-neutral { background: #dcdcdc; }
+.codenames-card.revealed.category-neutral .card-word { background: #a9a9a9; color: #333; }
+
+.codenames-card.revealed.category-assassin { background: #222; }
+.codenames-card.revealed.category-assassin .card-word { background: #000; }
+
+.codenames-card.spymaster.category-blue { box-shadow: inset 0 0 0 4px #187bcd; }
+.codenames-card.spymaster.category-red { box-shadow: inset 0 0 0 4px #d34633; }
+.codenames-card.spymaster.category-neutral { box-shadow: inset 0 0 0 4px #dcdcdc; }
+.codenames-card.spymaster.category-assassin { box-shadow: inset 0 0 0 4px #222; }
+
+.cn-board-avatar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cn-board-avatar img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+}
+
+.cn-board-avatar-name {
+  font-size: 0.5rem;
+  background: rgba(0,0,0,0.6);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-top: -6px;
+  z-index: 2;
+}
+
+.cn-board-crown {
+  position: absolute;
+  top: -8px;
+  left: -4px;
+  font-size: 0.6rem;
+}
