@@ -99,12 +99,12 @@ export const SPECIAL_ROLES = [
     key: "mrMeme",
     name: "Mr. Meme",
     minPlayers: 3,
-    description: "An eccentric investigator who only communicates in modern internet culture.",
+    description: "Mr. Meme must communicate using memes, emojis, or internet slang.",
     rules: [
-      "Must only communicate using memes, emojis, or internet slang."
+      "Mr. Meme must communicate using memes, emojis, or internet slang."
     ],
-    mobileDescription: "Each round, 1 player must describe their secret word with gestures instead of speaking (only in person or with video)",
+    mobileDescription: "Mr. Meme must communicate using memes, emojis, or internet slang.",
     avatar: '/images/characters/mrmeme.png',
-    implemented: false
+    implemented: true
   }
 ];
