@@ -3570,7 +3570,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     callback?.({ success: true })
   })
 
-  socket.on('codenames:join-room', ({ sessionId: reqSessionId, playerName, roomId }, callback) => {
+  socket.on('codenames:join-room', ({ sessionId: reqSessionId, playerName, roomId, resumeToken }, callback) => {
     if (!reqSessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -3612,8 +3612,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
       player.resumeToken = ensureResumeToken(player)
       room.players.push(player)
     } else {
+      const tokenOk = player.resumeToken && typeof resumeToken === 'string' && resumeToken === player.resumeToken
+      if (!tokenOk) {
+        console.warn('[AUTH] codenames:join-room rejected without matching resume token', { sessionId: reqSessionId })
+        socket.emit('session-expired')
+        return callback?.({ error: 'SESSION_EXPIRED' })
+      }
       player.isConnected = true
-      player.name = trimmed
     }
     
     currentRoomId = roomId

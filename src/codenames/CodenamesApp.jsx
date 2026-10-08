@@ -74,7 +74,8 @@ export default function CodenamesApp({ onExit }) {
     e.preventDefault()
     if (!playerName.trim() || !joinRoomId.trim()) return
     const socket = connectSocket(sessionId)
-    socket.emit('codenames:join-room', { sessionId, playerName: playerName.trim(), roomId: joinRoomId.trim().toUpperCase() }, (res) => {
+    const { resumeToken } = readIdentity()
+    socket.emit('codenames:join-room', { sessionId, playerName: playerName.trim(), roomId: joinRoomId.trim().toUpperCase(), resumeToken }, (res) => {
       if (res && res.error) setError(res.error)
     })
   }
