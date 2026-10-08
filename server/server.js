@@ -371,15 +371,19 @@ function getSafeStateForPlayer(room, playerId) {
 }
 
 function scheduleWordChoiceTimeout(room) {
+  const expectedRound = room.round
+  const expectedTurnIndex = room.turnIndex
+  const expectedDrawerId = room.currentDrawerId
+  
   // 15 seconds timeout
   setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
     if (
       currentRoom && 
       currentRoom.phase === 'WORD_CHOICE' && 
-      currentRoom.round === room.round && 
-      currentRoom.turnIndex === room.turnIndex &&
-      currentRoom.currentDrawerId === room.currentDrawerId
+      currentRoom.round === expectedRound && 
+      currentRoom.turnIndex === expectedTurnIndex &&
+      currentRoom.currentDrawerId === expectedDrawerId
     ) {
       // Auto-select the first word if timeout expires
       if (!currentRoom.wordChoices || currentRoom.wordChoices.length === 0) {
@@ -451,8 +455,11 @@ function startDrawingTurn(room, word) {
     if (hintsToGive > 0) {
       const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (hintsToGive + 1)
       let hintsGiven = 0
+      const expectedDrawerId = room.currentDrawerId
       room.hintTimer = setInterval(() => {
-        if (room.phase !== 'DRAWING') return clearInterval(room.hintTimer)
+        if (!drawRooms.has(room.id) || room.phase !== 'DRAWING' || room.currentDrawerId !== expectedDrawerId) {
+          return clearInterval(room.hintTimer)
+        }
         if (hintsGiven >= hintsToGive) return clearInterval(room.hintTimer)
         
         const idx = revealIndices[hintsGiven]
@@ -555,10 +562,14 @@ function endDrawRound(room) {
   
   broadcastDrawRoomState(room)
   
+  const expectedRound = room.round
+  const expectedTurnIndex = room.turnIndex
+  const expectedDrawerId = room.currentDrawerId
+  
   // Schedule next turn
   setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
-    if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === room.round && currentRoom.turnIndex === room.turnIndex) {
+    if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === expectedRound && currentRoom.turnIndex === expectedTurnIndex) {
       currentRoom.turnIndex++
       
       if (currentRoom.turnIndex < currentRoom.turnOrder.length) {
@@ -687,9 +698,79 @@ function disconnectDrawPlayer(sessionId, socketId) {
       // Do NOT immediately end their turn on transient disconnect
       // Let the word-choice or drawing timeouts handle it naturally
       broadcastDrawRoomState(dr)
+
+      setTimeout(() => {
+        const checkRoom = drawRooms.get(rid)
+        if (checkRoom) {
+          const checkPlayer = checkRoom.players.find((p) => p.id === sessionId)
+          if (checkPlayer && !checkPlayer.isConnected) {
+            removeDrawPlayer(sessionId)
+            broadcastDrawRoomState(checkRoom)
+          }
+        }
+      }, 60000)
+
       break
     }
   }
+}
+
+function removeDrawPlayer(sessionId) {
+  let foundRoomId = null
+  let foundRoom = null
+  for (const [rid, dr] of drawRooms) {
+    if (dr.players.some(p => p.id === sessionId)) {
+      foundRoomId = rid
+      foundRoom = dr
+      break
+    }
+  }
+
+  if (!foundRoom) return { roomId: null, room: null }
+
+  const idx = foundRoom.players.findIndex(p => p.id === sessionId)
+  if (idx === -1) return { roomId: null, room: null }
+
+  const wasHost = foundRoom.players[idx].isHost
+  const isDrawer = foundRoom.currentDrawerId === sessionId
+  
+  if (isDrawer && (foundRoom.phase === 'WORD_CHOICE' || foundRoom.phase === 'DRAWING')) {
+    endDrawRound(foundRoom)
+  }
+  
+  if (foundRoom.currentDrawerId === sessionId) {
+    foundRoom.currentDrawerId = null
+  }
+
+  const kickedTurnIndex = foundRoom.turnOrder ? foundRoom.turnOrder.indexOf(sessionId) : -1
+  if (foundRoom.turnOrder) {
+    foundRoom.turnOrder = foundRoom.turnOrder.filter(id => id !== sessionId)
+    if (kickedTurnIndex !== -1 && foundRoom.turnIndex !== undefined && kickedTurnIndex <= foundRoom.turnIndex) {
+      foundRoom.turnIndex--
+    }
+  }
+  
+  foundRoom.players.splice(idx, 1)
+
+  const realPlayers = foundRoom.players.filter(p => !p.isBot)
+  if (realPlayers.length === 0) {
+    console.log('[ROOM] destroying empty draw room', { roomId: foundRoomId })
+    if (foundRoom.turnTimeout) clearTimeout(foundRoom.turnTimeout)
+    if (foundRoom.hintTimer) clearInterval(foundRoom.hintTimer)
+    drawRooms.delete(foundRoomId)
+    io.to(`draw:${foundRoomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
+    return { roomId: foundRoomId, room: null }
+  }
+
+  if (wasHost) {
+    const nextHost = foundRoom.players.find(p => p.isConnected && !p.isBot) || foundRoom.players[0]
+    if (nextHost) {
+      nextHost.isHost = true
+      foundRoom.hostId = nextHost.id
+    }
+  }
+
+  return { roomId: foundRoomId, room: foundRoom }
 }
 
 // A player's private reconnect credential.  Generated once per player;
@@ -1615,38 +1696,25 @@ io.on('connection', (socket) => {
     if (!currentSessionId) return callback?.({ error: 'NOT_IN_ROOM' })
     
     let foundRoomId = null
-    let foundRoom = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
         foundRoomId = rid
-        foundRoom = dr
         break
       }
     }
 
-    if (!foundRoom) return callback?.({ error: 'NOT_IN_ROOM' })
+    if (!foundRoomId) return callback?.({ error: 'NOT_IN_ROOM' })
 
-    const idx = foundRoom.players.findIndex(p => p.id === currentSessionId)
-    if (idx !== -1) {
-      const wasHost = foundRoom.players[idx].isHost
-      foundRoom.players.splice(idx, 1)
-      socket.leave(`draw:${foundRoomId}`)
-      socket.leave(currentSessionId) // Cleanup private room
-      
-      if (foundRoom.players.length === 0) {
-        drawRooms.delete(foundRoomId)
-      } else if (wasHost) {
-        const nextHost = foundRoom.players.find(p => p.isConnected) || foundRoom.players[0]
-        if (nextHost) {
-          nextHost.isHost = true
-          foundRoom.hostId = nextHost.id
-        }
-        broadcastDrawRoomState(foundRoom)
-      } else {
-        broadcastDrawRoomState(foundRoom)
-      }
+    const removed = removeDrawPlayer(currentSessionId)
+    socket.leave(`draw:${foundRoomId}`)
+    socket.leave(currentSessionId) // Cleanup private room
+    
+    if (removed.room) {
+      broadcastDrawRoomState(removed.room)
     }
     
+    currentRoomId = null
+    currentSessionId = null
     callback?.({ success: true })
   })
 
