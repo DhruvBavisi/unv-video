@@ -871,9 +871,20 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
     player.isConnected = false
     player.disconnectedAt = Date.now()
   }
-  
   const realPlayers = room.players.filter(p => !p.isBot)
   const allRealDisconnected = realPlayers.length > 0 && realPlayers.every(p => !p.isConnected)
+  
+  // Clear the stale socket mapping for the disconnected session, but leave resume token
+  if (sessionSockets.get(sessionId) === socketId) {
+    sessionSockets.delete(sessionId)
+  }
+
+  // SPECIAL CASE: 1 real player + bots -> destroy immediately upon disconnect
+  if (realPlayers.length === 1 && !realPlayers[0].isConnected) {
+    codenamesRooms.delete(roomId)
+    io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
+    return
+  }
   
   if (realPlayers.length === 0 || allRealDisconnected) {
     if (realPlayers.length === 0) {
@@ -881,7 +892,7 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
       io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
       return
     }
-    // Grace period: do not delete immediately if there are real players that just disconnected
+    // Grace period: do not delete immediately if there are >1 real players that just disconnected
   }
 
   broadcastCodenamesRoomState(room)
