@@ -282,46 +282,18 @@ function disconnectPlayer(sessionId, socketId) {
     player.isConnected = false
     player.disconnectedAt = Date.now()
 
-    if (room.gamePhase === 'CLUE' && room.currentTurnPlayerId === sessionId) {
-      const turnContext = {
-        round: room.round,
-        turnIndex: room.turnIndex,
-        playerId: sessionId
-      }
-      setTimeout(() => {
-        const currentRoom = rooms.get(roomId)
-        if (!currentRoom || currentRoom.gamePhase !== 'CLUE') return
-        if (currentRoom.currentTurnPlayerId !== turnContext.playerId) return
-        if (currentRoom.round !== turnContext.round || currentRoom.turnIndex !== turnContext.turnIndex) return
-        
-        const p = currentRoom.players.find(x => x.id === turnContext.playerId)
-        if (p && !p.isConnected) {
-          console.log(`[CLUE] Player ${turnContext.playerId} disconnected during turn. Advancing.`)
-          if (!currentRoom.skippedCluePlayerIds) currentRoom.skippedCluePlayerIds = []
-          if (!currentRoom.skippedCluePlayerIds.includes(turnContext.playerId)) {
-            currentRoom.skippedCluePlayerIds.push(turnContext.playerId)
-          }
-          advanceTurn(currentRoom)
-        }
-      }, 15000)
-    } else if (room.gamePhase === 'VOTE') {
+    if (room.gamePhase === 'VOTE') {
       checkAndResolveVotes(room)
-    } else if (room.gamePhase === 'MR_WHITE_GUESS' && room.mrWhiteGuesserId === sessionId) {
-      const version = room.gameVersion
-      setTimeout(() => {
-        const currentRoom = rooms.get(roomId)
-        if (!currentRoom || currentRoom.gamePhase !== 'MR_WHITE_GUESS' || currentRoom.gameVersion !== version) return
-        if (currentRoom.mrWhiteGuesserId !== sessionId) return
-        
-        const p = currentRoom.players.find(x => x.id === sessionId)
-        if (p && !p.isConnected) {
-          console.log(`[MR_WHITE] Player ${sessionId} disconnected during guess. Advancing.`)
-          currentRoom.mrWhiteGuessSubmitted = false
-          currentRoom.mrWhiteLiveGuess = ''
-          currentRoom.mrWhiteGuesserId = null
-          advanceAfterMrWhiteWrongGuess(currentRoom.id, currentRoom.gameVersion)
-        }
-      }, 15000)
+    } else if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === sessionId) {
+      if (room.revengerDecisionEndsAt) {
+        room.revengerDecisionRemainingMs = Math.max(0, room.revengerDecisionEndsAt - Date.now())
+        room.revengerDecisionEndsAt = null
+      }
+    } else if (room.gamePhase === 'GODDESS_DECISION' && room.goddessId === sessionId) {
+      if (room.goddessDecisionEndsAt) {
+        room.goddessDecisionRemainingMs = Math.max(0, room.goddessDecisionEndsAt - Date.now())
+        room.goddessDecisionEndsAt = null
+      }
     }
   }
 
@@ -370,13 +342,14 @@ function getSafeStateForPlayer(room, playerId) {
   }
 }
 
-function scheduleWordChoiceTimeout(room) {
+function scheduleWordChoiceTimeout(room, durationMs = 15000) {
   const expectedRound = room.round
   const expectedTurnIndex = room.turnIndex
   const expectedDrawerId = room.currentDrawerId
   
-  // 15 seconds timeout
-  setTimeout(() => {
+  room.wordChoiceEndsAt = Date.now() + durationMs
+  
+  room.wordChoiceTimeout = setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
     if (
       currentRoom && 
@@ -394,7 +367,7 @@ function scheduleWordChoiceTimeout(room) {
       const word = currentRoom.wordChoices[0]
       startDrawingTurn(currentRoom, word)
     }
-  }, 15000)
+  }, durationMs)
 }
 
 function updateRoomHintString(room) {
@@ -406,85 +379,88 @@ function updateRoomHintString(room) {
   room.hint = str
 }
 
-function startDrawingTurn(room, word) {
-  if (room.turnTimeout) clearTimeout(room.turnTimeout)
-  if (room.hintTimer) clearInterval(room.hintTimer)
+function startDrawingTurn(room, word, isResume = false) {
+  if (room.turnTimeout) { clearTimeout(room.turnTimeout); room.turnTimeout = null; }
+  if (room.hintTimer) { clearInterval(room.hintTimer); room.hintTimer = null; }
 
-  room.selectedWord = word
-  room.usedWords = room.usedWords || []
-  if (word && !room.usedWords.includes(word.toLowerCase())) {
-    room.usedWords.push(word.toLowerCase())
+  if (!isResume) {
+    room.selectedWord = word
+    room.usedWords = room.usedWords || []
+    if (word && !room.usedWords.includes(word.toLowerCase())) {
+      room.usedWords.push(word.toLowerCase())
+    }
+    room.phase = 'DRAWING'
+    room.roundStartedAt = Date.now()
+    room.strokes = []
+    room.guessedPlayerIds = []
+    room.turnScores = {}
+    room.reactions = {}
+    room.hintsGiven = 0
   }
   
-  room.phase = 'DRAWING'
-  room.roundStartedAt = Date.now()
-  room.roundEndsAt = Date.now() + (room.configuration.drawTimeSec * 1000)
-  room.strokes = []
-  room.guessedPlayerIds = []
-  room.turnScores = {}
-  room.reactions = {}
-  
+  const durationMs = isResume && room.drawingRemainingMs ? room.drawingRemainingMs : (room.configuration.drawTimeSec * 1000)
+  room.roundEndsAt = Date.now() + durationMs
+
   // Initialize Hint System
   let numHints = room.configuration.hints ?? 2
-  if (word && word.length >= 10) {
-    numHints = 3
-  }
+  if (word && word.length >= 10) numHints = 3
   const isHidden = typeof room.configuration.gameMode === 'string' && room.configuration.gameMode.toUpperCase() === 'HIDDEN'
   
   if (isHidden || numHints <= 0 || !word) {
-    room.hint = word ? word.replace(/[a-zA-Z0-9]/g, '_') : ''
+    if (!isResume) room.hint = word ? word.replace(/[a-zA-Z0-9]/g, '_') : ''
   } else {
-    room.hintRevealed = new Array(word.length).fill(false)
-    const revealIndices = []
-    for (let i = 0; i < word.length; i++) {
-      if (/[^a-zA-Z0-9]/.test(word[i])) {
-        room.hintRevealed[i] = true
-      } else {
-        revealIndices.push(i)
+    if (!isResume) {
+      room.hintRevealed = new Array(word.length).fill(false)
+      const revealIndices = []
+      for (let i = 0; i < word.length; i++) {
+        if (/[^a-zA-Z0-9]/.test(word[i])) {
+          room.hintRevealed[i] = true
+        } else {
+          revealIndices.push(i)
+        }
       }
+      for (let i = revealIndices.length - 1; i > 0; i--) {
+         const j = Math.floor(Math.random() * (i + 1));
+         [revealIndices[i], revealIndices[j]] = [revealIndices[j], revealIndices[i]];
+      }
+      room.revealIndices = revealIndices
+      room.hintsToGive = Math.min(word.length <= 4 ? 1 : numHints, Math.max(0, revealIndices.length - 1))
     }
     
-    // Shuffle indices
-    for (let i = revealIndices.length - 1; i > 0; i--) {
-       const j = Math.floor(Math.random() * (i + 1));
-       [revealIndices[i], revealIndices[j]] = [revealIndices[j], revealIndices[i]];
-    }
-    
-    const maxHintsForWord = word.length <= 4 ? 1 : numHints
-    const hintsToGive = Math.min(maxHintsForWord, Math.max(0, revealIndices.length - 1))
-    if (hintsToGive > 0) {
-      const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (hintsToGive + 1)
-      let hintsGiven = 0
+    if (room.hintsToGive > 0) {
+      const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (room.hintsToGive + 1)
       const expectedDrawerId = room.currentDrawerId
       room.hintTimer = setInterval(() => {
         if (!drawRooms.has(room.id) || room.phase !== 'DRAWING' || room.currentDrawerId !== expectedDrawerId) {
           return clearInterval(room.hintTimer)
         }
-        if (hintsGiven >= hintsToGive) return clearInterval(room.hintTimer)
+        if (room.hintsGiven >= room.hintsToGive) return clearInterval(room.hintTimer)
         
-        const idx = revealIndices[hintsGiven]
+        const idx = room.revealIndices[room.hintsGiven]
         room.hintRevealed[idx] = true
-        hintsGiven++
+        room.hintsGiven++
         updateRoomHintString(room)
         broadcastDrawRoomState(room)
       }, hintIntervalMs)
     }
-    updateRoomHintString(room)
+    if (!isResume) updateRoomHintString(room)
   }
 
-  const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
-  const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
-  room.chatMessages = room.chatMessages || []
-  room.chatMessages.push({
-    id: crypto.randomUUID(),
-    type: 'SYSTEM',
-    message: `${drawerName} is drawing.`
-  })
-  if (room.chatMessages.length > 100) room.chatMessages.shift()
+  if (!isResume) {
+    const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
+    const drawerName = drawerPlayer ? drawerPlayer.name : 'Someone'
+    room.chatMessages = room.chatMessages || []
+    room.chatMessages.push({
+      id: crypto.randomUUID(),
+      type: 'SYSTEM',
+      message: `${drawerName} is drawing.`
+    })
+    if (room.chatMessages.length > 100) room.chatMessages.shift()
+  }
   
   broadcastDrawRoomState(room)
   
-  if (IS_DEV_BOTS_ENABLED) {
+  if (IS_DEV_BOTS_ENABLED && !isResume) {
     room.players.forEach(p => {
       if (p.isBot) {
         io.to(p.id).emit('draw:dev-secret-word', room.selectedWord)
@@ -505,7 +481,7 @@ function startDrawingTurn(room, word) {
         checkRoom.currentDrawerId === expectedDrawerId) {
       endDrawRound(checkRoom)
     }
-  }, room.configuration.drawTimeSec * 1000)
+  }, durationMs)
 }
 
 function endDrawRound(room) {
@@ -695,20 +671,21 @@ function disconnectDrawPlayer(sessionId, socketId) {
       player.isConnected = false
       player.disconnectedAt = Date.now()
 
-      // Do NOT immediately end their turn on transient disconnect
-      // Let the word-choice or drawing timeouts handle it naturally
-      broadcastDrawRoomState(dr)
-
-      setTimeout(() => {
-        const checkRoom = drawRooms.get(rid)
-        if (checkRoom) {
-          const checkPlayer = checkRoom.players.find((p) => p.id === sessionId)
-          if (checkPlayer && !checkPlayer.isConnected) {
-            removeDrawPlayer(sessionId)
-            broadcastDrawRoomState(checkRoom)
-          }
+      // Pause drawer timers
+      if (dr.currentDrawerId === sessionId) {
+        if (dr.phase === 'WORD_CHOICE' && dr.wordChoiceEndsAt) {
+          dr.wordChoiceRemainingMs = Math.max(0, dr.wordChoiceEndsAt - Date.now())
+          dr.wordChoiceEndsAt = null
+          if (dr.wordChoiceTimeout) { clearTimeout(dr.wordChoiceTimeout); dr.wordChoiceTimeout = null }
+        } else if (dr.phase === 'DRAWING' && dr.roundEndsAt) {
+          dr.drawingRemainingMs = Math.max(0, dr.roundEndsAt - Date.now())
+          dr.roundEndsAt = null
+          if (dr.turnTimeout) { clearTimeout(dr.turnTimeout); dr.turnTimeout = null }
+          if (dr.hintTimer) { clearInterval(dr.hintTimer); dr.hintTimer = null }
         }
-      }, 60000)
+      }
+
+      broadcastDrawRoomState(dr)
 
       break
     }
@@ -1255,13 +1232,6 @@ function reapAbandonedRooms() {
     }
     // Destroy rooms with only bots remaining
     if (checkAndDestroyEmptyRoom(roomId, room)) continue
-    // Destroy rooms where all players have been disconnected past the grace window
-    if (room.players.some((p) => p.isConnected)) continue
-    const allStale = room.players.every((p) => (p.disconnectedAt || 0) > 0 && now - p.disconnectedAt >= RECONNECT_GRACE_MS)
-    if (!allStale) continue
-    console.log('[ROOM] reaping abandoned room', { roomId })
-    rooms.delete(roomId)
-    io.to(roomId).emit('room-closed', { message: 'Room closed — all players disconnected.' })
   }
 
   for (const [sessionId] of sessionSockets) {
@@ -1463,6 +1433,17 @@ io.on('connection', (socket) => {
         syncPlayerPrivateState(room, existing, socket)
       }
 
+      // Resume special role timers
+      if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === sessionId && room.revengerDecisionRemainingMs !== undefined) {
+        room.revengerDecisionEndsAt = Date.now() + room.revengerDecisionRemainingMs
+        scheduleRevengerTimeout(room.id, sessionId, room.revengerDecisionRemainingMs)
+        room.revengerDecisionRemainingMs = undefined
+      } else if (room.gamePhase === 'GODDESS_DECISION' && room.goddessId === sessionId && room.goddessDecisionRemainingMs !== undefined) {
+        room.goddessDecisionEndsAt = Date.now() + room.goddessDecisionRemainingMs
+        scheduleGoddessTimeout(room.id, sessionId, room.goddessDecisionRemainingMs)
+        room.goddessDecisionRemainingMs = undefined
+      }
+
       callback?.({ room: publicState, resumeToken: existing.resumeToken, playerName: existing.name })
       broadcastRoom(room)
       return
@@ -1637,6 +1618,17 @@ io.on('connection', (socket) => {
       
       if (!existing.resumeToken) ensureResumeToken(existing)
       socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'skribbl' })
+      
+      // Resume drawer timers
+      if (room.currentDrawerId === sessionId) {
+        if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs !== undefined) {
+          scheduleWordChoiceTimeout(room, room.wordChoiceRemainingMs)
+          room.wordChoiceRemainingMs = undefined
+        } else if (room.phase === 'DRAWING' && room.drawingRemainingMs !== undefined) {
+          startDrawingTurn(room, room.selectedWord, true)
+          room.drawingRemainingMs = undefined
+        }
+      }
       
       callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)
@@ -2831,7 +2823,7 @@ io.on('connection', (socket) => {
       if (p.status !== 'PLAYING') return false
       const ghostSpec = p.eliminated === true && p.specialRole === 'ghost'
       if (!(ghostSpec || (!p.eliminated && !p.spectator))) return false
-      return p.isConnected || (room.lockedVotes || []).includes(p.id)
+      return true
     })
     
     const votingComplete = room.lockedVotes.length >= eligibleVoters.length
@@ -2851,7 +2843,7 @@ io.on('connection', (socket) => {
       if (p.status !== 'PLAYING') return false
       const ghostSpec = p.eliminated === true && p.specialRole === 'ghost'
       if (!(ghostSpec || (!p.eliminated && !p.spectator))) return false
-      return p.isConnected || (room.lockedVotes || []).includes(p.id)
+      return true
     })
     
     const votingComplete = room.lockedVotes.length >= eligibleVoters.length
@@ -2947,25 +2939,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
         room.gamePhase = 'GODDESS_DECISION'
         room.goddessId = goddess.id
         
-        const version = room.gameVersion
-        setTimeout(() => {
-          const currentRoom = rooms.get(room.id)
-          if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
-          if (currentRoom.goddessId !== goddess.id) return
-          
-          const currentGoddess = currentRoom.players.find(p => p.id === goddess.id)
-          if (currentGoddess && currentGoddess.specialRoleData) {
-            currentGoddess.specialRoleData.used = true
-          }
-          
-          currentRoom.votes = {}
-          currentRoom.lockedVotes = []
-          currentRoom.voteResult = null
-          currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
-          currentRoom.gamePhase = 'VOTE'
-          currentRoom.goddessId = null
-          broadcastRoom(currentRoom)
-        }, 15000)
+        room.goddessDecisionEndsAt = Date.now() + 15000
+        scheduleGoddessTimeout(room.id, goddess.id, 15000)
       } else {
         // No special-role decision is required: immediately start the next vote attempt.
         room.votes = {}
@@ -3228,6 +3203,63 @@ ELIMINATION RESULT=`, room.eliminationResult)
     broadcastRoom(room)
   }
 
+  function scheduleGoddessTimeout(roomId, goddessId, durationMs) {
+    const room = rooms.get(roomId)
+    if (!room) return
+    const version = room.gameVersion
+    setTimeout(() => {
+      const currentRoom = rooms.get(roomId)
+      if (!currentRoom || currentRoom.gamePhase !== 'GODDESS_DECISION' || currentRoom.gameVersion !== version) return
+      if (currentRoom.goddessId !== goddessId) return
+      
+      const currentGoddess = currentRoom.players.find(p => p.id === goddessId)
+      if (!currentGoddess || !currentGoddess.isConnected) return
+      
+      if (currentGoddess.specialRoleData) {
+        currentGoddess.specialRoleData.used = true
+      }
+      
+      currentRoom.votes = {}
+      currentRoom.lockedVotes = []
+      currentRoom.voteResult = null
+      currentRoom.votingAttempt = (currentRoom.votingAttempt || 1) + 1
+      currentRoom.gamePhase = 'VOTE'
+      currentRoom.goddessId = null
+      broadcastRoom(currentRoom)
+    }, durationMs)
+  }
+
+  function scheduleRevengerTimeout(roomId, eliminatedId, durationMs) {
+    const room = rooms.get(roomId)
+    if (!room) return
+    const version = room.gameVersion
+    setTimeout(() => {
+      const currentRoom = rooms.get(roomId)
+      if (!currentRoom || currentRoom.gamePhase !== 'REVENGER_DECISION' || currentRoom.gameVersion !== version) return
+      if (currentRoom.revengerId !== eliminatedId) return
+      
+      const revenger = currentRoom.players.find(p => p.id === eliminatedId)
+      if (!revenger || !revenger.isConnected || revenger.specialRoleData?.decisionMade) return
+      
+      revenger.specialRoleData.decisionMade = true
+      revenger.specialRoleData.resolved = true
+      
+      currentRoom.revengerId = null
+      currentRoom.revengerDecisionEndsAt = null
+      currentRoom.gamePhase = 'ELIMINATION'
+      
+      currentRoom.specialRoleOutcomes = currentRoom.specialRoleOutcomes || []
+      currentRoom.specialRoleOutcomes.push({
+        role: 'revenger',
+        revengerName: revenger.name,
+        targetName: 'no one',
+        message: `REVENGER\n${revenger.name} faded away without taking anyone down`
+      })
+      
+      advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
+    }, durationMs)
+  }
+
   // Auto-advances from ELIMINATION phase. Called via timeout.
   function advanceFromElimination(roomId, expectedVersion) {
     const room = rooms.get(roomId)
@@ -3247,33 +3279,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.revengerId = eliminatedId
       room.revengerDecisionEndsAt = Date.now() + 20000
       room.eliminationResult = null
-      
-      const version = room.gameVersion
-      setTimeout(() => {
-        const currentRoom = rooms.get(roomId)
-        if (!currentRoom || currentRoom.gamePhase !== 'REVENGER_DECISION' || currentRoom.gameVersion !== version) return
-        if (currentRoom.revengerId !== eliminatedId) return
-        
-        const revenger = currentRoom.players.find(p => p.id === eliminatedId)
-        if (!revenger || revenger.specialRoleData?.decisionMade) return
-        
-        revenger.specialRoleData.decisionMade = true
-        revenger.specialRoleData.resolved = true
-        
-        currentRoom.revengerId = null
-        currentRoom.revengerDecisionEndsAt = null
-        currentRoom.gamePhase = 'ELIMINATION'
-        
-        currentRoom.specialRoleOutcomes = currentRoom.specialRoleOutcomes || []
-        currentRoom.specialRoleOutcomes.push({
-          role: 'revenger',
-          revengerName: revenger.name,
-          targetName: 'no one',
-          message: `REVENGER\n${revenger.name} faded away without taking anyone down`
-        })
-        
-        advanceFromElimination(currentRoom.id, currentRoom.gameVersion)
-      }, 20000)
+      scheduleRevengerTimeout(roomId, eliminatedId, 20000)
       
       broadcastRoom(room)
       return
