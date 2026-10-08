@@ -1,11 +1,6 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../game/socket.js'
 import QRModal from '../../game/QRModal.jsx'
-import { Users, Settings } from 'lucide-react' // Use standard icons if lucide is available or raw SVGs
-
-// We will use raw SVGs to ensure they match "existing project UI" 
-// but wait, let's just use raw SVG for player and settings.
-
 const PlayerIcon = () => (
   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
