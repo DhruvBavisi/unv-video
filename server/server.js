@@ -3520,11 +3520,24 @@ ELIMINATION RESULT=`, room.eliminationResult)
     callback?.({ success: true })
   })
 
-  socket.on('codenames:create-room', () => {
+  socket.on('codenames:create-room', ({ sessionId: reqSessionId, playerName }, callback) => {
+    if (!reqSessionId || !playerName || typeof playerName !== 'string') {
+      return callback?.({ error: 'INVALID_NAME' })
+    }
+    const trimmed = playerName.trim()
+    if (!/^[\p{L}\p{N} .'-]{2,24}$/u.test(trimmed)) {
+      return callback?.({ error: 'INVALID_NAME_FORMAT' })
+    }
+
+    const existing = findCodenamesRoomByPlayer(reqSessionId)
+    if (existing.room) {
+      return callback?.({ error: 'ALREADY_IN_ROOM' })
+    }
+
     let roomId = makeRoomId()
     while (rooms.has(roomId) || drawRooms.has(roomId) || codenamesRooms.has(roomId)) roomId = makeRoomId()
 
-    const sessionId = currentSessionId || crypto.randomUUID()
+    const sessionId = reqSessionId
     currentSessionId = sessionId
     
     const room = {
@@ -3532,7 +3545,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       hostId: sessionId,
       players: [{
         id: sessionId,
-        name: 'Player',
+        name: trimmed,
         isHost: true,
         isConnected: true
       }],
@@ -3552,26 +3565,47 @@ ELIMINATION RESULT=`, room.eliminationResult)
     connectPlayer(socket, sessionId)
     socket.join(`codenames:${roomId}`)
     
-    socket.emit('session-token', { resumeToken: room.players[0].resumeToken, roomId, playerName: 'Player', gameMode: 'codenames' })
+    socket.emit('session-token', { resumeToken: room.players[0].resumeToken, roomId, playerName: trimmed, gameMode: 'codenames' })
     socket.emit('codenames:room-state', room)
+    callback?.({ success: true })
   })
 
-  socket.on('codenames:join-room', ({ roomId }) => {
+  socket.on('codenames:join-room', ({ sessionId: reqSessionId, playerName, roomId }, callback) => {
+    if (!reqSessionId || !playerName || typeof playerName !== 'string') {
+      return callback?.({ error: 'INVALID_NAME' })
+    }
+    const trimmed = playerName.trim()
+    if (!/^[\p{L}\p{N} .'-]{2,24}$/u.test(trimmed)) {
+      return callback?.({ error: 'INVALID_NAME_FORMAT' })
+    }
+
+    const existing = findCodenamesRoomByPlayer(reqSessionId)
+    if (existing.room && existing.roomId !== roomId) {
+      return callback?.({ error: 'ALREADY_IN_ANOTHER_ROOM' })
+    }
+
     const room = codenamesRooms.get(roomId)
     if (!room) {
-      socket.emit('codenames:error', 'Room not found')
-      return
+      return callback?.({ error: 'ROOM_NOT_FOUND' })
+    }
+    if (room.status !== 'LOBBY') {
+      const playerExists = room.players.some(p => p.id === reqSessionId)
+      if (!playerExists) {
+        return callback?.({ error: 'GAME_IN_PROGRESS' })
+      }
     }
     
-    let sessionId = currentSessionId
-    let player = sessionId ? room.players.find(p => p.id === sessionId) : null
+    let sessionId = reqSessionId
+    currentSessionId = sessionId
+    let player = room.players.find(p => p.id === sessionId)
     
     if (!player) {
-      sessionId = crypto.randomUUID()
-      currentSessionId = sessionId
+      if (room.players.length >= 20) {
+        return callback?.({ error: 'ROOM_FULL' })
+      }
       player = {
         id: sessionId,
-        name: 'Player',
+        name: trimmed,
         isHost: room.players.length === 0,
         isConnected: true
       }
@@ -3579,6 +3613,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
       room.players.push(player)
     } else {
       player.isConnected = true
+      player.name = trimmed
     }
     
     currentRoomId = roomId
@@ -3587,6 +3622,62 @@ ELIMINATION RESULT=`, room.eliminationResult)
     
     socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
     io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:host-make-host', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_MAKE_SELF_HOST' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    
+    const targetPlayer = room.players.find(p => p.id === targetId)
+    if (!targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+
+    const currentHostPlayer = room.players.find(p => p.id === currentSessionId)
+    if (currentHostPlayer) currentHostPlayer.isHost = false
+    targetPlayer.isHost = true
+    room.hostId = targetId
+
+    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:host-kick-player', ({ targetId }, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_KICK_SELF' })
+    
+    const targetIndex = room.players.findIndex(p => p.id === targetId)
+    if (targetIndex === -1) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+
+    room.players.splice(targetIndex, 1)
+
+    if (room.teams) {
+      if (room.teams.red) room.teams.red = room.teams.red.filter(id => id !== targetId)
+      if (room.teams.blue) room.teams.blue = room.teams.blue.filter(id => id !== targetId)
+    }
+    if (room.spymasters) {
+      if (room.spymasters.red === targetId) room.spymasters.red = null
+      if (room.spymasters.blue === targetId) room.spymasters.blue = null
+    }
+
+    const targetSocketId = sessionSockets.get(targetId)
+    if (targetSocketId) {
+      const targetSocket = io.sockets.sockets.get(targetSocketId)
+      if (targetSocket) {
+        targetSocket.emit('player-kicked')
+        targetSocket.leave(`codenames:${currentRoomId}`)
+      }
+      sessionSockets.delete(targetId)
+    }
+
+    io.to(`codenames:${currentRoomId}`).emit('codenames:room-state', room)
+    callback?.({ success: true })
   })
 
   socket.on('codenames:leave-room', () => {
