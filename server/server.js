@@ -867,15 +867,24 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
   const { roomId, room } = findCodenamesRoomByPlayer(sessionId)
   if (!room) return
   const player = room.players.find((p) => p.id === sessionId)
-  if (player) player.isConnected = false
-  
-  const connectedRealPlayers = room.players.filter(p => !p.isBot && p.isConnected)
-  if (connectedRealPlayers.length === 0) {
-    codenamesRooms.delete(roomId)
-    io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
-  } else {
-    broadcastCodenamesRoomState(room)
+  if (player) {
+    player.isConnected = false
+    player.disconnectedAt = Date.now()
   }
+  
+  const realPlayers = room.players.filter(p => !p.isBot)
+  const allRealDisconnected = realPlayers.length > 0 && realPlayers.every(p => !p.isConnected)
+  
+  if (realPlayers.length === 0 || allRealDisconnected) {
+    if (realPlayers.length === 0) {
+      codenamesRooms.delete(roomId)
+      io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
+      return
+    }
+    // Grace period: do not delete immediately if there are real players that just disconnected
+  }
+
+  broadcastCodenamesRoomState(room)
 }
 
 function removeCodenamesPlayer(sessionId) {
@@ -895,8 +904,8 @@ function removeCodenamesPlayer(sessionId) {
       if (room.spymasters.blue === sessionId) room.spymasters.blue = null
     }
 
-    const connectedRealPlayers = room.players.filter(p => !p.isBot && p.isConnected)
-    if (connectedRealPlayers.length === 0) {
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length === 0) {
       codenamesRooms.delete(roomId)
       io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
       return { roomId, room: null }
@@ -1401,8 +1410,37 @@ function reapAbandonedRooms() {
       rooms.delete(roomId)
       continue
     }
-    // Destroy rooms with only bots remaining
     if (checkAndDestroyEmptyRoom(roomId, room)) continue
+  }
+
+  for (const [roomId, room] of drawRooms) {
+    if (room.players.length === 0) {
+      drawRooms.delete(roomId)
+      continue
+    }
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length === 0) {
+      console.log('[ROOM] destroying empty draw room (no real players)', { roomId })
+      if (room.turnTimeout) clearTimeout(room.turnTimeout)
+      if (room.hintTimer) clearInterval(room.hintTimer)
+      drawRooms.delete(roomId)
+      io.to(`draw:${roomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
+      continue
+    }
+  }
+
+  for (const [roomId, room] of codenamesRooms) {
+    if (room.players.length === 0) {
+      codenamesRooms.delete(roomId)
+      continue
+    }
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length === 0) {
+      console.log('[ROOM] destroying empty codenames room (no real players)', { roomId })
+      codenamesRooms.delete(roomId)
+      io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
+      continue
+    }
   }
 
   for (const [sessionId] of sessionSockets) {
@@ -3779,6 +3817,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
         targetSocket.leave(`codenames:${currentRoomId}`)
       }
       sessionSockets.delete(targetId)
+    }
+
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length === 0) {
+      codenamesRooms.delete(currentRoomId)
+      io.to(`codenames:${currentRoomId}`).emit('room-closed', { message: 'Room closed.' })
+      return callback?.({ success: true })
     }
 
     broadcastCodenamesRoomState(room)
