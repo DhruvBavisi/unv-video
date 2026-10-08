@@ -18,12 +18,7 @@ export default function CodenamesCard({ card }) {
 
   return (
     <div className={classNames}>
-      <div className="cn-card-inner">
-        <div className="cn-card-top"></div>
-        <div className="cn-card-bottom">
-          <span className="cn-card-word">{card.word}</span>
-        </div>
-      </div>
+      <span className="card-word">{card.word}</span>
     </div>
   )
 }

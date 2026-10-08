@@ -160,7 +160,7 @@ export default function CodenamesApp({ onExit }) {
           onLeave={handleLeave} 
         />
       ) : (
-        <CodenamesBoard room={room} onLeave={handleLeave} />
+        <CodenamesBoard room={room} />
       )}
     </div>
   )
