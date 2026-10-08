@@ -264,17 +264,21 @@ function ClueInput({ isMyTurn, gamePhase, submitting, onSubmit }) {
   )
 }
 
-function ClueOrderDisplay({ turnOrder, currentTurnPlayerId, submittedCluePlayerIds, players, myPlayerId, currentRound }) {
+function ClueOrderDisplay({ turnOrder, currentTurnPlayerId, submittedCluePlayerIds, skippedCluePlayerIds = [], players, myPlayerId, currentRound }) {
   const renderItem = (playerId, index) => {
     const player = players.find((p) => p.id === playerId)
     const playerName = player?.name || 'Unknown'
     const isCurrent = playerId === currentTurnPlayerId
     const isCompleted = submittedCluePlayerIds.includes(playerId)
+    const isSkipped = skippedCluePlayerIds.includes(playerId)
     const isMe = playerId === myPlayerId
 
     let statusClass = 'clue-panel__order-item--upcoming'
     let statusLabel = 'Upcoming'
-    if (isCompleted) {
+    if (isSkipped) {
+      statusClass = 'clue-panel__order-item--skipped'
+      statusLabel = 'SILENCED'
+    } else if (isCompleted) {
       statusClass = 'clue-panel__order-item--completed'
       statusLabel = 'Completed'
     } else if (isCurrent) {
@@ -287,7 +291,7 @@ function ClueOrderDisplay({ turnOrder, currentTurnPlayerId, submittedCluePlayerI
         <span className="clue-panel__order-position">{String(index + 1).padStart(2, '0')}</span>
         <span className="clue-panel__order-avatar">{getInitials(playerName)}</span>
         <span className="clue-panel__order-name">{playerName}</span>
-        <span className="clue-panel__order-status">{isCompleted ? `✓ ${statusLabel}` : statusLabel}</span>
+        <span className="clue-panel__order-status">{(isCompleted || isSkipped) ? (isSkipped ? `✕ ${statusLabel}` : `✓ ${statusLabel}`) : statusLabel}</span>
       </div>
     )
   }
@@ -859,6 +863,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
     roomId,
     turnOrder,
     submittedCluePlayerIds,
+    skippedCluePlayerIds = [],
     votes,
     lockedVotes,
     voteResult,
@@ -1032,6 +1037,7 @@ export default function CluePhase({ state, socketRef, onSourceRect }) {
                   turnOrder={turnOrder}
                   currentTurnPlayerId={currentTurnPlayerId}
                   submittedCluePlayerIds={submittedCluePlayerIds}
+                  skippedCluePlayerIds={skippedCluePlayerIds}
                   players={players}
                   myPlayerId={sessionId}
                   currentRound={currentRound}

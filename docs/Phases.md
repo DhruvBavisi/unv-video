@@ -155,7 +155,7 @@ At the beginning of each round:
 - Generate a random sequence of active players.
 - In Round 1 only, Mr. White must never be first.
 - From Round 2 onward, Mr. White may appear anywhere in the randomized sequence, including first.
-- Every active player gets exactly one clue opportunity in the sequence.
+- Every active player gets exactly one clue opportunity in the sequence, unless silenced by the Falafel Vendor (which skips their clue turn for that round).
 - The sequence must be authoritative and synchronized for all players.
 - A player cannot submit before their turn.
 - A player cannot submit twice.

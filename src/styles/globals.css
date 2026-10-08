@@ -2303,6 +2303,11 @@ video {
   border-color: rgba(169, 166, 158, 0.15);
 }
 
+.clue-panel__order-item--skipped {
+  opacity: 0.55;
+  border-color: rgba(169, 166, 158, 0.15);
+}
+
 .clue-panel__order-position {
   font-family: var(--font-display);
   font-size: 0.95rem;
@@ -2370,6 +2375,19 @@ video {
 }
 
 .clue-panel__order-item--completed .clue-panel__order-avatar {
+  opacity: 0.7;
+}
+
+.clue-panel__order-item--skipped .clue-panel__order-status {
+  color: #ef4444;
+}
+
+.clue-panel__order-item--skipped .clue-panel__order-name {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.clue-panel__order-item--skipped .clue-panel__order-avatar {
   opacity: 0.7;
 }
 

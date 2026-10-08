@@ -161,6 +161,7 @@ function getPublicRoomState(room) {
     currentTurnPlayerId: room.currentTurnPlayerId || null,
     turnOrder: room.turnOrder || [],
     submittedCluePlayerIds: room.submittedCluePlayerIds || [],
+    skippedCluePlayerIds: room.skippedCluePlayerIds || [],
     votes: room.votes || {},
     lockedVotes: room.lockedVotes || [],
     votingAttempt: room.votingAttempt || 1,
@@ -850,6 +851,7 @@ function startCluePhase(room) {
   if (room.gamePhase === 'CLUE') return
   room.gamePhase = 'CLUE'
   room.submittedCluePlayerIds = []
+  room.skippedCluePlayerIds = []
 
   const active = getActivePlayers(room)
   let order = shuffle(active.map((p) => p.id))
@@ -918,6 +920,10 @@ function advanceTurn(room) {
     room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
     
     if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+      if (!room.skippedCluePlayerIds) room.skippedCluePlayerIds = []
+      if (!room.skippedCluePlayerIds.includes(room.currentTurnPlayerId)) {
+        room.skippedCluePlayerIds.push(room.currentTurnPlayerId)
+      }
       console.log('[CLUE] skipping silenced player', { roomId: room.id, playerId: room.currentTurnPlayerId })
       return advanceTurn(room)
     }
@@ -1133,6 +1139,7 @@ io.on('connection', (socket) => {
       turnOrder: [],
       turnIndex: 0,
       submittedCluePlayerIds: [],
+      skippedCluePlayerIds: [],
       clues: [],
       chat: [],
       votes: {},
@@ -2054,6 +2061,7 @@ io.on('connection', (socket) => {
       room.currentTurnPlayerId = null
       room.turnIndex = 0
       room.submittedCluePlayerIds = []
+      room.skippedCluePlayerIds = []
       room.specialRoleOutcomes = []
       room.baseScoringResolved = false
 
@@ -2163,6 +2171,7 @@ io.on('connection', (socket) => {
     room.currentTurnPlayerId = null
     room.turnIndex = 0
     room.submittedCluePlayerIds = []
+    room.skippedCluePlayerIds = []
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
@@ -2240,6 +2249,7 @@ io.on('connection', (socket) => {
     room.currentTurnPlayerId = null
     room.turnIndex = 0
     room.submittedCluePlayerIds = []
+    room.skippedCluePlayerIds = []
     room.specialRoleOutcomes = []
     room.baseScoringResolved = false
     room.revengerId = null
@@ -2467,6 +2477,10 @@ io.on('connection', (socket) => {
     }
 
     if (room.currentTurnPlayerId === targetId) {
+      if (!room.skippedCluePlayerIds) room.skippedCluePlayerIds = []
+      if (!room.skippedCluePlayerIds.includes(targetId)) {
+        room.skippedCluePlayerIds.push(targetId)
+      }
       advanceTurn(room)
     } else {
       broadcastRoom(room)
@@ -3141,6 +3155,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     // Remove from active game structures
     room.turnOrder = (room.turnOrder || []).filter(id => id !== targetId)
     room.submittedCluePlayerIds = (room.submittedCluePlayerIds || []).filter(id => id !== targetId)
+    room.skippedCluePlayerIds = (room.skippedCluePlayerIds || []).filter(id => id !== targetId)
     
     if (room.votes && room.votes[targetId]) {
       delete room.votes[targetId]
