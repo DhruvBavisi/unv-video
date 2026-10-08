@@ -3977,6 +3977,47 @@ ELIMINATION RESULT=`, room.eliminationResult)
       })
     }
 
+    // Auto-assign any unassigned players (including the host if they haven't joined yet)
+    const unassignedPlayers = room.players.filter(p => !p.team || !p.role)
+    unassignedPlayers.forEach(p => {
+      const redSpies = room.players.filter(x => x.team === 'red' && x.role === 'SPYMASTER').length
+      const blueSpies = room.players.filter(x => x.team === 'blue' && x.role === 'SPYMASTER').length
+      const redTotal = room.players.filter(x => x.team === 'red').length
+      const blueTotal = room.players.filter(x => x.team === 'blue').length
+
+      let targetTeam = 'red'
+      let targetRole = 'OPERATIVE'
+
+      if (redSpies === 0) {
+        targetTeam = 'red'
+        targetRole = 'SPYMASTER'
+      } else if (blueSpies === 0) {
+        targetTeam = 'blue'
+        targetRole = 'SPYMASTER'
+      } else if (redTotal <= blueTotal) {
+        targetTeam = 'red'
+        targetRole = 'OPERATIVE'
+      } else {
+        targetTeam = 'blue'
+        targetRole = 'OPERATIVE'
+      }
+
+      p.team = targetTeam
+      p.role = targetRole
+
+      if (room.teams && room.teams[targetTeam]) {
+        if (!room.teams[targetTeam].includes(p.id)) {
+          room.teams[targetTeam].push(p.id)
+        }
+      }
+      if (room.spymasters && targetRole === 'SPYMASTER') {
+        // Just keeping legacy state somewhat valid, but avoiding overriding real players
+        if (!room.spymasters[targetTeam]) {
+          room.spymasters[targetTeam] = p.id
+        }
+      }
+    })
+
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })

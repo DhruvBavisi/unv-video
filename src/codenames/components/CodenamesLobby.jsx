@@ -91,8 +91,11 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   // Spectators (unassigned)
   const unassignedPlayers = room.players.filter(p => !p.team)
 
-  const canStart = room.teams?.red?.length > 0 && 
-                   room.teams?.blue?.length > 0 &&
+  const redTeamCount = room.players.filter(p => p.team === 'red').length
+  const blueTeamCount = room.players.filter(p => p.team === 'blue').length
+
+  const canStart = redTeamCount > 0 && 
+                   blueTeamCount > 0 &&
                    room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER') &&
                    room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER') &&
                    unassignedPlayers.length === 0
