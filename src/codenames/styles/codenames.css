@@ -1,6 +1,6 @@
 /* CODENAMES UNIFIED THEME */
 :root {
-  --cn-bg-primary: #172230;
+  --cn-bg-primary: #000000;
   --cn-bg-secondary: #223042;
   --cn-panel-bg: #1c2736;
   --cn-card-bg: #e5d8c3;
@@ -374,14 +374,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 10px 10px 10px;
+  padding: 4px 10px 4px 10px;
   border: 3px solid #eaeaea;
   border-top-color: #fdfdfd;
   border-bottom: 4px solid #c0c0c0;
   position: relative;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-  min-height: 160px;
+  min-height: 140px;
 }
 
 .cn-team-card.blue,
@@ -403,7 +403,7 @@
   color: #fff;
   font-family: var(--cn-font-main);
   font-weight: 900;
-  font-size: clamp(16px, 5vw, 20px);
+  font-size: clamp(14px, 3vw, 20px);
   text-transform: uppercase;
   margin: 0;
   line-height: 1.1;
@@ -441,10 +441,10 @@
   border-top: 1px solid #9df84e;
   color: #fff;
   border-radius: 30px;
-  padding: 8px 10px;
+  padding: 2px 10px;
   font-family: var(--cn-font-main);
-  font-weight: 900;
-  font-size: clamp(14px, 4.5vw, 18px);
+  font-weight: 800;
+  font-size: clamp(14px, 4vw, 18px);
   text-transform: uppercase;
   width: 90%;
   margin-top: auto;
