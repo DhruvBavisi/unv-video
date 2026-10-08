@@ -1337,7 +1337,7 @@ io.on('connection', (socket) => {
     callback?.({ room: getPublicRoomState(room), resumeToken: room.players[0].resumeToken, playerName: room.players[0].name })
   })
 
-  socket.on('join-room', ({ sessionId, roomId, playerName, isBot }, callback) => {
+  socket.on('join-room', ({ sessionId, roomId, playerName, resumeToken, isBot }, callback) => {
     console.log('[ROOM] JOIN_ROOM received', { socketId: socket.id, roomId, playerId: sessionId })
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
@@ -1359,6 +1359,13 @@ io.on('connection', (socket) => {
 
     const existing = room.players.find((p) => p.id === sessionId)
     if (existing) {
+      const tokenOk = existing.resumeToken && typeof resumeToken === 'string' && resumeToken === existing.resumeToken
+      if (!tokenOk) {
+        console.warn('[AUTH] join-room rejected without matching resume token', { sessionId })
+        socket.emit('session-expired')
+        return
+      }
+
       existing.isConnected = true
       existing.disconnectedAt = null
       // Never overwrite the existing player's authoritative name!
