@@ -1991,49 +1991,81 @@ io.on('connection', (socket) => {
 
 
 
-  socket.on('draw:start-game', () => {
-    if (!currentSessionId) return
+  socket.on('draw:start-game', (callback) => {
+    if (!currentSessionId) return callback?.({ success: false, error: 'NO_SESSION' })
+
     let room = null
-    for (const [rid, dr] of drawRooms) {
+    for (const [, dr] of drawRooms) {
       if (dr.hostId === currentSessionId) {
         room = dr
         break
       }
     }
-    if (!room || room.status !== 'LOBBY') return
-    if (room.players.length < 2) return // Need at least 2 players to start
 
-    // Set up turn order and basic game state
-    room.status = 'PLAYING'
-    room.phase = 'WORD_CHOICE'
-    room.round = 1
-    room.totalRounds = room.configuration.rounds
-    
-    // Fisher-Yates shuffle using eligible player IDs
-    const playerIds = [...room.players].filter(p => !p.spectator).map(p => p.id)
-    if (playerIds.length === 0) return // Cannot start if no eligible players
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_ALREADY_STARTED' })
 
-    for (let i = playerIds.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const temp = playerIds[i]
-      playerIds[i] = playerIds[j]
-      playerIds[j] = temp
+    const eligiblePlayers = room.players.filter(p => !p.spectator)
+    if (eligiblePlayers.length < 2) {
+      return callback?.({ success: false, error: 'NOT_ENOUGH_PLAYERS' })
     }
-    room.turnOrder = playerIds
-    room.turnIndex = 0
-    room.currentDrawerId = room.turnOrder[room.turnIndex]
-    
-    room.wordChoices = generateWordChoices(room)
-    room.selectedWord = null
-    room.strokes = []
-    
-    // Clear canvas for all clients on new game
-    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
-    
-    // Start word-choice timeout
-    scheduleWordChoiceTimeout(room)
-    
-    broadcastDrawRoomState(room)
+
+    try {
+      // Build the complete start state before mutating the room. This prevents
+      // a startup exception from leaving a half-started room.
+      const playerIds = eligiblePlayers.map(p => p.id)
+      for (let i = playerIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]]
+      }
+
+      const wordChoices = generateWordChoices(room)
+      if (!Array.isArray(wordChoices) || wordChoices.length === 0) {
+        return callback?.({ success: false, error: 'NO_WORDS_AVAILABLE' })
+      }
+
+      if (room.wordChoiceTimeout) {
+        clearTimeout(room.wordChoiceTimeout)
+        room.wordChoiceTimeout = null
+      }
+      if (room.turnTimeout) {
+        clearTimeout(room.turnTimeout)
+        room.turnTimeout = null
+      }
+      if (room.hintTimer) {
+        clearInterval(room.hintTimer)
+        room.hintTimer = null
+      }
+
+      room.status = 'PLAYING'
+      room.phase = 'WORD_CHOICE'
+      room.round = 1
+      room.totalRounds = Number(room.configuration.rounds) || 3
+      room.turnOrder = playerIds
+      room.turnIndex = 0
+      room.currentDrawerId = playerIds[0]
+      room.wordChoices = wordChoices
+      room.selectedWord = null
+      room.strokes = []
+      room.guessedPlayerIds = []
+      room.turnScores = {}
+      room.hintsGiven = 0
+      room.turnSequence = 0
+      room.roundEndsAt = null
+      room.wordChoiceEndsAt = null
+
+      io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+      scheduleWordChoiceTimeout(room)
+      broadcastDrawRoomState(room)
+      callback?.({ success: true })
+    } catch (error) {
+      console.error('[DRAW] Failed to start game', {
+        roomId: room.id,
+        sessionId: currentSessionId,
+        error
+      })
+      callback?.({ success: false, error: 'START_GAME_FAILED' })
+    }
   })
 
 
