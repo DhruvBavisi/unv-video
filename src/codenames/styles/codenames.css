@@ -169,10 +169,22 @@
 }
 
 .cn-top-bar {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 10px 0;
+  width: 100%;
+}
+.cn-top-left { display: flex; justify-content: flex-start; }
+.cn-top-center { display: flex; justify-content: center; }
+.cn-top-right { display: flex; justify-content: flex-end; }
+.cn-top-title {
+  margin: 0;
+  font-family: var(--cn-font-display);
+  font-size: clamp(1.2rem, 5vw, 1.8rem);
+  letter-spacing: 1px;
+  color: var(--cn-card-bg);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .cn-icon-button {
@@ -195,13 +207,19 @@
 
 .cn-spectator-strip {
   display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.cn-spectator-content {
+  display: flex;
   align-items: center;
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 5px;
   min-height: 60px;
+  max-width: 100%;
 }
-.cn-spectator-strip::-webkit-scrollbar { display: none; }
+.cn-spectator-content::-webkit-scrollbar { display: none; }
 
 .cn-spectator-icon {
   color: #fff;

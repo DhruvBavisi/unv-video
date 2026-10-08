@@ -83,25 +83,34 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
     <div className="cn-lobby-fullscreen">
       {/* 1. TOP SAFE AREA + TOP BAR */}
       <div className="cn-top-bar">
-        <button className="cn-icon-button" onClick={() => setShowQR(true)} title="Room Info / QR">
-          <PlayerIcon />
-          <span className="cn-player-count">{room.players.length}</span>
-        </button>
-        <button className="cn-icon-button" onClick={onLeave} title="Settings / Leave">
-          <SettingsIcon />
-        </button>
+        <div className="cn-top-left">
+          <button className="cn-icon-button" onClick={() => setShowQR(true)} title="Room Info / QR">
+            <PlayerIcon />
+            <span className="cn-player-count">{room.players.length}</span>
+          </button>
+        </div>
+        <div className="cn-top-center">
+          <h1 className="cn-top-title">CODENAMES</h1>
+        </div>
+        <div className="cn-top-right">
+          <button className="cn-icon-button" onClick={onLeave} title="Settings / Leave">
+            <SettingsIcon />
+          </button>
+        </div>
       </div>
 
       {/* 2. SPECTATORS BAR */}
       <div className="cn-spectator-strip">
-        <div className="cn-spectator-icon">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </div>
-        <div className="cn-spectator-list">
-          {unassignedPlayers.map(renderAvatar)}
+        <div className="cn-spectator-content">
+          <div className="cn-spectator-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div className="cn-spectator-list">
+            {unassignedPlayers.map(renderAvatar)}
+          </div>
         </div>
       </div>
 
