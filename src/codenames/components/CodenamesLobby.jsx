@@ -90,7 +90,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           </button>
         </div>
         <div className="cn-top-center">
-          <h1 className="cn-top-title">CODENAMES</h1>
+          
         </div>
         <div className="cn-top-right">
           <button className="cn-icon-button" onClick={onLeave} title="Settings / Leave">
