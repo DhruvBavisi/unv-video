@@ -31,7 +31,12 @@ function getFriendlyError(errCode) {
     'NAME_TAKEN': "That name is already being used.",
     'ROOM_FULL': "This room is full.",
     'ALREADY_IN_DRAW_ROOM': "You're already in a game.",
-    'INVALID_NAME': "Enter a name to continue."
+    'INVALID_NAME': "Enter a name to continue.",
+    'NO_SESSION': "Your connection session expired. Please reconnect.",
+    'GAME_ALREADY_STARTED': "The game has already started.",
+    'NOT_ENOUGH_PLAYERS': "At least 2 players are required to start.",
+    'NO_WORDS_AVAILABLE': "No unused words are available for this game.",
+    'START_GAME_FAILED': "The game could not be started. Please reconnect and try again."
   }
   return map[errCode] || errCode || 'Something went wrong.'
 }
