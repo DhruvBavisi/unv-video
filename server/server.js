@@ -281,6 +281,30 @@ function disconnectPlayer(sessionId, socketId) {
   if (player) {
     player.isConnected = false
     player.disconnectedAt = Date.now()
+
+    if (room.gamePhase === 'CLUE' && room.currentTurnPlayerId === sessionId) {
+      const turnContext = {
+        round: room.round,
+        turnIndex: room.turnIndex,
+        playerId: sessionId
+      }
+      setTimeout(() => {
+        const currentRoom = rooms.get(roomId)
+        if (!currentRoom || currentRoom.gamePhase !== 'CLUE') return
+        if (currentRoom.currentTurnPlayerId !== turnContext.playerId) return
+        if (currentRoom.round !== turnContext.round || currentRoom.turnIndex !== turnContext.turnIndex) return
+        
+        const p = currentRoom.players.find(x => x.id === turnContext.playerId)
+        if (p && !p.isConnected) {
+          console.log(`[CLUE] Player ${turnContext.playerId} disconnected during turn. Advancing.`)
+          if (!currentRoom.submittedCluePlayerIds) currentRoom.submittedCluePlayerIds = []
+          if (!currentRoom.submittedCluePlayerIds.includes(turnContext.playerId)) {
+            currentRoom.submittedCluePlayerIds.push(turnContext.playerId)
+            advanceTurn(currentRoom)
+          }
+        }
+      }, 15000)
+    }
   }
 
   // Check if the room should be destroyed because only bots remain connected
@@ -2848,6 +2872,11 @@ ELIMINATION RESULT=`, room.eliminationResult)
       return callback?.({ success: false, error: 'INVALID_TARGET' })
     }
     
+    executeGoddessDecision(room, goddess, target)
+    callback?.({ success: true })
+  })
+
+  function executeGoddessDecision(room, goddess, target) {
     goddess.specialRoleData.used = true
     
     target.eliminated = true
@@ -2889,9 +2918,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     setTimeout(() => {
       advanceFromElimination(room.id, version)
     }, delay)
-    
-    callback?.({ success: true })
-  })
+  }
 
   socket.on('submit-mr-white-guess', ({ guess }, callback) => {
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
@@ -2994,9 +3021,9 @@ ELIMINATION RESULT=`, room.eliminationResult)
     
     const eliminatedId = room.eliminationResult?.playerId
     const eliminatedPlayer = room.players.find((p) => p.id === eliminatedId)
-    if (!eliminatedPlayer) return
     
     if (
+      eliminatedPlayer &&
       eliminatedPlayer.specialRole === 'revenger' && 
       !eliminatedPlayer.specialRoleData?.decisionMade && 
       room.eliminationResult?.isVoteElimination
@@ -3056,6 +3083,9 @@ ELIMINATION RESULT=`, room.eliminationResult)
         room.mrWhiteGuessSubmitted = false
         room.votes = {}
         room.lockedVotes = []
+      } else {
+        advanceFromElimination(roomId, expectedVersion)
+        return
       }
     } else {
       if (!evaluateWinCondition(room)) {
@@ -3187,6 +3217,49 @@ ELIMINATION RESULT=`, room.eliminationResult)
           room.turnIndex--
         }
       }
+    } else if (room.gamePhase === 'MR_WHITE_GUESS' && room.mrWhiteGuesserId === targetId) {
+      room.mrWhiteGuessSubmitted = false
+      room.mrWhiteLiveGuess = ''
+      room.mrWhiteGuesserId = null
+      advanceAfterMrWhiteWrongGuess(room.id, room.gameVersion)
+    } else if (room.gamePhase === 'REVENGER_DECISION' && room.revengerId === targetId) {
+      room.revengerId = null
+      room.revengerDecisionEndsAt = null
+      room.gamePhase = 'ELIMINATION'
+      if (targetPlayer.specialRoleData) {
+        targetPlayer.specialRoleData.decisionMade = true
+        targetPlayer.specialRoleData.resolved = true
+      }
+      room.specialRoleOutcomes = room.specialRoleOutcomes || []
+      room.specialRoleOutcomes.push({
+        role: 'revenger',
+        revengerName: targetPlayer.name,
+        targetName: 'no one',
+        message: `REVENGER\n${targetPlayer.name} faded away without taking anyone down`
+      })
+      advanceFromElimination(room.id, room.gameVersion)
+    } else if (room.gamePhase === 'GODDESS_DECISION') {
+      if (room.goddessId === targetId) {
+        room.votes = {}
+        room.lockedVotes = []
+        room.voteResult = null
+        room.votingAttempt = (room.votingAttempt || 1) + 1
+        room.gamePhase = 'VOTE'
+        room.goddessId = null
+      } else if (room.voteResult && room.voteResult.tiedPlayers && room.voteResult.tiedPlayers.includes(targetId)) {
+        room.voteResult.tiedPlayers = room.voteResult.tiedPlayers.filter(id => id !== targetId)
+        if (room.voteResult.tiedPlayers.length === 1) {
+          const remainingTargetId = room.voteResult.tiedPlayers[0]
+          const remainingTarget = room.players.find(p => p.id === remainingTargetId)
+          const goddess = room.players.find(p => p.id === room.goddessId)
+          if (remainingTarget && goddess) {
+            executeGoddessDecision(room, goddess, remainingTarget)
+          }
+        }
+      }
+    } else if (room.gamePhase === 'ELIMINATION' && room.eliminationResult?.playerId === targetId) {
+      room.eliminationResult = null
+      advanceFromElimination(room.id, room.gameVersion)
     }
 
     // Completely remove target from room
