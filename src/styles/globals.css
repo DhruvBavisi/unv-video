@@ -6304,7 +6304,7 @@ input, select, textarea, button { font-size: 16px; }
   position: relative;
   z-index: 10;
   border-bottom: 2px solid #2345B5; /* Thin blue divider */
-  padding: 6px 6px 0;
+  padding: calc(env(safe-area-inset-top) + 6px) 6px 0;
   /* subtle glitch animation on border can be done here if needed */
 }
 

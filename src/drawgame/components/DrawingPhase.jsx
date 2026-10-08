@@ -262,7 +262,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const topBarColor = timeRemaining <= 10 ? 'var(--sk-coral)' : 'var(--sk-primary)'
 
   return (
-    <div className="sk-view" style={{ height: '100dvh', minHeight: 0, overflow: 'hidden', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', boxSizing: 'border-box' }}>
+    <div className="sk-view" style={{ height: '100dvh', minHeight: 0, overflow: 'hidden' }}>
       {/* Background (light layout) */}
       <div className="sk-bg-shapes">
         <div className="sk-bg-shape sk-bg-shape-1" />
