@@ -6522,3 +6522,13 @@ html.sk-screen-lock body {
     transition: none;
   }
 }
+
+.sk-view--game {
+  animation: none;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overflow: clip;
+  position: relative;
+  top: var(--sk-pan, 0px);
+}
