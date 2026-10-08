@@ -612,7 +612,9 @@ export default function DrawingPhase({ room, onLeave }) {
         display: 'flex', 
         minHeight: 0,
         background: 'rgba(255, 255, 255, 0.8)',
-        zIndex: 10
+        zIndex: 10,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        boxSizing: 'border-box'
       }}>
         {/* Left Column: Player List */}
         <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
