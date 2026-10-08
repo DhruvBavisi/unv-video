@@ -1,7 +1,7 @@
 # CODENAMES — Design
 
 ## Status
-**Specification only — not implemented yet.**
+**Phase 1 implemented.**
 
 ## Design Goal
 Create a premium, clean board-game experience that is visually distinct from Undercover's classified investigation aesthetic and from Skribbl's drawing UI.

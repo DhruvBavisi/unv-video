@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onBack }) {
+export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSelectCodenames, onBack }) {
   return (
     <div className="mode-select mode-select--cinematic">
       
@@ -98,6 +98,40 @@ export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onBack
             <div className="mode-select__panel-info">
               <h2 className="mode-select__panel-title">SKRIBBL</h2>
               <p className="mode-select__panel-subtitle">DRAW & GUESS</p>
+            </div>
+
+            <div className="mode-select__panel-cta">
+              <span className="mode-select__cta-text">PLAY</span>
+              <span className="mode-select__cta-arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+          {/* CODENAMES PANEL */}
+          <div className="mode-select__panel mode-select__panel--sk" onClick={onSelectCodenames}>
+            
+            <div className="mode-select__panel-bg" style={{background: 'radial-gradient(circle at 50% 0%, rgba(200,50,50,0.15) 0%, transparent 70%)'}}></div>
+            <div className="mode-select__panel-glow"></div>
+            <div className="mode-select__panel-border"></div>
+
+            {/* Corner Markers */}
+            <div className="mode-select__corner mode-select__corner--tr"></div>
+            <div className="mode-select__corner mode-select__corner--bl"></div>
+
+            <div className="mode-select__panel-index">03</div>
+            
+            <div className="mode-select__panel-art">
+              <svg className="mode-select__art-svg mode-select__art-svg--uc-glass" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
+              </svg>
+            </div>
+
+            <div className="mode-select__panel-info">
+              <h2 className="mode-select__panel-title">CODENAMES</h2>
+              <p className="mode-select__panel-subtitle">WORD ASSOCIATION</p>
             </div>
 
             <div className="mode-select__panel-cta">

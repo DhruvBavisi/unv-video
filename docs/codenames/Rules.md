@@ -1,5 +1,8 @@
 # CODENAMES — Development Rules
 
+## Status
+**Phase 1 implemented.**
+
 ## General
 1. Inspect the existing shared socket/session architecture before changing it.
 2. Reuse the existing Socket.IO connection.

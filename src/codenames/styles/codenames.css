@@ -1,0 +1,85 @@
+/* classic codenames aesthetic */
+.codenames-app {
+  font-family: 'Times New Roman', Times, serif, sans-serif;
+  background-color: #f4ecd8; /* tan/paper background */
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.codenames-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.codenames-lobby {
+  background: #fff;
+  border: 2px solid #333;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.codenames-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.codenames-card {
+  background: #fff;
+  border: 2px solid #555;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4/3;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+  user-select: none;
+}
+
+.codenames-card:active {
+  transform: scale(0.98);
+}
+
+.team-panel {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 20px;
+}
+
+.team-box {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  flex: 1;
+  margin: 0 10px;
+}
+
+.team-red {
+  background-color: #ffcccc;
+}
+.team-blue {
+  background-color: #cceeff;
+}
+
+@media (max-width: 600px) {
+  .codenames-board {
+    gap: 5px;
+  }
+  .codenames-card {
+    font-size: 10px;
+  }
+}

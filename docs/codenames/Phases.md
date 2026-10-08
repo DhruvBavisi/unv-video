@@ -4,10 +4,10 @@
 All phases below are planned. Do not mark a phase complete until the corresponding code actually exists.
 
 ## Phase 1 — Mode Integration
-- Add Codenames to the existing mode selector.
-- Add isolated `src/codenames/` module.
-- Reuse shared Socket.IO connection.
-- Preserve existing Undercover/Draw & Guess behavior.
+- [x] Add Codenames to the existing mode selector.
+- [x] Add isolated `src/codenames/` module.
+- [x] Reuse shared Socket.IO connection.
+- [x] Preserve existing Undercover/Draw & Guess behavior.
 
 ## Phase 2 — Codenames Room Lifecycle
 - Dedicated Codenames room state.

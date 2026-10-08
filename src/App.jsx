@@ -9,6 +9,7 @@ import OnlineGame from './game/OnlineGame.jsx'
 import GameEntryTransition from './game/GameEntryTransition.jsx'
 import ModeSelect from './components/ModeSelect.jsx'
 import SkribblApp from './drawgame/SkribblApp.jsx'
+import CodenamesApp from './codenames/CodenamesApp.jsx'
 import { readIdentity, ensureIdentity, clearSession } from './game/identity.js'
 import { connectSocket } from './game/socket.js'
 
@@ -32,7 +33,9 @@ function SessionResolver({ onResolved }) {
     const socket = connectSocket(sessionId)
 
     const handleSessionToken = ({ gameMode }) => {
-      onResolved(gameMode === 'skribbl' ? 'skribbl' : 'undercover')
+      if (gameMode === 'skribbl') onResolved('skribbl')
+      else if (gameMode === 'codenames') onResolved('codenames')
+      else onResolved('undercover')
     }
     const handleExpiredOrNoRoom = () => {
       clearSession()
@@ -70,17 +73,20 @@ function getInitialGameView() {
 
   if (room && room.toUpperCase() !== (roomId || '').toUpperCase()) {
     if (mode === 'skribbl') return 'skribbl'
+    if (mode === 'codenames') return 'codenames'
     return 'undercover'
   }
 
   if (resumeToken && roomId) {
     if (gameMode === 'skribbl') return 'skribbl'
+    if (gameMode === 'codenames') return 'codenames'
     if (gameMode === 'undercover') return 'undercover'
     return 'resolving-session' 
   }
   
   if (room) {
     if (mode === 'skribbl') return 'skribbl'
+    if (mode === 'codenames') return 'codenames'
     return 'undercover'
   }
   
@@ -116,6 +122,7 @@ export default function App() {
       <ModeSelect 
         onSelectUndercover={() => setGameView('undercover')}
         onSelectSkribbl={() => setGameView('skribbl')}
+        onSelectCodenames={() => setGameView('codenames')}
         onBack={() => setGameView('landing')}
       />
     )
@@ -127,6 +134,10 @@ export default function App() {
 
   if (gameView === 'skribbl') {
     return <SkribblApp onExit={() => setGameView('mode-select')} />
+  }
+
+  if (gameView === 'codenames') {
+    return <CodenamesApp onExit={() => setGameView('mode-select')} />
   }
 
   return (

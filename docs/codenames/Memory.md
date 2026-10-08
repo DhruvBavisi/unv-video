@@ -1,7 +1,7 @@
 # CODENAMES — Project Memory
 
 ## Status
-Codenames is **planned/specification-only**. No Codenames runtime implementation should be assumed from this document.
+Codenames Phase 1 foundational setup has been implemented. Mode selector and basic room lifecycle exist.
 
 ## Relationship to Existing Project
 The game will live inside the existing React/Vite project and reuse the existing Socket.IO server and reconnect/session architecture.

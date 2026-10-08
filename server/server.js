@@ -86,6 +86,7 @@ const io = new Server(httpServer, {
 
 const rooms = new Map()
 const drawRooms = new Map()
+const codenamesRooms = new Map()
 const sessionSockets = new Map()
 
 // How long a room whose players are all disconnected is kept before reap.
@@ -244,6 +245,15 @@ function findRoomByPlayer(sessionId) {
 
 function findDrawRoomByPlayer(sessionId) {
   for (const [roomId, room] of drawRooms) {
+    if (room.players.some((p) => p.id === sessionId)) {
+      return { roomId, room }
+    }
+  }
+  return { roomId: null, room: null }
+}
+
+function findCodenamesRoomByPlayer(sessionId) {
+  for (const [roomId, room] of codenamesRooms) {
     if (room.players.some((p) => p.id === sessionId)) {
       return { roomId, room }
     }
@@ -773,6 +783,37 @@ function removeDrawPlayer(sessionId) {
   return { roomId: foundRoomId, room: foundRoom }
 }
 
+function disconnectCodenamesPlayer(sessionId, socketId) {
+  if (socketId && sessionSockets.get(sessionId) !== socketId) return
+  const { roomId, room } = findCodenamesRoomByPlayer(sessionId)
+  if (!room) return
+  const player = room.players.find((p) => p.id === sessionId)
+  if (player) player.isConnected = false
+  io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+}
+
+function removeCodenamesPlayer(sessionId) {
+  const { roomId, room } = findCodenamesRoomByPlayer(sessionId)
+  if (!room) return { roomId: null, room: null }
+  const idx = room.players.findIndex(p => p.id === sessionId)
+  if (idx !== -1) {
+    const wasHost = room.players[idx].isHost
+    room.players.splice(idx, 1)
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length === 0) {
+      codenamesRooms.delete(roomId)
+      io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
+      return { roomId, room: null }
+    }
+    if (wasHost && room.players.length > 0) {
+      room.players[0].isHost = true
+      room.hostId = room.players[0].id
+    }
+    io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+  }
+  return { roomId, room }
+}
+
 // A player's private reconnect credential.  Generated once per player;
 // re-registering a session WITHOUT it is rejected (see register).
 function ensureResumeToken(player) {
@@ -1283,6 +1324,7 @@ io.on('connection', (socket) => {
 
     let { roomId, room } = findRoomByPlayer(sessionId)
     let isDrawRoom = false
+    let isCodenamesRoom = false
     
     if (!room) {
       const drawResult = findDrawRoomByPlayer(sessionId)
@@ -1291,8 +1333,15 @@ io.on('connection', (socket) => {
         room = drawResult.room
         isDrawRoom = true
       } else {
-        socket.emit('session-no-room')
-        return
+        const codenamesResult = findCodenamesRoomByPlayer(sessionId)
+        if (codenamesResult.room) {
+          roomId = codenamesResult.roomId
+          room = codenamesResult.room
+          isCodenamesRoom = true
+        } else {
+          socket.emit('session-no-room')
+          return
+        }
       }
     }
 
@@ -1323,6 +1372,8 @@ io.on('connection', (socket) => {
     if (isDrawRoom) {
       socket.join(`draw:${roomId}`)
       socket.join(sessionId) // Join private room for Skribbl direct messaging
+    } else if (isCodenamesRoom) {
+      socket.join(`codenames:${roomId}`)
     } else {
       socket.join(roomId)
     }
@@ -1336,6 +1387,13 @@ io.on('connection', (socket) => {
       resumeDrawTimersIfDrawer(room, sessionId)
       socket.emit('draw:room-state', getSafeStateForPlayer(room, sessionId))
       broadcastDrawRoomState(room)
+      return
+    }
+    if (isCodenamesRoom) {
+      socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
+      console.log('[ROOM] codenames session reconnected', { sessionId, roomId })
+      socket.emit('codenames:room-state', room)
+      io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
       return
     }
     reassignHostIfNeeded(room)
@@ -3352,6 +3410,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!currentSessionId) return
     disconnectPlayer(currentSessionId, socket.id)
     disconnectDrawPlayer(currentSessionId, socket.id)
+    disconnectCodenamesPlayer(currentSessionId, socket.id)
   })
 
   socket.on('add-dev-bots', (callback) => {
@@ -3460,6 +3519,84 @@ ELIMINATION RESULT=`, room.eliminationResult)
     broadcastRoom(room)
     callback?.({ success: true })
   })
+
+  socket.on('codenames:create-room', () => {
+    let roomId = makeRoomId()
+    while (rooms.has(roomId) || drawRooms.has(roomId) || codenamesRooms.has(roomId)) roomId = makeRoomId()
+
+    const sessionId = currentSessionId || crypto.randomUUID()
+    currentSessionId = sessionId
+    
+    const room = {
+      id: roomId,
+      hostId: sessionId,
+      players: [{
+        id: sessionId,
+        name: 'Player',
+        isHost: true,
+        isConnected: true
+      }],
+      status: 'LOBBY',
+      gameMode: 'codenames',
+      teams: { red: [], blue: [] },
+      spymasters: { red: null, blue: null },
+      board: [],
+      currentTeam: null,
+      phase: 'LOBBY'
+    }
+    
+    room.players[0].resumeToken = ensureResumeToken(room.players[0])
+    
+    codenamesRooms.set(roomId, room)
+    currentRoomId = roomId
+    connectPlayer(socket, sessionId)
+    socket.join(`codenames:${roomId}`)
+    
+    socket.emit('session-token', { resumeToken: room.players[0].resumeToken, roomId, playerName: 'Player', gameMode: 'codenames' })
+    socket.emit('codenames:room-state', room)
+  })
+
+  socket.on('codenames:join-room', ({ roomId }) => {
+    const room = codenamesRooms.get(roomId)
+    if (!room) {
+      socket.emit('codenames:error', 'Room not found')
+      return
+    }
+    
+    let sessionId = currentSessionId
+    let player = sessionId ? room.players.find(p => p.id === sessionId) : null
+    
+    if (!player) {
+      sessionId = crypto.randomUUID()
+      currentSessionId = sessionId
+      player = {
+        id: sessionId,
+        name: 'Player',
+        isHost: room.players.length === 0,
+        isConnected: true
+      }
+      player.resumeToken = ensureResumeToken(player)
+      room.players.push(player)
+    } else {
+      player.isConnected = true
+    }
+    
+    currentRoomId = roomId
+    connectPlayer(socket, sessionId)
+    socket.join(`codenames:${roomId}`)
+    
+    socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
+    io.to(`codenames:${roomId}`).emit('codenames:room-state', room)
+  })
+
+  socket.on('codenames:leave-room', () => {
+    if (currentSessionId) {
+      removeCodenamesPlayer(currentSessionId)
+      socket.leave(`codenames:${currentRoomId}`)
+      currentRoomId = null
+    }
+  })
+
 })
 
 const PORT = process.env.PORT || 3001
