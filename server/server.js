@@ -398,7 +398,7 @@ function startDrawingTurn(room, word, isResume = false) {
     room.hintsGiven = 0
   }
   
-  const durationMs = isResume && room.drawingRemainingMs ? room.drawingRemainingMs : (room.configuration.drawTimeSec * 1000)
+  const durationMs = isResume && room.drawingRemainingMs != null ? room.drawingRemainingMs : (room.configuration.drawTimeSec * 1000)
   room.roundEndsAt = Date.now() + durationMs
 
   // Initialize Hint System
@@ -427,8 +427,9 @@ function startDrawingTurn(room, word, isResume = false) {
       room.hintsToGive = Math.min(word.length <= 4 ? 1 : numHints, Math.max(0, revealIndices.length - 1))
     }
     
-    if (room.hintsToGive > 0) {
-      const hintIntervalMs = (room.configuration.drawTimeSec * 1000) / (room.hintsToGive + 1)
+    if (room.hintsToGive > 0 && room.hintsGiven < room.hintsToGive) {
+      const hintsRemaining = room.hintsToGive - room.hintsGiven
+      const hintIntervalMs = isResume ? (durationMs / (hintsRemaining + 1)) : ((room.configuration.drawTimeSec * 1000) / (room.hintsToGive + 1))
       const expectedDrawerId = room.currentDrawerId
       room.hintTimer = setInterval(() => {
         if (!drawRooms.has(room.id) || room.phase !== 'DRAWING' || room.currentDrawerId !== expectedDrawerId) {
@@ -538,14 +539,14 @@ function endDrawRound(room) {
   
   broadcastDrawRoomState(room)
   
+  room.turnSequence = (room.turnSequence || 0) + 1
+  const expectedTurnSequence = room.turnSequence
   const expectedRound = room.round
-  const expectedTurnIndex = room.turnIndex
-  const expectedDrawerId = room.currentDrawerId
   
   // Schedule next turn
-  setTimeout(() => {
+  room.turnTimeout = setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
-    if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === expectedRound && currentRoom.turnIndex === expectedTurnIndex) {
+    if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === expectedRound && currentRoom.turnSequence === expectedTurnSequence) {
       currentRoom.turnIndex++
       
       if (currentRoom.turnIndex < currentRoom.turnOrder.length) {
@@ -724,6 +725,16 @@ function removeDrawPlayer(sessionId) {
   }
   
   foundRoom.players.splice(idx, 1)
+
+  if (foundRoom.guessedPlayerIds) {
+    foundRoom.guessedPlayerIds = foundRoom.guessedPlayerIds.filter(id => id !== sessionId)
+  }
+  if (foundRoom.scores) {
+    delete foundRoom.scores[sessionId]
+  }
+  if (foundRoom.turnScores) {
+    delete foundRoom.turnScores[sessionId]
+  }
 
   const realPlayers = foundRoom.players.filter(p => !p.isBot)
   if (realPlayers.length === 0) {
@@ -1606,7 +1617,7 @@ io.on('connection', (socket) => {
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
-  socket.on('draw:join-room', ({ sessionId, roomId, playerName, isBot }, callback) => {
+  socket.on('draw:join-room', ({ sessionId, resumeToken, roomId, playerName, isBot }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -1618,6 +1629,9 @@ io.on('connection', (socket) => {
 
     const existing = room.players.find(p => p.id === sessionId)
     if (existing) {
+      if (existing.resumeToken && (typeof resumeToken !== 'string' || resumeToken !== existing.resumeToken)) {
+        return callback?.({ error: 'SESSION_EXPIRED' })
+      }
       existing.isConnected = true
       existing.name = trimmed
       existing.disconnectedAt = null
@@ -2153,7 +2167,7 @@ io.on('connection', (socket) => {
 
     io.to(targetId).emit('draw:kicked')
     
-    room.players.splice(targetIndex, 1)
+    const removed = removeDrawPlayer(targetId)
 
     const targetSocketId = sessionSockets.get(targetId)
     if (targetSocketId) {
@@ -2163,33 +2177,15 @@ io.on('connection', (socket) => {
       }
     }
 
-    if (room.currentDrawerId === targetId) {
-      if (room.phase === 'WORD_CHOICE' || room.phase === 'DRAWING') {
-         endDrawRound(room)
+    if (removed.room) {
+      const activeRealPlayers = removed.room.players.filter(p => !p.spectator)
+      if (removed.room.phase !== 'LOBBY' && removed.room.phase !== 'GAME_RESULT' && activeRealPlayers.length <= 1) {
+         removed.room.phase = 'GAME_RESULT'
+         if (removed.room.turnTimeout) clearTimeout(removed.room.turnTimeout)
+         if (removed.room.hintTimer) clearInterval(removed.room.hintTimer)
       }
+      broadcastDrawRoomState(removed.room)
     }
-    
-    if (room.turnOrder) {
-      room.turnOrder = room.turnOrder.filter(id => id !== targetId)
-    }
-    if (room.guessedPlayerIds) {
-      room.guessedPlayerIds = room.guessedPlayerIds.filter(id => id !== targetId)
-    }
-    if (room.scores) {
-      delete room.scores[targetId]
-    }
-    if (room.turnScores) {
-      delete room.turnScores[targetId]
-    }
-    
-    const activeRealPlayers = room.players.filter(p => !p.spectator)
-    if (room.phase !== 'LOBBY' && room.phase !== 'GAME_RESULT' && activeRealPlayers.length <= 1) {
-       room.phase = 'GAME_RESULT'
-       if (room.turnTimeout) clearTimeout(room.turnTimeout)
-       if (room.hintTimer) clearInterval(room.hintTimer)
-    }
-
-    broadcastDrawRoomState(room)
     callback?.({ success: true })
   })
 
