@@ -325,6 +325,18 @@ function broadcastDrawRoomState(room) {
   }
 }
 
+function resumeDrawTimersIfDrawer(room, sessionId) {
+  if (room.currentDrawerId === sessionId) {
+    if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs !== undefined) {
+      scheduleWordChoiceTimeout(room, room.wordChoiceRemainingMs)
+      room.wordChoiceRemainingMs = undefined
+    } else if (room.phase === 'DRAWING' && room.drawingRemainingMs !== undefined) {
+      startDrawingTurn(room, room.selectedWord, true)
+      room.drawingRemainingMs = undefined
+    }
+  }
+}
+
 function getSafeStateForPlayer(room, playerId) {
   const isDrawer = room.currentDrawerId === playerId
   const isReveal = room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT'
@@ -1321,6 +1333,7 @@ io.on('connection', (socket) => {
     if (isDrawRoom) {
       socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
       console.log('[ROOM] draw session reconnected', { sessionId, roomId })
+      resumeDrawTimersIfDrawer(room, sessionId)
       socket.emit('draw:room-state', getSafeStateForPlayer(room, sessionId))
       broadcastDrawRoomState(room)
       return
@@ -1644,15 +1657,7 @@ io.on('connection', (socket) => {
       socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'skribbl' })
       
       // Resume drawer timers
-      if (room.currentDrawerId === sessionId) {
-        if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs !== undefined) {
-          scheduleWordChoiceTimeout(room, room.wordChoiceRemainingMs)
-          room.wordChoiceRemainingMs = undefined
-        } else if (room.phase === 'DRAWING' && room.drawingRemainingMs !== undefined) {
-          startDrawingTurn(room, room.selectedWord, true)
-          room.drawingRemainingMs = undefined
-        }
-      }
+      resumeDrawTimersIfDrawer(room, sessionId)
       
       callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)

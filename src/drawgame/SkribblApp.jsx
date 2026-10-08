@@ -243,7 +243,7 @@ export default function SkribblApp({ onExit }) {
   }
 
   const handleJoinRoom = async (roomId, playerName) => {
-    const { sessionId } = ensureIdentity()
+    const { sessionId, resumeToken } = ensureIdentity()
     let socket
     try {
       socket = await ensureSocketConnected()
@@ -251,7 +251,7 @@ export default function SkribblApp({ onExit }) {
       setError('Unable to connect to the game server. Please try again.')
       return
     }
-    socket.emit('draw:join-room', { sessionId, roomId, playerName }, (res) => {
+    socket.emit('draw:join-room', { sessionId, resumeToken, roomId, playerName }, (res) => {
       if (res.error) setError(getFriendlyError(res.error))
       else if (res.room) {
         setRoomState(res.room)
