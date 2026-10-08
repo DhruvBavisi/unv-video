@@ -9,6 +9,7 @@ import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../shared/game-limits.js'
 import { onRoundStart, onVoteTallied, onElimination, onGameEnd } from './specialRolesHooks.js'
 import { SPECIAL_ROLES } from '../src/data/specialRoles.js'
 import defaultWords from './drawWords.json' with { type: 'json' }
+import { generateCodenamesBoard } from './codenames/boardGenerator.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -270,7 +271,15 @@ function getCodenamesPublicState(room) {
       isHost: p.isHost,
       isConnected: p.isConnected,
       team: p.team
-    }))
+    })),
+    currentTeam: room.currentTeam,
+    startingTeam: room.startingTeam,
+    board: room.board ? room.board.map(card => ({
+      id: card.id,
+      word: card.word,
+      revealed: card.revealed,
+      category: card.revealed ? card.category : undefined
+    })) : undefined
   }
 }
 
@@ -281,6 +290,15 @@ function getCodenamesPrivateState(room, playerId) {
     const pubPlayer = publicState.players.find(p => p.id === playerId)
     if (pubPlayer) {
       pubPlayer.role = myPlayer.role
+    }
+    
+    if (myPlayer.role === 'SPYMASTER' && room.board) {
+      publicState.board = room.board.map(card => ({
+        id: card.id,
+        word: card.word,
+        revealed: card.revealed,
+        category: card.category
+      }))
     }
   }
   return publicState
@@ -3841,8 +3859,12 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const unassigned = room.players.find(p => !p.team || !p.role)
     if (unassigned) return callback?.({ success: false, error: 'UNASSIGNED_PLAYERS' })
 
-    room.status = 'SETUP'
-    room.phase = 'ROLES'
+    room.startingTeam = Math.random() < 0.5 ? 'red' : 'blue'
+    room.currentTeam = room.startingTeam
+    room.board = generateCodenamesBoard(room.startingTeam)
+
+    room.status = 'PLAYING'
+    room.phase = 'BOARD_READY'
 
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })

@@ -1,7 +1,7 @@
 # CODENAMES — Product Requirements Document
 
 ## Status
-**Phase 1 implemented.**
+**Phase 4 implemented.**
 
 ## Product Overview
 Add Codenames as a third online game mode in the existing application.

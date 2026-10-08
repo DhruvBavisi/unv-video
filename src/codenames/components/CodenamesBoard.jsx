@@ -1,23 +1,15 @@
 import React from 'react'
+import CodenamesCard from './CodenamesCard'
 
 export default function CodenamesBoard({ board }) {
-  // If no board provided, create a placeholder 5x5 board
-  const cards = board && board.length === 25 ? board : Array.from({ length: 25 }, (_, i) => ({
-    id: String(i),
-    word: `WORD ${i + 1}`,
-    revealed: false
-  }))
+  if (!board || board.length !== 25) {
+    return <div className="codenames-board-empty">Waiting for board...</div>
+  }
 
   return (
     <div className="codenames-board">
-      {cards.map(card => (
-        <div 
-          key={card.id} 
-          className="codenames-card"
-          style={{ opacity: card.revealed ? 0.6 : 1 }}
-        >
-          {card.word}
-        </div>
+      {board.map(card => (
+        <CodenamesCard key={card.id} card={card} />
       ))}
     </div>
   )

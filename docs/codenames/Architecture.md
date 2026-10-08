@@ -1,7 +1,7 @@
 # CODENAMES — Architecture
 
 ## Status
-**Phase 1 implemented. Codenames foundational module and routing added.**
+**Phase 4 implemented. Codenames foundational module and routing added.**
 
 Codenames is a planned third playable mode inside the existing Vite + React project. It must reuse the existing Socket.IO connection/session infrastructure while keeping its game state isolated from Undercover and Draw & Guess.
 
