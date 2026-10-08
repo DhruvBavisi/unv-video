@@ -6492,3 +6492,33 @@ input, select, textarea, button { font-size: 16px; }
   font-size: 14px;
   margin-top: 8px;
 }
+
+html.sk-screen-lock {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.sk-screen-lock body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.sk-guess-bar--lifted {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--sk-kb, 0px);
+  z-index: 50;
+  transition: bottom 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-guess-bar--lifted {
+    transition: none;
+  }
+}

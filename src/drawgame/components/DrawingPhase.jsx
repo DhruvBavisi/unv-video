@@ -6,20 +6,20 @@ import DrawingToolbar, { DRAW_COLORS } from './DrawingToolbar.jsx'
 import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
 import DrawingTopBar from './DrawingTopBar.jsx'
-import { useMobileKeyboardFocus } from '../../hooks/useMobileKeyboardFocus.js'
+import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
 
 export default function DrawingPhase({ room, onLeave }) {
   const { sessionId } = ensureIdentity()
   const isDrawer = room.currentDrawerId === sessionId
+  const guessInputRef = useRef(null)
+  const guessBarRef = useRef(null)
+  const { lifted, barHeight } = useGuessKeyboard(guessInputRef, guessBarRef, !isDrawer)
 
   const [color, setColor] = useState('#000000')
   const [size, setSize] = useState(8)
   const [tool, setTool] = useState('brush')
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
   const [guessInput, setGuessInput] = useState('')
-  const guessInputRef = useRef(null)
-
-  useMobileKeyboardFocus(guessInputRef)
   const [isChoosing, setIsChoosing] = useState(false)
 
   const [chatNotifications, setChatNotifications] = useState([])
@@ -252,6 +252,7 @@ export default function DrawingPhase({ room, onLeave }) {
     const socket = getSocket()
     socket.emit('draw:guess', { message: guessInput.trim() })
     setGuessInput('')
+    guessInputRef.current?.focus({ preventScroll: true })
   }
 
   // Formatting Drawer Text
@@ -560,7 +561,7 @@ export default function DrawingPhase({ room, onLeave }) {
       </div>
 
       {/* BOTTOM CONTROLS */}
-      <div style={{ flexShrink: 0, zIndex: 10 }}>
+      <div style={{ flexShrink: 0, zIndex: lifted ? 30 : 10 }}>
         {(isDrawer && room.phase === 'DRAWING') ? (
           <DrawingToolbar 
             color={color} 
@@ -573,29 +574,36 @@ export default function DrawingPhase({ room, onLeave }) {
             onUndo={handleUndo}
           />
         ) : (!isDrawer ? (
-          <form onSubmit={handleGuessSubmit} style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            padding: '8px 16px',
-            background: 'var(--sk-surface)',
-            borderTop: '1px solid rgba(0,0,0,0.05)',
-            borderBottom: '1px solid rgba(0,0,0,0.05)'
-          }}>
-            <input 
-              ref={guessInputRef}
-              type="text" 
-              placeholder="Type your guess..."
-              className="sk-input"
-              style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
-              value={guessInput}
-              onChange={e => setGuessInput(e.target.value)}
-              disabled={room.guessedPlayerIds?.includes(sessionId)}
-              maxLength={120}
-            />
-            <button type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
-              SEND
-            </button>
-          </form>
+          <>
+            {lifted && <div aria-hidden="true" style={{ height: barHeight, flexShrink: 0 }} />}
+            <form 
+              ref={guessBarRef}
+              className={lifted ? 'sk-guess-bar--lifted' : undefined}
+              onSubmit={handleGuessSubmit} 
+              style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              padding: '8px 16px',
+              background: 'var(--sk-surface)',
+              borderTop: '1px solid rgba(0,0,0,0.05)',
+              borderBottom: '1px solid rgba(0,0,0,0.05)'
+            }}>
+              <input 
+                ref={guessInputRef}
+                type="text" 
+                placeholder="Type your guess..."
+                className="sk-input"
+                style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
+                value={guessInput}
+                onChange={e => setGuessInput(e.target.value)}
+                disabled={room.guessedPlayerIds?.includes(sessionId)}
+                maxLength={120}
+              />
+              <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
+                SEND
+              </button>
+            </form>
+          </>
         ) : null)}
       </div>
 

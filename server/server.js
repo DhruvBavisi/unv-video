@@ -2079,8 +2079,19 @@ io.on('connection', (socket) => {
       }
       room.status = 'LOBBY'
       room.phase = 'LOBBY'
+      room.round = 1
+      room.turnOrder = []
+      room.turnIndex = 0
       room.currentDrawerId = null
+      room.selectedWord = null
       room.wordChoices = []
+      room.strokes = []
+      room.guessedPlayerIds = []
+      room.turnScores = {}
+      room.hintsGiven = 0
+      room.turnSequence = 0
+      room.roundEndsAt = null
+      room.wordChoiceEndsAt = null
 
       console.error('[DRAW] Failed to start game', {
         roomId: room.id,
@@ -4108,11 +4119,11 @@ httpServer.on('error', (error) => {
 })
 
 process.on('uncaughtException', (err) => {
-  console.error('[SERVER] uncaughtException', err)
+  console.error('[SERVER] uncaughtException', err?.stack || err)
 })
 
 process.on('unhandledRejection', (reason) => {
-  console.error('[SERVER] unhandledRejection', reason)
+  console.error('[SERVER] unhandledRejection', reason?.stack || reason)
 })
 
 const shutdown = (signal) => {
