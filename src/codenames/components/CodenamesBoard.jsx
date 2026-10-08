@@ -27,6 +27,9 @@ export default function CodenamesBoard({ room, onLeave }) {
   const blueSpys = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpys = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
 
+  const blueScore = 9
+  const redScore = 8
+
   const handleSelectTeam = (team, role) => {
     const { sessionId } = readIdentity()
     const socket = connectSocket(sessionId)
