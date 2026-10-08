@@ -915,16 +915,21 @@ function isSilencedByFalafel(room, playerId) {
 }
 
 function advanceTurn(room) {
-  room.turnIndex++
-  if (room.turnIndex < room.turnOrder.length) {
-    room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
-    
-    if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+  if (room.currentTurnPlayerId && isSilencedByFalafel(room, room.currentTurnPlayerId)) {
+    if (!room.submittedCluePlayerIds?.includes(room.currentTurnPlayerId)) {
       if (!room.skippedCluePlayerIds) room.skippedCluePlayerIds = []
       if (!room.skippedCluePlayerIds.includes(room.currentTurnPlayerId)) {
         room.skippedCluePlayerIds.push(room.currentTurnPlayerId)
       }
       console.log('[CLUE] skipping silenced player', { roomId: room.id, playerId: room.currentTurnPlayerId })
+    }
+  }
+
+  room.turnIndex++
+  if (room.turnIndex < room.turnOrder.length) {
+    room.currentTurnPlayerId = room.turnOrder[room.turnIndex]
+    
+    if (isSilencedByFalafel(room, room.currentTurnPlayerId)) {
       return advanceTurn(room)
     }
 
@@ -2401,6 +2406,10 @@ io.on('connection', (socket) => {
       return callback?.({ success: false, error: 'CLUE_ALREADY_SUBMITTED' })
     }
 
+    if (room.skippedCluePlayerIds && room.skippedCluePlayerIds.includes(currentSessionId)) {
+      return callback?.({ success: false, error: 'SILENCED_BY_FALAFEL' })
+    }
+
     if (player.eliminated || player.spectator) {
       return callback?.({ success: false, error: 'NOT_ACTIVE_PLAYER' })
     }
@@ -2477,10 +2486,6 @@ io.on('connection', (socket) => {
     }
 
     if (room.currentTurnPlayerId === targetId) {
-      if (!room.skippedCluePlayerIds) room.skippedCluePlayerIds = []
-      if (!room.skippedCluePlayerIds.includes(targetId)) {
-        room.skippedCluePlayerIds.push(targetId)
-      }
       advanceTurn(room)
     } else {
       broadcastRoom(room)
