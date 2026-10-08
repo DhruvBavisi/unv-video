@@ -14,13 +14,17 @@ export function connectSocket(sessionId) {
   ).trim()
 
   socket = io(socketUrl, {
-    transports: ['websocket', 'polling'],
+    // Establish reliably through Render's HTTP transport, then upgrade to WebSocket.
+    transports: ['polling', 'websocket'],
+    tryAllTransports: true,
+    upgrade: true,
     reconnection: true,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    reconnectionAttempts: Infinity,
     timeout: 20000,
     autoConnect: false,
+    path: '/socket.io/',
   })
 
   socket.on('connect', () => {
