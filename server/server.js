@@ -4108,6 +4108,31 @@ ELIMINATION RESULT=`, room.eliminationResult)
     callback?.({ success: true })
   })
 
+  socket.on('codenames:give-clue', (payload, callback) => {
+    if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    const player = room.players.find(p => p.id === currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_IN_ROOM' })
+    
+    if (player.role !== 'SPYMASTER') return callback?.({ success: false, error: 'NOT_SPYMASTER' })
+    if (player.team !== room.currentTeam) return callback?.({ success: false, error: 'NOT_YOUR_TURN' })
+    if (room.phase !== 'BOARD_READY' && room.phase !== 'CLUE_PHASE') return callback?.({ success: false, error: 'INVALID_PHASE' })
+
+    const clueStr = typeof payload?.clue === 'string' ? payload.clue.trim() : ''
+    const num = parseInt(payload?.number, 10)
+
+    if (!clueStr) return callback?.({ success: false, error: 'EMPTY_CLUE' })
+    if (isNaN(num) || num < 1) return callback?.({ success: false, error: 'INVALID_NUMBER' })
+
+    room.currentClue = { word: clueStr, number: num }
+    room.phase = 'GUESS_PHASE'
+    room.guessesLeft = num + 1
+
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
 })
 
 const PORT = Number(process.env.PORT) || 3001

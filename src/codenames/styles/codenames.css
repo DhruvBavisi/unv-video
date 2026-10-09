@@ -705,3 +705,97 @@
 .codenames-card.revealed.category-neutral, .codenames-card.spymaster.category-neutral { --rim-top:#e8d6b6; --rim-bot:#d9c49d; --face-top:#efdfc2; --face-bot:#e1cda8; --frame:#a8916a; --hair:#a8916a; --plate:#8c7a5c; }
 .codenames-card.revealed.category-assassin, .codenames-card.spymaster.category-assassin { --rim-top:#3b3b3b; --rim-bot:#202020; --face-top:#444; --face-bot:#2a2a2a; --frame:#000; --hair:#000; --plate:#0b0b0b; }
 
+/* CLUE CONTROL */
+.cn-clue-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) 0;
+  gap: calc(var(--u) * 1.5);
+}
+
+.cn-clue-input {
+  flex: 1;
+  min-width: 0;
+  height: calc(var(--u) * 8);
+  box-sizing: border-box;
+  background: #ffffff;
+  border: none;
+  border-radius: calc(var(--u) * 4);
+  padding: 0 calc(var(--u) * 3);
+  font-family: inherit;
+  font-size: calc(var(--u) * 4.5);
+  font-weight: 700;
+  color: #7b7b7b;
+  text-transform: uppercase;
+  text-align: center;
+  outline: none;
+  box-shadow: 0 calc(var(--u) * 0.5) calc(var(--u) * 1) rgba(0, 0, 0, 0.45);
+}
+.cn-clue-input::placeholder {
+  color: #a0a0a0;
+}
+
+.cn-clue-dec {
+  position: relative;
+  flex: 0 0 calc(var(--u) * 7);
+  height: calc(var(--u) * 7);
+  box-sizing: border-box;
+  border: none;
+  border-radius: 50%;
+  background: #fdfdfd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 calc(var(--u) * 0.5) calc(var(--u) * 1) rgba(0, 0, 0, 0.45);
+}
+.cn-dec-symbol {
+  font-size: calc(var(--u) * 6);
+  font-weight: 900;
+  color: #3b88c3;
+  line-height: 1;
+  margin-top: calc(var(--u) * -0.5);
+}
+.cn-dec-num {
+  position: absolute;
+  top: calc(var(--u) * -1.5);
+  right: calc(var(--u) * -1.5);
+  background: #3b88c3;
+  color: #fff;
+  font-size: calc(var(--u) * 3);
+  width: calc(var(--u) * 4.5);
+  height: calc(var(--u) * 4.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: calc(var(--u) * 0.4) solid #fff;
+  font-weight: 700;
+}
+
+.cn-clue-submit {
+  flex: 0 0 calc(var(--u) * 14.5);
+  height: calc(var(--u) * 7);
+  box-sizing: border-box;
+  border: calc(var(--u) * 0.5) solid #8fc75c;
+  border-radius: calc(var(--u) * 3.5);
+  background: linear-gradient(180deg, #34b00a 0%, #1fa000 55%, #2a8302 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  box-shadow: 0 calc(var(--u) * 0.5) calc(var(--u) * 1) rgba(0, 0, 0, 0.45);
+}
+.cn-clue-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.cn-clue-submit svg {
+  width: calc(var(--u) * 5.5);
+  height: calc(var(--u) * 5.5);
+  stroke-width: 3;
+}

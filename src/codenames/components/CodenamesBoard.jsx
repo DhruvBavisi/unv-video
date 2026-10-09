@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { connectSocket } from '../../game/socket.js'
 import CodenamesCard from './CodenamesCard'
 
 function Icon({ type, size = 16 }) {
@@ -33,6 +34,14 @@ function Icon({ type, size = 16 }) {
     )
   }
 
+  if (type === 'up') {
+    return (
+      <svg {...common}>
+        <path d="m18 15-6-6-6 6"/>
+      </svg>
+    )
+  }
+
   return (
     <svg {...common}>
       <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
@@ -41,10 +50,28 @@ function Icon({ type, size = 16 }) {
   )
 }
 
-export default function CodenamesBoard({ room }) {
+export default function CodenamesBoard({ room, playerId }) {
+  const [clueWord, setClueWord] = useState('')
+  const [clueNum, setClueNum] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const board = room.board
   if (!board || board.length !== 25) {
     return <div className="codenames-board-empty">Waiting for board...</div>
+  }
+
+  const handleClueSubmit = (e) => {
+    e.preventDefault()
+    if (!clueWord.trim() || isSubmitting) return
+    setIsSubmitting(true)
+    const socket = connectSocket(playerId)
+    socket.emit('codenames:give-clue', { clue: clueWord.trim(), number: clueNum }, (res) => {
+      setIsSubmitting(false)
+      if (res.success) {
+        setClueWord('')
+        setClueNum(1)
+      }
+    })
   }
 
   let blueScore = '-'
@@ -68,10 +95,17 @@ export default function CodenamesBoard({ room }) {
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
   const needsBlueSpy = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
   const isActive = (team, kind) => needsBlueSpy ? (team === 'blue' && kind === 'spy') : (team === room.currentTeam && kind === 'ops')
+  const myPlayer = room.players.find(p => p.id === playerId)
+  const isMyClueTurn = myPlayer?.role === 'SPYMASTER' && myPlayer?.team === room.currentTeam && (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE')
 
-  const statusMessage = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
-    ? 'BLUE TEAM NEEDS A SPYMASTER'
-    : room.currentTeam ? `${room.currentTeam.toUpperCase()} TEAM'S TURN` : 'GAME STARTED'
+  let statusMessage = 'GAME STARTED'
+  if (room.phase === 'BOARD_READY' && blueSpymasters.length === 0) {
+    statusMessage = 'BLUE TEAM NEEDS A SPYMASTER'
+  } else if (isMyClueTurn) {
+    statusMessage = 'GIVE YOUR OPERATIVES A CLUE'
+  } else if (room.currentTeam) {
+    statusMessage = `${room.currentTeam.toUpperCase()} TEAM'S TURN`
+  }
 
   const renderAvatar = (p) => (
     <div key={p.id} className="cn-board-avatar">
@@ -159,6 +193,27 @@ export default function CodenamesBoard({ room }) {
           <CodenamesCard key={card.id} card={card} />
         ))}
       </div>
+
+      {isMyClueTurn && (
+        <form className="cn-clue-control" onSubmit={handleClueSubmit}>
+          <input
+            type="text"
+            className="cn-clue-input"
+            placeholder="YOUR CLUE"
+            value={clueWord}
+            onChange={e => setClueWord(e.target.value.toUpperCase())}
+            disabled={isSubmitting}
+            maxLength={25}
+          />
+          <button type="button" className="cn-clue-dec" onClick={() => setClueNum(n => Math.max(1, n - 1))} disabled={isSubmitting}>
+            <span className="cn-dec-symbol">−</span>
+            {clueNum > 1 && <span className="cn-dec-num">{clueNum}</span>}
+          </button>
+          <button type="submit" className="cn-clue-submit" disabled={!clueWord.trim() || isSubmitting}>
+            <Icon type="up" size={24} />
+          </button>
+        </form>
+      )}
     </div>
   )
 }

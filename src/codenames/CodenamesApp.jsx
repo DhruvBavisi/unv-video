@@ -160,7 +160,7 @@ export default function CodenamesApp({ onExit }) {
           onLeave={handleLeave} 
         />
       ) : (
-        <CodenamesBoard room={room} />
+        <CodenamesBoard room={room} playerId={sessionId} />
       )}
     </div>
   )
