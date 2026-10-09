@@ -134,6 +134,7 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
         </div>
       </div>
 
+      <div className="cn-game-main">
       <div className="cn-status-row">
         <div className="cn-status-text">{statusMessage}</div>
         <button className="cn-help-btn" aria-label="Help"><span>?</span></button>
@@ -214,6 +215,8 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
           </form>
         </>
       )}
+
+      </div>
 
       {showSettings && (
         <div className="cn-settings-modal" onClick={() => setShowSettings(false)}>
