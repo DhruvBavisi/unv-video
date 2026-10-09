@@ -589,7 +589,7 @@
    CND GAME LAYOUT — MANUAL SIZING CONTROLS
    Adjust these values to manually tune the composition.
    ========================================================= */
-:root {
+.codenames-app--game {
   --cn-main-top-gap: 0px;
   --cn-main-bottom-gap: 0px;
 
@@ -597,9 +597,9 @@
   --cn-status-board-gap: calc(var(--u) * 2);
 
   --cn-board-width: 100%;
-  --cn-board-card-ratio: 1 / 1;
+  --cn-board-card-ratio: 1.1 / 1;
 
-  --cn-info-height: calc(var(--u) * 50); /* Approx +20px over previous */
+  --cn-info-height: calc(var(--u) * 48); /* Approx +20px over previous */
   --cn-info-board-gap: calc(var(--u) * 1.5);
 
   --cn-clue-height: auto;
