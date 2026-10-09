@@ -698,11 +698,10 @@
   background: var(--plate); border-radius: calc(var(--u) * 0.4); color: #fff; white-space: nowrap;
   font-family: 'Barlow Condensed', 'Oswald', 'Arial Narrow', sans-serif; font-weight: 700; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase;
 }
-/* state colours (not in the screenshot, derived from the same structure) */
-.codenames-card.revealed.category-blue { --rim-top:#3aa0ea; --rim-bot:#1c7fd0; --face-top:#4db0f2; --face-bot:#2a93e4; --frame:#1a62a2; --hair:#1a62a2; --plate:#15578f; }
-.codenames-card.revealed.category-red { --rim-top:#f2664b; --rim-bot:#d9452d; --face-top:#ff7a60; --face-bot:#ec5a3f; --frame:#a63826; --hair:#a63826; --plate:#99301f; }
-.codenames-card.revealed.category-neutral { --rim-top:#e8d6b6; --rim-bot:#d9c49d; --face-top:#efdfc2; --face-bot:#e1cda8; --frame:#a8916a; --hair:#a8916a; --plate:#8c7a5c; }
-.codenames-card.revealed.category-assassin { --rim-top:#3b3b3b; --rim-bot:#202020; --face-top:#444; --face-bot:#2a2a2a; --frame:#000; --hair:#000; --plate:#0b0b0b; }
-.codenames-card.spymaster.category-blue { --plate:#1b6fb8; --frame:#1b6fb8; --hair:#1b6fb8; }
-.codenames-card.spymaster.category-red { --plate:#b8402a; --frame:#b8402a; --hair:#b8402a; }
-.codenames-card.spymaster.category-assassin { --plate:#1a1a1a; --frame:#1a1a1a; --hair:#1a1a1a; }
+.codenames-card.revealed { opacity: 0.55; }
+/* state colours */
+.codenames-card.revealed.category-blue, .codenames-card.spymaster.category-blue { --rim-top:#3aa0ea; --rim-bot:#1c7fd0; --face-top:#4db0f2; --face-bot:#2a93e4; --frame:#1a62a2; --hair:#1a62a2; --plate:#15578f; }
+.codenames-card.revealed.category-red, .codenames-card.spymaster.category-red { --rim-top:#f2664b; --rim-bot:#d9452d; --face-top:#ff7a60; --face-bot:#ec5a3f; --frame:#a63826; --hair:#a63826; --plate:#99301f; }
+.codenames-card.revealed.category-neutral, .codenames-card.spymaster.category-neutral { --rim-top:#e8d6b6; --rim-bot:#d9c49d; --face-top:#efdfc2; --face-bot:#e1cda8; --frame:#a8916a; --hair:#a8916a; --plate:#8c7a5c; }
+.codenames-card.revealed.category-assassin, .codenames-card.spymaster.category-assassin { --rim-top:#3b3b3b; --rim-bot:#202020; --face-top:#444; --face-bot:#2a2a2a; --frame:#000; --hair:#000; --plate:#0b0b0b; }
+
