@@ -599,7 +599,7 @@
   --cn-board-width: 100%;
   --cn-board-card-ratio: 1.1 / 1;
 
-  --cn-info-height: calc(var(--u) * 48); /* Approx +20px over previous */
+  --cn-info-height: calc(var(--u) * 62); /* Approx +20px over previous */
   --cn-info-board-gap: calc(var(--u) * 1.5);
 
   --cn-clue-height: auto;
@@ -634,7 +634,7 @@
 
 /* NAV */
 .cn-game-nav { display: flex; justify-content: space-between; align-items: center; padding: calc(var(--u) * 0.9) calc(var(--u) * 1.1) 0; flex: 0 0 auto; }
-.cn-game-main { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; padding-top: var(--cn-main-top-gap); padding-bottom: var(--cn-main-bottom-gap); }
+.cn-game-main { flex: 1; display: flex; flex-direction: column; margin-top: 20px; min-height: 0; padding-top: var(--cn-main-top-gap); padding-bottom: var(--cn-main-bottom-gap); }
 .cn-nav-left, .cn-nav-right { display: flex; gap: calc(var(--u) * 2); }
 .cn-nav-btn {
   height: calc(var(--u) * 8.6); min-width: calc(var(--u) * 8.4); padding: 0; box-sizing: border-box;
