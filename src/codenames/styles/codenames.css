@@ -595,6 +595,7 @@
 .cn-game-page {
   width: 100%;
   max-width: 480px;
+  min-height: 100dvh;
   box-sizing: border-box;
   padding-bottom: calc(var(--u) * 3);
   color: #fff;
