@@ -134,6 +134,12 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
         </div>
       </div>
 
+      <div className="cn-board-grid">
+        {board.map(card => (
+          <CodenamesCard key={card.id} card={card} />
+        ))}
+      </div>
+
       <div className="cn-game-info-row">
         <div className="cn-team-col blue-col">
           <div className={`cn-top-panel blue-panel${isActive('blue','ops') ? ' is-active' : ''}`}>
@@ -186,13 +192,7 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
         <button className="cn-help-btn" aria-label="Help"><span>?</span></button>
       </div>
 
-      <div className="cn-board-grid">
-        {board.map(card => (
-          <CodenamesCard key={card.id} card={card} />
-        ))}
-      </div>
-
-      {isMyClueTurn && (
+            {isMyClueTurn && (
         <>
           {clueError && <div className="cn-clue-error" role="alert">{clueError}</div>}
           <form className="cn-clue-control" onSubmit={handleClueSubmit}>
