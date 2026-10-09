@@ -50,10 +50,11 @@ function Icon({ type, size = 16 }) {
   )
 }
 
-export default function CodenamesBoard({ room, playerId }) {
+export default function CodenamesBoard({ room, playerId, onLeave }) {
   const [clueWord, setClueWord] = useState('')
   const [clueNum, setClueNum] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   const board = room.board
   if (!board || board.length !== 25) {
@@ -128,7 +129,7 @@ export default function CodenamesBoard({ room, playerId }) {
           </button>
         </div>
         <div className="cn-nav-right">
-          <button className="cn-nav-btn settings-btn" aria-label="Settings">
+          <button className="cn-nav-btn settings-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
             <Icon type="settings" />
           </button>
         </div>
@@ -213,6 +214,27 @@ export default function CodenamesBoard({ room, playerId }) {
             <Icon type="up" size={24} />
           </button>
         </form>
+      )}
+
+      {showSettings && (
+        <div className="cn-settings-modal" onClick={() => setShowSettings(false)}>
+          <div className="cn-settings-content" onClick={e => e.stopPropagation()}>
+            <div className="cn-settings-header">
+              <h3>SETTINGS</h3>
+              <button className="cn-settings-close" onClick={() => setShowSettings(false)}>✕</button>
+            </div>
+            <div className="cn-settings-body">
+              <button 
+                className="cn-btn danger" 
+                onClick={() => {
+                  if (onLeave) onLeave()
+                }}
+              >
+                LEAVE GAME
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

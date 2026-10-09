@@ -8,8 +8,9 @@ import CodenamesBoard from './components/CodenamesBoard.jsx'
 export default function CodenamesApp({ onExit }) {
   const [room, setRoom] = useState(null)
   const [error, setError] = useState(null)
+  const [existingRoomId, setExistingRoomId] = useState(null)
   const [phase, setPhase] = useState('SETUP') // SETUP, CREATE, JOIN
-  const [playerName, setPlayerName] = useState('')
+  const [playerName, setPlayerName] = useState(() => readIdentity().playerName || '')
   const [joinRoomId, setJoinRoomId] = useState('')
 
   const { sessionId } = ensureIdentity()
@@ -66,7 +67,10 @@ export default function CodenamesApp({ onExit }) {
     if (!playerName.trim()) return
     const socket = connectSocket(sessionId)
     socket.emit('codenames:create-room', { sessionId, playerName: playerName.trim() }, (res) => {
-      if (res && res.error) setError(res.error)
+      if (res && res.error) {
+        setError(res.error)
+        setExistingRoomId(res.roomId || null)
+      }
     })
   }
 
@@ -76,19 +80,47 @@ export default function CodenamesApp({ onExit }) {
     const socket = connectSocket(sessionId)
     const { resumeToken } = readIdentity()
     socket.emit('codenames:join-room', { sessionId, playerName: playerName.trim(), roomId: joinRoomId.trim().toUpperCase(), resumeToken }, (res) => {
-      if (res && res.error) setError(res.error)
+      if (res && res.error) {
+        setError(res.error)
+        setExistingRoomId(res.roomId || null)
+      }
+    })
+  }
+
+  const handleJoinExisting = () => {
+    const socket = connectSocket(sessionId)
+    const { resumeToken } = readIdentity()
+    socket.emit('codenames:join-room', { sessionId, playerName: playerName.trim(), roomId: existingRoomId, resumeToken }, (res) => {
+      if (res && res.error) {
+        setError(res.error)
+        setExistingRoomId(res.roomId || null)
+      } else {
+        setError(null)
+        setExistingRoomId(null)
+      }
     })
   }
 
   if (error) {
+    const isAlreadyInRoom = error === 'ALREADY_IN_ROOM' || error === 'ALREADY_IN_ANOTHER_ROOM'
     return (
-      <div className="codenames-app">
-        <h2>Error</h2>
-        <p>{error}</p>
-        <button onClick={() => {
-          setError(null)
-          if (!room) setPhase('SETUP')
-        }}>Back</button>
+      <div className="codenames-app codenames-setup">
+        <div className="codenames-setup-actions" style={{ textAlign: 'center' }}>
+          <h2>{isAlreadyInRoom ? 'ALREADY IN ROOM' : 'Error'}</h2>
+          <p style={{ margin: '10px 0 20px', color: '#fff' }}>
+            {isAlreadyInRoom ? 'You are already in a room.' : error}
+          </p>
+          {isAlreadyInRoom && existingRoomId && (
+            <button className="cn-btn" onClick={handleJoinExisting} style={{ marginBottom: 15 }}>
+              JOIN ROOM
+            </button>
+          )}
+          <button className="cn-btn danger" onClick={() => {
+            setError(null)
+            setExistingRoomId(null)
+            if (!room) setPhase('SETUP')
+          }}>Back</button>
+        </div>
       </div>
     )
   }
@@ -160,7 +192,7 @@ export default function CodenamesApp({ onExit }) {
           onLeave={handleLeave} 
         />
       ) : (
-        <CodenamesBoard room={room} playerId={sessionId} />
+        <CodenamesBoard room={room} playerId={sessionId} onLeave={handleLeave} />
       )}
     </div>
   )

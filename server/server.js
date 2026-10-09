@@ -3742,7 +3742,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
     const existing = findCodenamesRoomByPlayer(reqSessionId)
     if (existing.room) {
-      return callback?.({ error: 'ALREADY_IN_ROOM' })
+      return callback?.({ error: 'ALREADY_IN_ROOM', roomId: existing.roomId })
     }
 
     let roomId = makeRoomId()
@@ -3794,7 +3794,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
 
     const existing = findCodenamesRoomByPlayer(reqSessionId)
     if (existing.room && existing.roomId !== roomId) {
-      return callback?.({ error: 'ALREADY_IN_ANOTHER_ROOM' })
+      return callback?.({ error: 'ALREADY_IN_ANOTHER_ROOM', roomId: existing.roomId })
     }
 
     const room = codenamesRooms.get(roomId)
