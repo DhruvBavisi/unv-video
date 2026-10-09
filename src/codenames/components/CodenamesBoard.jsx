@@ -97,7 +97,8 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
   const needsBlueSpy = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
   const isActive = (team, kind) => needsBlueSpy ? (team === 'blue' && kind === 'spy') : (team === room.currentTeam && kind === 'ops')
   const myPlayer = room.players.find(p => p.id === playerId)
-  const isMyClueTurn = myPlayer?.role === 'SPYMASTER' && myPlayer?.team === room.currentTeam && (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE')
+  const canSeeBoardColors = myPlayer?.role === 'SPYMASTER'
+  const isMyClueTurn = canSeeBoardColors && myPlayer?.team === room.currentTeam && (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE')
 
   let statusMessage = 'GAME STARTED'
   if (room.phase === 'BOARD_READY' && blueSpymasters.length === 0) {
