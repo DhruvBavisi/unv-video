@@ -587,17 +587,24 @@
 /* ===== 2. MAIN GAME PAGE (measured from reference) ===== */
 .codenames-app--game {
   --u: min(1vw, 4.8px);
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
   padding: 0;
-  min-height: 100dvh;
   align-items: center;
   background: linear-gradient(180deg, #040309 0%, #0b0c11 10%, #161924 22%, #232a38 34%, #223347 46%, #263a4e 70%, #2a4256 100%);
 }
 .cn-game-page {
   width: 100%;
   max-width: 480px;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: max(env(safe-area-inset-top, 0px), 12px);
   box-sizing: border-box;
-  padding-bottom: calc(var(--u) * 3);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), calc(var(--u) * 2));
   color: #fff;
   font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
   font-weight: 700;
@@ -605,7 +612,7 @@
 .cn-game-page button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 
 /* NAV */
-.cn-game-nav { display: flex; justify-content: space-between; align-items: center; padding: calc(env(safe-area-inset-top, 0px) + var(--u) * 0.9) calc(var(--u) * 1.1) 0; }
+.cn-game-nav { display: flex; justify-content: space-between; align-items: center; padding: calc(var(--u) * 0.9) calc(var(--u) * 1.1) 0; flex: 0 0 auto; }
 .cn-nav-left, .cn-nav-right { display: flex; gap: calc(var(--u) * 2); }
 .cn-nav-btn {
   height: calc(var(--u) * 8.6); min-width: calc(var(--u) * 8.4); padding: 0; box-sizing: border-box;
@@ -618,6 +625,7 @@
 .cn-players-badge { margin: 0; font-size: calc(var(--u) * 4); font-weight: 400; line-height: 1; }
 
 /* INFO ROW */
+.cn-game-info-row, .cn-status-row, .cn-clue-control { flex: 0 0 auto; }
 .cn-game-info-row { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 1.9); padding: calc(var(--u) * 2.4) calc(var(--u) * 2) 0; }
 .cn-team-col { flex: 0 0 calc(var(--u) * 26); height: calc(var(--u) * 49.3); display: flex; flex-direction: column; }
 .cn-game-log-col { flex: 1; min-width: 0; height: calc(var(--u) * 50.5); }
@@ -683,11 +691,21 @@
 .cn-help-btn span { font-size: calc(var(--u) * 4.6); line-height: 1; }
 
 /* BOARD */
-.cn-board-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(var(--u) * 1.15) calc(var(--u) * 1.1); width: 100%; box-sizing: border-box; padding: 0 calc(var(--u) * 1.4); }
+.cn-board-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: calc(var(--u) * 1.15) calc(var(--u) * 1.1);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 calc(var(--u) * 1.4) calc(var(--u) * 1.4);
+}
 .codenames-card {
   --rim-top: #ffddbc; --rim-bot: #fdd5ae; --face-top: #fadab9; --face-bot: #ffd0a9;
   --frame: #b58f6f; --hair: #af8765; --plate: #927356;
-  position: relative; aspect-ratio: 109.6 / 94; box-sizing: border-box; padding: calc(var(--u) * 1.1);
+  position: relative; height: 100%; min-height: 0; box-sizing: border-box; padding: calc(var(--u) * 1.1);
   border-radius: calc(var(--u) * 1.1); background: linear-gradient(180deg, var(--rim-top), var(--rim-bot));
   box-shadow: inset 0 1px 0 #fff0df, inset 0 -1px 0 #fae3c7;
 }
@@ -727,7 +745,7 @@
   border-radius: calc(var(--u) * 4);
   padding: 0 calc(var(--u) * 3);
   font-family: inherit;
-  font-size: calc(var(--u) * 4.5);
+  font-size: max(16px, calc(var(--u) * 4.5));
   font-weight: 700;
   color: #7b7b7b;
   text-transform: uppercase;
@@ -753,13 +771,7 @@
   cursor: pointer;
   box-shadow: 0 calc(var(--u) * 0.5) calc(var(--u) * 1) rgba(0, 0, 0, 0.45);
 }
-.cn-dec-symbol {
-  font-size: calc(var(--u) * 6);
-  font-weight: 900;
-  color: #3b88c3;
-  line-height: 1;
-  margin-top: calc(var(--u) * -0.5);
-}
+.cn-dec-symbol { font-weight: 600; color: #fff; font-size: calc(var(--u) * 4.5); margin-top: 0; }
 .cn-dec-num {
   position: absolute;
   top: calc(var(--u) * -1.5);
@@ -853,3 +865,5 @@
   flex-direction: column;
   gap: 15px;
 }
+
+.cn-clue-error { flex: 0 0 auto; text-align: center; padding: calc(var(--u) * 1) calc(var(--u) * 2) 0; font-size: calc(var(--u) * 3); color: #ffb4a8; }

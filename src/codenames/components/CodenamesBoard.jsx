@@ -50,10 +50,13 @@ function Icon({ type, size = 16 }) {
   )
 }
 
+const CLUE_ERRORS = { EMPTY_CLUE: 'Enter a clue.', INVALID_CLUE: 'One word only, up to 25 characters.', CLUE_MATCHES_BOARD_WORD: "A clue can't be a word on the board.", INVALID_NUMBER: 'Pick a number from 1 to 9.', NOT_YOUR_TURN: "It's not your team's turn.", INVALID_PHASE: 'A clue was already given.' }
+
 export default function CodenamesBoard({ room, playerId, onLeave }) {
   const [clueWord, setClueWord] = useState('')
   const [clueNum, setClueNum] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [clueError, setClueError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
 
   const board = room.board
@@ -64,14 +67,15 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
   const handleClueSubmit = (e) => {
     e.preventDefault()
     if (!clueWord.trim() || isSubmitting) return
+    setClueError('')
     setIsSubmitting(true)
+    const unlock = setTimeout(() => setIsSubmitting(false), 8000)
     const socket = connectSocket(playerId)
     socket.emit('codenames:give-clue', { clue: clueWord.trim(), number: clueNum }, (res) => {
+      clearTimeout(unlock)
       setIsSubmitting(false)
-      if (res.success) {
-        setClueWord('')
-        setClueNum(1)
-      }
+      if (res?.success) { setClueWord(''); setClueNum(1) }
+      else setClueError(CLUE_ERRORS[res?.error] || 'Could not send the clue.')
     })
   }
 
@@ -94,20 +98,17 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
 
   const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
-  const needsBlueSpy = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
-  const isActive = (team, kind) => needsBlueSpy ? (team === 'blue' && kind === 'spy') : (team === room.currentTeam && kind === 'ops')
+  const clueStage = room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE'
+  const isActive = (team, kind) => room.status === 'PLAYING' && team === room.currentTeam && kind === (clueStage ? 'spy' : 'ops')
   const myPlayer = room.players.find(p => p.id === playerId)
   const canSeeBoardColors = myPlayer?.role === 'SPYMASTER'
-  const isMyClueTurn = canSeeBoardColors && myPlayer?.team === room.currentTeam && (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE')
+  const isMyClueTurn = room.status === 'PLAYING' && canSeeBoardColors && myPlayer?.team === room.currentTeam && clueStage
 
   let statusMessage = 'GAME STARTED'
-  if (room.phase === 'BOARD_READY' && blueSpymasters.length === 0) {
-    statusMessage = 'BLUE TEAM NEEDS A SPYMASTER'
-  } else if (isMyClueTurn) {
-    statusMessage = 'GIVE YOUR OPERATIVES A CLUE'
-  } else if (room.currentTeam) {
-    statusMessage = `${room.currentTeam.toUpperCase()} TEAM'S TURN`
-  }
+  if (room.status === 'FINISHED') statusMessage = room.winner ? `${room.winner.toUpperCase()} TEAM WINS` : 'GAME OVER'
+  else if (isMyClueTurn) statusMessage = 'GIVE YOUR OPERATIVES A CLUE'
+  else if (room.phase === 'GUESS_PHASE' && room.currentClue) statusMessage = `${room.currentTeam.toUpperCase()} CLUE: ${room.currentClue.word} ${room.currentClue.number}`
+  else if (room.currentTeam) statusMessage = `${room.currentTeam.toUpperCase()} TEAM'S TURN`
 
   const renderAvatar = (p) => (
     <div key={p.id} className="cn-board-avatar">
@@ -121,13 +122,10 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
     <div className="cn-game-page">
       <div className="cn-game-nav">
         <div className="cn-nav-left">
-          <button className="cn-nav-btn players-btn" aria-label="Players">
+          <div className="cn-nav-btn players-btn" role="status" aria-label={`${room.players.length} players`}>
             <Icon type="users" />
             <span className="cn-players-badge">{room.players.length}</span>
-          </button>
-          <button className="cn-nav-btn undo-btn" aria-label="Undo">
-            <Icon type="undo" />
-          </button>
+          </div>
         </div>
         <div className="cn-nav-right">
           <button className="cn-nav-btn settings-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
@@ -150,10 +148,8 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
           </div>
           <div className={`cn-bottom-panel blue-spy${isActive('blue','spy') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">SPYMASTERS</div>
-            <div className={`cn-panel-content${blueSpymasters.length ? '' : ' cn-panel-content--join'}`}>
-              {blueSpymasters.length > 0 ? blueSpymasters.map(renderAvatar) : (
-                <button className="cn-spy-join-btn"><span>JOIN TEAM</span></button>
-              )}
+            <div className="cn-panel-content">
+              {blueSpymasters.map(renderAvatar)}
             </div>
           </div>
         </div>
@@ -179,7 +175,7 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
           <div className={`cn-bottom-panel red-spy${isActive('red','spy') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">SPYMASTERS</div>
             <div className="cn-panel-content">
-              {redSpymasters.length > 0 ? redSpymasters.map(renderAvatar) : null}
+              {redSpymasters.map(renderAvatar)}
             </div>
           </div>
         </div>
@@ -197,24 +193,26 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
       </div>
 
       {isMyClueTurn && (
-        <form className="cn-clue-control" onSubmit={handleClueSubmit}>
-          <input
-            type="text"
-            className="cn-clue-input"
-            placeholder="YOUR CLUE"
-            value={clueWord}
-            onChange={e => setClueWord(e.target.value.toUpperCase())}
-            disabled={isSubmitting}
-            maxLength={25}
-          />
-          <button type="button" className="cn-clue-dec" onClick={() => setClueNum(n => Math.max(1, n - 1))} disabled={isSubmitting}>
-            <span className="cn-dec-symbol">−</span>
-            {clueNum > 1 && <span className="cn-dec-num">{clueNum}</span>}
-          </button>
-          <button type="submit" className="cn-clue-submit" disabled={!clueWord.trim() || isSubmitting}>
-            <Icon type="up" size={24} />
-          </button>
-        </form>
+        <>
+          {clueError && <div className="cn-clue-error" role="alert">{clueError}</div>}
+          <form className="cn-clue-control" onSubmit={handleClueSubmit}>
+            <input
+              type="text"
+              className="cn-clue-input"
+              placeholder="YOUR CLUE"
+              value={clueWord}
+              onChange={e => { setClueWord(e.target.value.toUpperCase()); setClueError(''); }}
+              disabled={isSubmitting}
+              maxLength={25}
+            />
+            <button type="button" className="cn-clue-dec" onClick={() => setClueNum(n => (n % 9) + 1)} aria-label={`Clue number ${clueNum}, tap to change`} disabled={isSubmitting}>
+              <span className="cn-dec-symbol">{clueNum}</span>
+            </button>
+            <button type="submit" className="cn-clue-submit" disabled={!clueWord.trim() || isSubmitting}>
+              <Icon type="up" size={24} />
+            </button>
+          </form>
+        </>
       )}
 
       {showSettings && (

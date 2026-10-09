@@ -12,6 +12,7 @@ export default function CodenamesApp({ onExit }) {
   const [phase, setPhase] = useState('SETUP') // SETUP, CREATE, JOIN
   const [playerName, setPlayerName] = useState(() => readIdentity().playerName || '')
   const [joinRoomId, setJoinRoomId] = useState('')
+  const [restoring, setRestoring] = useState(() => { const id = readIdentity(); return !!(id.resumeToken && id.roomId && id.gameMode === 'codenames') })
 
   const { sessionId } = ensureIdentity()
   
@@ -26,8 +27,10 @@ export default function CodenamesApp({ onExit }) {
 
   useEffect(() => {
     const socket = connectSocket(sessionId)
+    const t = setTimeout(() => setRestoring(false), 6000)
 
     const handleRoomState = (state) => {
+      setRestoring(false)
       setRoom(state)
       setError(null)
     }
@@ -47,6 +50,7 @@ export default function CodenamesApp({ onExit }) {
     }
 
     const handleExpired = () => {
+      setRestoring(false)
       clearSession()
       setError('SESSION_EXPIRED')
     }
@@ -63,6 +67,7 @@ export default function CodenamesApp({ onExit }) {
     }
 
     return () => {
+      clearTimeout(t)
       socket.off('codenames:room-state', handleRoomState)
       socket.off('codenames:error', handleError)
       socket.off('room-closed', handleClosed)
@@ -141,6 +146,8 @@ export default function CodenamesApp({ onExit }) {
       </div>
     )
   }
+
+  if (!room && restoring) return (<div className="codenames-app codenames-setup"><div className="codenames-header"><h1>RESTORING CASE FILE...</h1></div></div>)
 
   if (!room) {
     return (
