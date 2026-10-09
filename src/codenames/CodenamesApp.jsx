@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { connectSocket } from '../game/socket.js'
-import { readIdentity, ensureIdentity, clearSession } from '../game/identity.js'
+import { readIdentity, ensureIdentity, clearSession, setResumeToken } from '../game/identity.js'
 import './styles/codenames.css'
 import CodenamesLobby from './components/CodenamesLobby.jsx'
 import CodenamesBoard from './components/CodenamesBoard.jsx'
@@ -29,6 +29,7 @@ export default function CodenamesApp({ onExit }) {
 
     const handleRoomState = (state) => {
       setRoom(state)
+      setError(null)
     }
 
     const handleError = (msg) => {
@@ -40,9 +41,22 @@ export default function CodenamesApp({ onExit }) {
       onExit()
     }
 
+    const handleSessionToken = ({ resumeToken, roomId, playerName, gameMode }) => {
+      if (gameMode !== 'codenames') return
+      setResumeToken(resumeToken, roomId, playerName, 'codenames')
+    }
+
+    const handleExpired = () => {
+      clearSession()
+      setError('SESSION_EXPIRED')
+    }
+
     socket.on('codenames:room-state', handleRoomState)
     socket.on('codenames:error', handleError)
     socket.on('room-closed', handleClosed)
+    socket.on('session-token', handleSessionToken)
+    socket.on('session-no-room', handleExpired)
+    socket.on('session-expired', handleExpired)
 
     if (!socket.connected) {
       socket.connect()
@@ -52,6 +66,9 @@ export default function CodenamesApp({ onExit }) {
       socket.off('codenames:room-state', handleRoomState)
       socket.off('codenames:error', handleError)
       socket.off('room-closed', handleClosed)
+      socket.off('session-token', handleSessionToken)
+      socket.off('session-no-room', handleExpired)
+      socket.off('session-expired', handleExpired)
     }
   }, [sessionId, onExit])
 

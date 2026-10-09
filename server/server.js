@@ -894,11 +894,7 @@ function disconnectCodenamesPlayer(sessionId, socketId) {
   }
 
   // SPECIAL CASE: 1 real player + bots -> destroy immediately upon disconnect
-  if (realPlayers.length === 1 && !realPlayers[0].isConnected) {
-    codenamesRooms.delete(roomId)
-    io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed.' })
-    return
-  }
+  // REMOVED to align with Undercover: real players need a grace period for page reloads
   
   if (realPlayers.length === 0 || allRealDisconnected) {
     if (realPlayers.length === 0) {
@@ -1465,6 +1461,15 @@ function reapAbandonedRooms() {
       codenamesRooms.delete(roomId)
       io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
       continue
+    }
+    
+    const allDisconnected = realPlayers.every((p) => p.disconnectedAt)
+    if (allDisconnected) {
+      const longestOffline = Math.max(...realPlayers.map(p => Date.now() - p.disconnectedAt))
+      if (longestOffline > DISCONNECT_GRACE_MS) {
+        console.log('[ROOM] destroying abandoned codenames room', { roomId, longestOffline })
+        codenamesRooms.delete(roomId)
+      }
     }
   }
 
