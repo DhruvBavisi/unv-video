@@ -152,7 +152,7 @@ export default function CodenamesApp({ onExit }) {
   }
 
   return (
-    <div className="codenames-app">
+    <div className={(room.status === 'LOBBY' || room.status === 'SETUP') ? 'codenames-app' : 'codenames-app codenames-app--game'}>
       {(room.status === 'LOBBY' || room.status === 'SETUP') ? (
         <CodenamesLobby 
           room={room} 

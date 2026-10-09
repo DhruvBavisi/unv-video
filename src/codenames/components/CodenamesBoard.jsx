@@ -66,6 +66,8 @@ export default function CodenamesBoard({ room }) {
 
   const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
+  const needsBlueSpy = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
+  const isActive = (team, kind) => needsBlueSpy ? (team === 'blue' && kind === 'spy') : (team === room.currentTeam && kind === 'ops')
 
   const statusMessage = room.phase === 'BOARD_READY' && blueSpymasters.length === 0
     ? 'BLUE TEAM NEEDS A SPYMASTER'
@@ -100,7 +102,7 @@ export default function CodenamesBoard({ room }) {
 
       <div className="cn-game-info-row">
         <div className="cn-team-col blue-col">
-          <div className="cn-top-panel blue-panel">
+          <div className={`cn-top-panel blue-panel${isActive('blue','ops') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">OPERATIVES</div>
             <div className="cn-panel-content">
               {room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').map(renderAvatar)}
@@ -108,12 +110,13 @@ export default function CodenamesBoard({ room }) {
           </div>
           <div className="cn-score-section blue-score">
             <div className="cn-score-number">{blueScore}</div>
+            <div className="cn-score-thumb" aria-hidden="true" />
           </div>
-          <div className="cn-bottom-panel blue-spy">
+          <div className={`cn-bottom-panel blue-spy${isActive('blue','spy') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">SPYMASTERS</div>
-            <div className="cn-panel-content">
+            <div className={`cn-panel-content${blueSpymasters.length ? '' : ' cn-panel-content--join'}`}>
               {blueSpymasters.length > 0 ? blueSpymasters.map(renderAvatar) : (
-                <button className="cn-spy-join-btn">JOIN TEAM</button>
+                <button className="cn-spy-join-btn"><span>JOIN TEAM</span></button>
               )}
             </div>
           </div>
@@ -127,7 +130,7 @@ export default function CodenamesBoard({ room }) {
         </div>
 
         <div className="cn-team-col red-col">
-          <div className="cn-top-panel red-panel">
+          <div className={`cn-top-panel red-panel${isActive('red','ops') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">OPERATIVES</div>
             <div className="cn-panel-content">
               {room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE').map(renderAvatar)}
@@ -135,8 +138,9 @@ export default function CodenamesBoard({ room }) {
           </div>
           <div className="cn-score-section red-score">
             <div className="cn-score-number">{redScore}</div>
+            <div className="cn-score-thumb" aria-hidden="true" />
           </div>
-          <div className="cn-bottom-panel red-spy">
+          <div className={`cn-bottom-panel red-spy${isActive('red','spy') ? ' is-active' : ''}`}>
             <div className="cn-panel-header">SPYMASTERS</div>
             <div className="cn-panel-content">
               {redSpymasters.length > 0 ? redSpymasters.map(renderAvatar) : null}
@@ -147,7 +151,7 @@ export default function CodenamesBoard({ room }) {
 
       <div className="cn-status-row">
         <div className="cn-status-text">{statusMessage}</div>
-        <button className="cn-help-btn" aria-label="Help">?</button>
+        <button className="cn-help-btn" aria-label="Help"><span>?</span></button>
       </div>
 
       <div className="cn-board-grid">

@@ -16,12 +16,15 @@ export default function CodenamesCard({ card }) {
     classNames += ' unrevealed'
   }
 
+  const len = card.word.length
+  const wordSize = len > 9 ? 2.8 : len > 7 ? 3.15 : 3.65
+
   return (
     <div className={classNames}>
       <div className="card-inner">
         <div className="card-top"></div>
         <div className="card-bottom">
-          <span className="card-word">{card.word}</span>
+          <span className="card-word" style={{ fontSize: `calc(var(--u) * ${wordSize})` }}>{card.word}</span>
         </div>
       </div>
     </div>
