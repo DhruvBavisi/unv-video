@@ -596,7 +596,7 @@
   width: 100%;
   max-width: 480px;
   box-sizing: border-box;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--u) * 3);
+  padding-bottom: calc(var(--u) * 3);
   color: #fff;
   font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
   font-weight: 700;
