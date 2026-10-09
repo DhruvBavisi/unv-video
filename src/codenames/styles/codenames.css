@@ -54,7 +54,7 @@
 .codenames-header {
   text-align: center;
   margin-bottom: 15px;
-  width: 100%;
+  width: var(--cn-board-width);
 }
 
 .codenames-header h1 {
@@ -584,6 +584,27 @@
 }
 
 
+
+/* =========================================================
+   CND GAME LAYOUT — MANUAL SIZING CONTROLS
+   Adjust these values to manually tune the composition.
+   ========================================================= */
+:root {
+  --cn-main-top-gap: 0px;
+  --cn-main-bottom-gap: 0px;
+
+  --cn-status-height: calc(var(--u) * 8.7);
+  --cn-status-board-gap: calc(var(--u) * 2);
+
+  --cn-board-width: 100%;
+  --cn-board-card-ratio: 1.12 / 1;
+
+  --cn-info-height: calc(var(--u) * 48); /* Approx +20px over previous */
+  --cn-info-board-gap: calc(var(--u) * 1.5);
+
+  --cn-clue-height: auto;
+}
+
 /* ===== 2. MAIN GAME PAGE (measured from reference) ===== */
 .codenames-app--game {
   --u: min(1vw, 4.8px);
@@ -613,7 +634,7 @@
 
 /* NAV */
 .cn-game-nav { display: flex; justify-content: space-between; align-items: center; padding: calc(var(--u) * 0.9) calc(var(--u) * 1.1) 0; flex: 0 0 auto; }
-.cn-game-main { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.cn-game-main { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; padding-top: var(--cn-main-top-gap); padding-bottom: var(--cn-main-bottom-gap); }
 .cn-nav-left, .cn-nav-right { display: flex; gap: calc(var(--u) * 2); }
 .cn-nav-btn {
   height: calc(var(--u) * 8.6); min-width: calc(var(--u) * 8.4); padding: 0; box-sizing: border-box;
@@ -630,15 +651,16 @@
 .cn-game-info-row {
   flex: 0 0 auto;
   min-height: 0;
+  height: var(--cn-info-height);
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
   justify-content: space-between;
   gap: calc(var(--u) * 1.9);
-  padding: calc(var(--u) * 1.5) calc(var(--u) * 2) 0;
+  padding: var(--cn-info-board-gap) calc(var(--u) * 2) 0;
 }
-.cn-team-col { flex: 0 0 calc(var(--u) * 26); height: calc(var(--u) * 44); min-height: 0; margin: calc(var(--u) * 0.6) 0; display: flex; flex-direction: column; }
-.cn-game-log-col { flex: 1; min-width: 0; height: calc(var(--u) * 44); min-height: 0; }
+.cn-team-col { flex: 0 0 calc(var(--u) * 26); min-height: 0; margin: calc(var(--u) * 0.6) 0; display: flex; flex-direction: column; }
+.cn-game-log-col { flex: 1; min-width: 0; min-height: 0; }
 
 /* TEAM PANELS (inactive = dimmed, .is-active = full) */
 .cn-top-panel, .cn-bottom-panel {
@@ -688,7 +710,7 @@
 .cn-log-content { flex: 1; width: 100%; box-sizing: border-box; overflow-y: auto; padding: calc(var(--u) * 1.2); font-size: calc(var(--u) * 2.6); font-weight: 400; color: #e8e8e8; text-align: left; }
 
 /* STATUS ROW */
-.cn-status-row { position: relative; display: flex; align-items: center; justify-content: center; height: calc(var(--u) * 8.7); flex: 0 0 auto; margin-bottom: calc(var(--u) * 2); }
+.cn-status-row { position: relative; display: flex; align-items: center; justify-content: center; height: var(--cn-status-height); flex: 0 0 auto; margin-bottom: var(--cn-status-board-gap); }
 .cn-status-text { padding: 0 calc(var(--u) * 10); font-size: calc(var(--u) * 3.4); line-height: 1; text-transform: uppercase; text-align: center; color: #fff; }
 .cn-help-btn {
   position: absolute; right: calc(var(--u) * 2.9); top: 50%; transform: translateY(-50%);
@@ -715,7 +737,7 @@
 .codenames-card {
   --rim-top: #ffddbc; --rim-bot: #fdd5ae; --face-top: #fadab9; --face-bot: #ffd0a9;
   --frame: #b58f6f; --hair: #af8765; --plate: #927356;
-  position: relative; aspect-ratio: 1.12 / 1; height: auto; min-height: 0; box-sizing: border-box; padding: calc(var(--u) * 1.1);
+  position: relative; aspect-ratio: var(--cn-board-card-ratio); height: auto; min-height: 0; box-sizing: border-box; padding: calc(var(--u) * 1.1);
   border-radius: calc(var(--u) * 1.1); background: linear-gradient(180deg, var(--rim-top), var(--rim-bot));
   box-shadow: inset 0 1px 0 #fff0df, inset 0 -1px 0 #fae3c7;
 }
@@ -737,6 +759,7 @@
 /* CLUE CONTROL */
 .cn-clue-control {
   display: flex;
+  height: var(--cn-clue-height);
   align-items: center;
   justify-content: space-between;
   width: 100%;
