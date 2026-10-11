@@ -6510,20 +6510,6 @@ html.sk-screen-lock body {
   overscroll-behavior: none;
 }
 
-.sk-guess-bar--lifted {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--sk-kb, 0px);
-  z-index: 50;
-  transition: bottom 120ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sk-guess-bar--lifted {
-    transition: none;
-  }
-}
 
 .sk-view--game {
   animation: none;
@@ -6532,4 +6518,5 @@ html.sk-screen-lock body {
   overflow: hidden;
   overflow: clip;
   position: relative;
+  top: var(--sk-pan, 0px);
 }

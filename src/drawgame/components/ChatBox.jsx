@@ -22,6 +22,7 @@ export default function ChatBox({ room }) {
       {/* Messages Area */}
       <div 
         ref={containerRef}
+        data-sk-scroll
         style={{ 
           flex: 1, 
           overflowY: 'auto', 

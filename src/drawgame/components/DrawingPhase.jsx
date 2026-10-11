@@ -13,7 +13,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const isDrawer = room.currentDrawerId === sessionId
   const guessInputRef = useRef(null)
   const guessBarRef = useRef(null)
-  const { lifted, barHeight } = useGuessKeyboard(guessInputRef, guessBarRef, !isDrawer)
+  const { lifted } = useGuessKeyboard(guessInputRef, guessBarRef, !isDrawer)
 
   const [color, setColor] = useState('#000000')
   const [size, setSize] = useState(8)
@@ -532,7 +532,7 @@ export default function DrawingPhase({ room, onLeave }) {
         {room.phase === 'GAME_RESULT' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 30, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)' }}>
             <h1 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '2.5rem', marginBottom: '20px' }}>GAME OVER</h1>
-            <div className="sk-card" style={{ width: '100%', maxWidth: '400px', maxHeight: '60%', overflowY: 'auto' }}>
+            <div className="sk-card" data-sk-scroll style={{ width: '100%', maxWidth: '400px', maxHeight: '60%', overflowY: 'auto' }}>
               {(() => {
                 const sorted = [...room.players].sort((a, b) => b.score - a.score)
                 return sorted.map((p, idx) => (
@@ -574,36 +574,36 @@ export default function DrawingPhase({ room, onLeave }) {
             onUndo={handleUndo}
           />
         ) : (!isDrawer ? (
-          <>
-            {lifted && <div aria-hidden="true" style={{ height: barHeight, flexShrink: 0 }} />}
-            <form 
-              ref={guessBarRef}
-              className={lifted ? 'sk-guess-bar--lifted' : undefined}
-              onSubmit={handleGuessSubmit} 
-              style={{ 
-              display: 'flex', 
-              gap: '8px', 
-              padding: '8px 16px',
-              background: 'var(--sk-surface)',
-              borderTop: '1px solid rgba(0,0,0,0.05)',
-              borderBottom: '1px solid rgba(0,0,0,0.05)'
-            }}>
-              <input 
-                ref={guessInputRef}
-                type="text" 
-                placeholder="Type your guess..."
-                className="sk-input"
-                style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
-                value={guessInput}
-                onChange={e => setGuessInput(e.target.value)}
-                disabled={room.guessedPlayerIds?.includes(sessionId)}
-                maxLength={120}
-              />
-              <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
-                SEND
-              </button>
-            </form>
-          </>
+          <form 
+            ref={guessBarRef}
+            onSubmit={handleGuessSubmit} 
+            style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            padding: '8px 16px',
+            background: 'var(--sk-surface)',
+            borderTop: '1px solid rgba(0,0,0,0.05)',
+            borderBottom: '1px solid rgba(0,0,0,0.05)'
+          }}>
+            <input 
+              ref={guessInputRef}
+              type="text" 
+              placeholder="Type your guess..."
+              className="sk-input"
+              style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
+              value={guessInput}
+              onChange={e => setGuessInput(e.target.value)}
+              disabled={room.guessedPlayerIds?.includes(sessionId)}
+              maxLength={120}
+              enterKeyHint="send"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
+              SEND
+            </button>
+          </form>
         ) : null)}
       </div>
 

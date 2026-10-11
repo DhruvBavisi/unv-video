@@ -18,17 +18,19 @@ export default function PlayerStrip({ room, currentDrawerId, sessionId }) {
   const guessedIds = room.guessedPlayerIds || []
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column',
-      overflowY: 'auto', 
-      height: '100%',
-      width: '100%',
-      background: 'white',
-      WebkitOverflowScrolling: 'touch',
-      scrollbarWidth: 'none',
-      msOverflowStyle: 'none'
-    }}>
+    <div 
+      data-sk-scroll
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflowY: 'auto', 
+        height: '100%',
+        width: '100%',
+        background: 'white',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
+      }}>
       {room.players.map((p, i) => {
         const isDrawer = p.id === currentDrawerId
         const isCurrent = p.id === sessionId

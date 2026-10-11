@@ -200,8 +200,8 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       const isMobile = window.innerWidth <= 768
       
       if (isMobile) {
-        cvs.width = 800
-        cvs.height = 600
+        if (cvs.width !== 800) cvs.width = 800
+        if (cvs.height !== 600) cvs.height = 600
         cvs.style.width = '100%'
         cvs.style.height = '100%'
         cvs.style.objectFit = 'fill'
