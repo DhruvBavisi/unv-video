@@ -74,8 +74,10 @@ function SkribblScreenTransition({ view, children }) {
 }
 
 import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
+import { usePageBackground } from '../hooks/usePageBackground.js'
 
 export default function SkribblApp({ onExit }) {
+  usePageBackground('#EEF5FF')
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
   const connectPromiseRef = useRef(null)
