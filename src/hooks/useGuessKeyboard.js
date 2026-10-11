@@ -38,9 +38,7 @@ export function useGuessKeyboard(inputRef, barRef, enabled) {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
         if (!vv) return
-        const pan = Math.max(0, Math.round(vv.offsetTop))
         const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
-        root.style.setProperty('--sk-pan', pan + 'px')
         if (document.activeElement === input && kb > 100) {
           root.style.setProperty('--sk-kb', kb + 'px')
           try { sessionStorage.setItem(KB_KEY, String(kb)) } catch {}
@@ -68,7 +66,6 @@ export function useGuessKeyboard(inputRef, barRef, enabled) {
     const onBlur = () => {
       setLifted(false)
       root.style.setProperty('--sk-kb', '0px')
-      root.style.setProperty('--sk-pan', '0px')
     }
 
     input.addEventListener('focus', onFocus)
