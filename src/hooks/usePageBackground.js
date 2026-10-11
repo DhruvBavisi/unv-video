@@ -15,7 +15,16 @@ export function usePageBackground(color) {
     body.style.backgroundColor = color
     themeColorMeta?.setAttribute('content', color)
 
+    // Load mode-specific viewport fixes only while this mode is mounted.
+    let cancelled = false
+    import('../styles/sk-pwa-background.css').then(() => {
+      if (cancelled) return
+    }).catch((error) => {
+      console.error('Unable to load page background styles:', error)
+    })
+
     return () => {
+      cancelled = true
       root.style.backgroundColor = previousRootColor
       body.style.backgroundColor = previousBodyColor
       if (themeColorMeta) {
