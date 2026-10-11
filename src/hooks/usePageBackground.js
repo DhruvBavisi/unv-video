@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import '../styles/sk-pwa-background.css'
 
 /** Temporarily applies a page background while a game mode is mounted. */
 export function usePageBackground(color) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement
     const body = document.body
     const themeColorMeta = document.querySelector('meta[name="theme-color"]')

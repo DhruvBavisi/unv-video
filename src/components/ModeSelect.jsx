@@ -1,6 +1,8 @@
 import React from 'react'
+import { usePageBackground } from '../hooks/usePageBackground.js'
 
 export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSelectCodenames, onBack }) {
+  usePageBackground('#070914')
   return (
     <div className="mode-select mode-select--cinematic">
       

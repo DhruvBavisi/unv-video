@@ -4,6 +4,7 @@ import { readIdentity, ensureIdentity, clearSession, setResumeToken } from '../g
 import './styles/codenames.css'
 import CodenamesLobby from './components/CodenamesLobby.jsx'
 import CodenamesBoard from './components/CodenamesBoard.jsx'
+import { usePageBackground } from '../hooks/usePageBackground.js'
 
 export default function CodenamesApp({ onExit }) {
   const [room, setRoom] = useState(null)
@@ -15,6 +16,9 @@ export default function CodenamesApp({ onExit }) {
   const [restoring, setRestoring] = useState(() => { const id = readIdentity(); return !!(id.resumeToken && id.roomId && id.gameMode === 'codenames') })
 
   const { sessionId } = ensureIdentity()
+
+  const isCodenamesGame = !!room && room.status !== 'LOBBY' && room.status !== 'SETUP'
+  usePageBackground(isCodenamesGame ? '#040309' : '#111111')
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)

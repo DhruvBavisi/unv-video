@@ -58,7 +58,7 @@ function SessionResolver({ onResolved }) {
   }, [onResolved])
 
   return (
-    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'black', color: 'white' }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', alignItems: 'center', justifyContent: 'center', background: '#0b0c0d', color: 'white' }}>
       <p>Resolving session...</p>
     </div>
   )
