@@ -12,7 +12,7 @@
 }
 
 .sk-view--game {
-  min-height: -webkit-fill-available;
-  min-height: 100dvh;
+  min-height: 0;
+  animation: none;
   background-color: #EEF5FF;
 }

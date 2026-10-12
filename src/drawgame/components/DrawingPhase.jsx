@@ -12,8 +12,7 @@ export default function DrawingPhase({ room, onLeave }) {
   const { sessionId } = ensureIdentity()
   const isDrawer = room.currentDrawerId === sessionId
   const guessInputRef = useRef(null)
-  const guessBarRef = useRef(null)
-  const { lifted } = useGuessKeyboard(guessInputRef, guessBarRef, !isDrawer)
+  useGuessKeyboard(guessInputRef, !isDrawer)
 
   const [color, setColor] = useState('#000000')
   const [size, setSize] = useState(8)
@@ -560,9 +559,9 @@ export default function DrawingPhase({ room, onLeave }) {
         </div>
       </div>
 
-      {/* BOTTOM CONTROLS */}
-      <div style={{ flexShrink: 0, zIndex: lifted ? 30 : 10 }}>
-        {(isDrawer && room.phase === 'DRAWING') ? (
+      {/* BOTTOM CONTROLS (drawer toolbar only; the guess form is the dock at the bottom of the shell) */}
+      <div style={{ flexShrink: 0, zIndex: 10 }}>
+        {(isDrawer && room.phase === 'DRAWING') && (
           <DrawingToolbar 
             color={color} 
             setColor={setColor} 
@@ -573,38 +572,7 @@ export default function DrawingPhase({ room, onLeave }) {
             onClear={handleClearCanvas} 
             onUndo={handleUndo}
           />
-        ) : (!isDrawer ? (
-          <form 
-            ref={guessBarRef}
-            onSubmit={handleGuessSubmit} 
-            style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            padding: '8px 16px',
-            background: 'var(--sk-surface)',
-            borderTop: '1px solid rgba(0,0,0,0.05)',
-            borderBottom: '1px solid rgba(0,0,0,0.05)'
-          }}>
-            <input 
-              ref={guessInputRef}
-              type="text" 
-              placeholder="Type your guess..."
-              className="sk-input"
-              style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1 }}
-              value={guessInput}
-              onChange={e => setGuessInput(e.target.value)}
-              disabled={room.guessedPlayerIds?.includes(sessionId)}
-              maxLength={120}
-              enterKeyHint="send"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
-              SEND
-            </button>
-          </form>
-        ) : null)}
+        )}
       </div>
 
       {/* LOWER INFO SECTION: Players & Chat */}
@@ -613,7 +581,7 @@ export default function DrawingPhase({ room, onLeave }) {
         minHeight: 0,
         background: '#ffffff',
         zIndex: 10,
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: isDrawer ? 'env(safe-area-inset-bottom)' : 0,
         boxSizing: 'border-box'
       }}>
         {/* Left Column: Player List */}
@@ -626,6 +594,30 @@ export default function DrawingPhase({ room, onLeave }) {
           <ChatBox room={room} />
         </div>
       </div>
+
+      {/* GUESS DOCK: last child of the shell (like a chat composer). Guessers only. */}
+      {!isDrawer && (
+        <form className="sk-guess-dock" onSubmit={handleGuessSubmit}>
+          <input
+            ref={guessInputRef}
+            type="text"
+            placeholder="Type your guess..."
+            className="sk-input"
+            style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1, minWidth: 0 }}
+            value={guessInput}
+            onChange={e => setGuessInput(e.target.value)}
+            disabled={room.guessedPlayerIds?.includes(sessionId)}
+            maxLength={120}
+            enterKeyHint="send"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
+            SEND
+          </button>
+        </form>
+      )}
     </div>
   )
 }

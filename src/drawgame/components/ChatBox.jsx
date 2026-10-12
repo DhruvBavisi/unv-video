@@ -11,6 +11,15 @@ export default function ChatBox({ room }) {
     }
   }, [room.chatMessages])
 
+  // Keyboard open/close resizes this panel: keep the newest message pinned
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => { el.scrollTop = el.scrollHeight })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <div style={{ 
       display: 'flex', 
