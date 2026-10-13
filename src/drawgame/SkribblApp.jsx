@@ -163,7 +163,24 @@ export default function SkribblApp({ onExit }) {
       setView('menu')
     }
 
+    const handleChatMessage = (message) => {
+      if (!message?.id) return
+
+      setRoomState(prev => {
+        if (!prev) return prev
+
+        const messages = prev.chatMessages || []
+        if (messages.some(item => item.id === message.id)) return prev
+
+        return {
+          ...prev,
+          chatMessages: [...messages, message].slice(-100)
+        }
+      })
+    }
+
     socket.on('draw:room-state', handleRoomState)
+    socket.on('draw:chat-message', handleChatMessage)
     socket.on('draw:error', handleError)
     socket.on('draw:kicked', handleKicked)
     socket.on('room-closed', handleRoomClosed)
@@ -180,6 +197,7 @@ export default function SkribblApp({ onExit }) {
 
     return () => {
       socket.off('draw:room-state', handleRoomState)
+      socket.off('draw:chat-message', handleChatMessage)
       socket.off('draw:error', handleError)
       socket.off('draw:kicked', handleKicked)
       socket.off('room-closed', handleRoomClosed)

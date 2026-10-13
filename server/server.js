@@ -90,6 +90,50 @@ const drawRooms = new Map()
 const codenamesRooms = new Map()
 const sessionSockets = new Map()
 
+// In-memory rate limiter for Skribbl events keyed by `${sessionId}:${eventType}`
+const drawRateLimiters = new Map()
+
+function checkDrawRateLimit(sessionId, eventType, maxEvents, windowMs) {
+  if (!sessionId) return false
+  const key = `${sessionId}:${eventType}`
+  const now = Date.now()
+  let timestamps = drawRateLimiters.get(key)
+  if (!timestamps) {
+    timestamps = []
+    drawRateLimiters.set(key, timestamps)
+  }
+  const cutoff = now - windowMs
+  while (timestamps.length > 0 && timestamps[0] <= cutoff) {
+    timestamps.shift()
+  }
+  if (timestamps.length >= maxEvents) {
+    return false
+  }
+  timestamps.push(now)
+  return true
+}
+
+function clearDrawRateLimits(sessionId) {
+  if (!sessionId) return
+  for (const key of drawRateLimiters.keys()) {
+    if (key.startsWith(`${sessionId}:`)) {
+      drawRateLimiters.delete(key)
+    }
+  }
+}
+
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, timestamps] of drawRateLimiters.entries()) {
+    while (timestamps.length > 0 && timestamps[0] <= now - 10000) {
+      timestamps.shift()
+    }
+    if (timestamps.length === 0) {
+      drawRateLimiters.delete(key)
+    }
+  }
+}, 30000).unref?.()
+
 // How long a room whose players are all disconnected is kept before reap.
 const RECONNECT_GRACE_MS = 5 * 60 * 1000
 
@@ -913,6 +957,8 @@ function removeDrawPlayer(sessionId) {
   if (foundRoom.turnScores) {
     delete foundRoom.turnScores[sessionId]
   }
+
+  clearDrawRateLimits(sessionId)
 
   const realPlayers = foundRoom.players.filter(p => !p.isBot)
 
@@ -2300,6 +2346,8 @@ io.on('connection', (socket) => {
     }
     if (!room) return
 
+    if (!checkDrawRateLimit(currentSessionId, 'stroke', 50, 2000)) return
+
     // Stroke Validation
     if (!strokeData || typeof strokeData !== 'object') return
     if (typeof strokeData.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(strokeData.color)) return
@@ -2367,6 +2415,7 @@ io.on('connection', (socket) => {
       }
     }
     if (!room || room.phase !== 'DRAWING') return
+    if (room.currentDrawerId === currentSessionId) return
 
     if (!room.reactions) room.reactions = {}
 
@@ -2406,6 +2455,8 @@ io.on('connection', (socket) => {
     if (!room || room.phase !== 'DRAWING') return
     if (room.currentDrawerId === currentSessionId) return // Drawer can't guess
 
+    if (!checkDrawRateLimit(currentSessionId, 'guess', 12, 10000)) return
+
     if (typeof message !== 'string') return
     const trimmed = message.trim()
     if (!trimmed || trimmed.length > 120) return
@@ -2433,7 +2484,7 @@ io.on('connection', (socket) => {
       }
       room.chatMessages.push(chatMsg)
       if (room.chatMessages.length > 100) room.chatMessages.shift()
-      broadcastDrawRoomState(room)
+      io.to(`draw:${room.id}`).emit('draw:chat-message', chatMsg)
       return
     }
 
@@ -2511,7 +2562,11 @@ io.on('connection', (socket) => {
       room.chatMessages.shift()
     }
 
-    broadcastDrawRoomState(room)
+    if (msgType === 'CORRECT') {
+      broadcastDrawRoomState(room)
+    } else {
+      io.to(`draw:${room.id}`).emit('draw:chat-message', chatMsg)
+    }
   })
 
   socket.on('draw:request-strokes', (callback) => {
