@@ -630,7 +630,7 @@ function startDrawingTurn(room, word, isResume = false) {
   }, durationMs)
 }
 
-function endDrawRound(room) {
+function endDrawRound(room, { broadcast = true, scheduleNext = true } = {}) {
   if (room.phase !== 'DRAWING' && room.phase !== 'WORD_CHOICE') return
   
   if (room.turnTimeout) {
@@ -640,6 +640,10 @@ function endDrawRound(room) {
   if (room.hintTimer) {
     clearInterval(room.hintTimer)
     room.hintTimer = null
+  }
+  if (room.wordChoiceTimeout) {
+    clearTimeout(room.wordChoiceTimeout)
+    room.wordChoiceTimeout = null
   }
 
   room.phase = 'ROUND_REVEAL'
@@ -685,9 +689,11 @@ function endDrawRound(room) {
     message: `The word was ${room.selectedWord || '(None Selected)'}.`
   })
   
-  broadcastDrawRoomState(room)
-  
+  if (broadcast) broadcastDrawRoomState(room)
+
   room.turnSequence = (room.turnSequence || 0) + 1
+  if (!scheduleNext) return
+
   const expectedTurnSequence = room.turnSequence
   const expectedRound = room.round
   
@@ -856,6 +862,7 @@ function disconnectDrawPlayer(sessionId, socketId) {
 function removeDrawPlayer(sessionId) {
   let foundRoomId = null
   let foundRoom = null
+
   for (const [rid, dr] of drawRooms) {
     if (dr.players.some(p => p.id === sessionId)) {
       foundRoomId = rid
@@ -871,49 +878,122 @@ function removeDrawPlayer(sessionId) {
 
   const wasHost = foundRoom.players[idx].isHost
   const isDrawer = foundRoom.currentDrawerId === sessionId
-  
-  if (foundRoom.currentDrawerId === sessionId) {
+
+  if (isDrawer) {
     foundRoom.currentDrawerId = null
   }
 
-  const kickedTurnIndex = foundRoom.turnOrder ? foundRoom.turnOrder.indexOf(sessionId) : -1
+  const kickedTurnIndex = foundRoom.turnOrder
+    ? foundRoom.turnOrder.indexOf(sessionId)
+    : -1
+
   if (foundRoom.turnOrder) {
     foundRoom.turnOrder = foundRoom.turnOrder.filter(id => id !== sessionId)
-    if (kickedTurnIndex !== -1 && foundRoom.turnIndex !== undefined && kickedTurnIndex <= foundRoom.turnIndex) {
+
+    if (
+      kickedTurnIndex !== -1 &&
+      foundRoom.turnIndex !== undefined &&
+      kickedTurnIndex <= foundRoom.turnIndex
+    ) {
       foundRoom.turnIndex--
     }
   }
-  
+
   foundRoom.players.splice(idx, 1)
 
   if (foundRoom.guessedPlayerIds) {
-    foundRoom.guessedPlayerIds = foundRoom.guessedPlayerIds.filter(id => id !== sessionId)
+    foundRoom.guessedPlayerIds =
+      foundRoom.guessedPlayerIds.filter(id => id !== sessionId)
   }
+
   if (foundRoom.scores) {
     delete foundRoom.scores[sessionId]
   }
+
   if (foundRoom.turnScores) {
     delete foundRoom.turnScores[sessionId]
   }
 
   const realPlayers = foundRoom.players.filter(p => !p.isBot)
+
+  // Preserve existing empty-room cleanup.
   if (realPlayers.length === 0) {
-    console.log('[ROOM] destroying empty draw room', { roomId: foundRoomId })
+    console.log('[ROOM] destroying empty draw room', {
+      roomId: foundRoomId
+    })
+
     if (foundRoom.turnTimeout) clearTimeout(foundRoom.turnTimeout)
+    if (foundRoom.wordChoiceTimeout) clearTimeout(foundRoom.wordChoiceTimeout)
     if (foundRoom.hintTimer) clearInterval(foundRoom.hintTimer)
+
+    foundRoom.turnTimeout = null
+    foundRoom.wordChoiceTimeout = null
+    foundRoom.hintTimer = null
+    foundRoom.turnSequence = (foundRoom.turnSequence || 0) + 1
+
     drawRooms.delete(foundRoomId)
-    io.to(`draw:${foundRoomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
+    io.to(`draw:${foundRoomId}`).emit('room-closed', {
+      message: 'Room closed — all players left.'
+    })
+
     return { roomId: foundRoomId, room: null }
   }
 
-  if (isDrawer && (foundRoom.phase === 'WORD_CHOICE' || foundRoom.phase === 'DRAWING')) {
+  const eligiblePlayers = foundRoom.players.filter(p => !p.spectator)
+  const isActiveGame =
+    foundRoom.phase !== 'LOBBY' &&
+    foundRoom.phase !== 'GAME_RESULT'
+
+  // End the game if fewer than two eligible players remain.
+  if (isActiveGame && eligiblePlayers.length < 2) {
+    if (
+      foundRoom.phase === 'WORD_CHOICE' ||
+      foundRoom.phase === 'DRAWING'
+    ) {
+      // Settle the current turn once, without broadcasting an intermediate
+      // reveal state or scheduling another turn.
+      endDrawRound(foundRoom, {
+        broadcast: false,
+        scheduleNext: false
+      })
+    } else {
+      // A ROUND_REVEAL may already have settled this turn's scores.
+      foundRoom.turnSequence = (foundRoom.turnSequence || 0) + 1
+    }
+
+    if (foundRoom.turnTimeout) clearTimeout(foundRoom.turnTimeout)
+    if (foundRoom.wordChoiceTimeout) clearTimeout(foundRoom.wordChoiceTimeout)
+    if (foundRoom.hintTimer) clearInterval(foundRoom.hintTimer)
+
+    foundRoom.turnTimeout = null
+    foundRoom.wordChoiceTimeout = null
+    foundRoom.hintTimer = null
+
+    foundRoom.phase = 'GAME_RESULT'
+    foundRoom.currentDrawerId = null
+    foundRoom.roundEndsAt = null
+    foundRoom.wordChoiceEndsAt = null
+    foundRoom.remainingMs = null
+    foundRoom.drawingRemainingMs = undefined
+    foundRoom.wordChoiceRemainingMs = undefined
+  } else if (
+    isDrawer &&
+    (foundRoom.phase === 'WORD_CHOICE' ||
+      foundRoom.phase === 'DRAWING')
+  ) {
+    // Keep the existing round-ending/next-turn flow when enough players remain.
     endDrawRound(foundRoom)
   }
 
   if (wasHost) {
-    const nextHost = foundRoom.players.find(p => p.isConnected && !p.isBot) || foundRoom.players[0]
+    const nextHost =
+      foundRoom.players.find(p => p.isConnected && !p.isBot) ||
+      foundRoom.players[0]
+
     if (nextHost) {
-      nextHost.isHost = true
+      foundRoom.players.forEach(p => {
+        p.isHost = p.id === nextHost.id
+      })
       foundRoom.hostId = nextHost.id
     }
   }
@@ -2541,12 +2621,6 @@ io.on('connection', (socket) => {
     }
 
     if (removed.room) {
-      const activeRealPlayers = removed.room.players.filter(p => !p.spectator)
-      if (removed.room.phase !== 'LOBBY' && removed.room.phase !== 'GAME_RESULT' && activeRealPlayers.length <= 1) {
-         removed.room.phase = 'GAME_RESULT'
-         if (removed.room.turnTimeout) clearTimeout(removed.room.turnTimeout)
-         if (removed.room.hintTimer) clearInterval(removed.room.hintTimer)
-      }
       broadcastDrawRoomState(removed.room)
     }
     callback?.({ success: true })
