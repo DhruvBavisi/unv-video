@@ -1174,6 +1174,7 @@ function removeCodenamesPlayer(sessionId) {
 // A player's private reconnect credential.  Generated once per player;
 // re-registering a session WITHOUT it is rejected (see register).
 function ensureResumeToken(player) {
+  if (!player || typeof player !== 'object') return null
   if (player.resumeToken) return player.resumeToken
   player.resumeToken = crypto.randomUUID()
   return player.resumeToken
@@ -2106,11 +2107,21 @@ io.on('connection', (socket) => {
 
     const existing = room.players.find(p => p.id === sessionId)
     if (existing) {
-      if (existing.resumeToken && (typeof resumeToken !== 'string' || resumeToken !== existing.resumeToken)) {
+      // Legacy records without a token: migrate server-side, never silently grant access
+      if (!existing.resumeToken) {
+        ensureResumeToken(existing)
+        if (room.playerRecords && room.playerRecords[sessionId]) {
+          room.playerRecords[sessionId].resumeToken = existing.resumeToken
+        }
+      }
+
+      const tokenOk = typeof resumeToken === 'string' && resumeToken === existing.resumeToken
+      if (!tokenOk) {
         return callback?.({ error: 'SESSION_EXPIRED' })
       }
+
       existing.isConnected = true
-      existing.name = trimmed
+      existing.name = existing.name || trimmed
       existing.disconnectedAt = null
       currentSessionId = sessionId
       reassignDrawHostIfNeeded(room)
@@ -2118,7 +2129,6 @@ io.on('connection', (socket) => {
       socket.join(sessionId) // Join private room for Skribbl direct messaging
       connectPlayer(socket, sessionId)
       
-      if (!existing.resumeToken) ensureResumeToken(existing)
       socket.emit('session-token', { resumeToken: existing.resumeToken, roomId: normalizedId, playerName: existing.name, gameMode: 'skribbl' })
       
       // Resume drawer timers
@@ -2129,34 +2139,42 @@ io.on('connection', (socket) => {
       return
     }
 
+    const record = room.playerRecords ? room.playerRecords[sessionId] : null
+    if (record) {
+      if (!record.resumeToken) {
+        ensureResumeToken(record)
+      }
+
+      const tokenOk = typeof resumeToken === 'string' && resumeToken === record.resumeToken
+      if (!tokenOk) {
+        return callback?.({ error: 'SESSION_EXPIRED' })
+      }
+    }
+
     if (room.players.length >= room.configuration.maxPlayers) {
       return callback?.({ error: 'ROOM_FULL' })
     }
 
-    if (room.players.some(p => p.name.toLowerCase() === trimmed.toLowerCase())) {
+    const targetName = record ? record.name : trimmed
+    if (room.players.some(p => p.name.toLowerCase() === targetName.toLowerCase())) {
       return callback?.({ error: 'NAME_TAKEN' })
     }
 
     const newPlayer = {
       id: sessionId,
-      name: trimmed,
+      name: targetName,
       isHost: false,
       isConnected: true,
       spectator: false,
       isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
-      score: 0
-    }
-    
-    const record = room.playerRecords[sessionId]
-    if (record) {
-      newPlayer.name = record.name
-      newPlayer.score = record.score
-      newPlayer.resumeToken = record.resumeToken
+      score: record ? record.score : 0,
+      resumeToken: record ? record.resumeToken : undefined
     }
     
     room.players.push(newPlayer)
 
     currentSessionId = sessionId
+    reassignDrawHostIfNeeded(room)
     socket.join(`draw:${normalizedId}`)
     socket.join(sessionId) // Join private room for Skribbl direct messaging
     connectPlayer(socket, sessionId)
@@ -2172,6 +2190,8 @@ io.on('connection', (socket) => {
     }
     socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name, gameMode: 'skribbl' })
     
+    resumeDrawTimersIfDrawer(room, sessionId)
+
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
     broadcastDrawRoomState(room)
   })
