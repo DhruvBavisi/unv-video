@@ -867,6 +867,10 @@ function generateWordChoices(room) {
   return shuffled.slice(0, count)
 }
 
+function isDrawSocketOwner(sessionId, socket) {
+  return Boolean(sessionId && socket && sessionSockets.get(sessionId) === socket.id)
+}
+
 function reassignDrawHostIfNeeded(room) {
   if (!room || !Array.isArray(room.players)) return
   const currentHost = room.players.find((p) => p.id === room.hostId)
@@ -1714,6 +1718,8 @@ io.on('connection', (socket) => {
   let currentSessionId = null
   let currentRoomId = null
 
+  const isCurrentDrawSession = (sessionId = currentSessionId) => isDrawSocketOwner(sessionId, socket)
+
   socket.on('register', ({ sessionId, resumeToken, roomId: clientRoomId }) => {
     if (!sessionId || typeof sessionId !== 'string') return
     currentSessionId = sessionId
@@ -2195,7 +2201,7 @@ io.on('connection', (socket) => {
 
 
   socket.on('draw:leave-room', (callback) => {
-    if (!currentSessionId) return callback?.({ error: 'NOT_IN_ROOM' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'NOT_IN_ROOM' })
     
     let foundRoomId = null
     for (const [rid, dr] of drawRooms) {
@@ -2221,7 +2227,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:update-config', (config) => {
-    if (!currentSessionId || typeof config !== 'object') return
+    if (!isCurrentDrawSession(currentSessionId) || typeof config !== 'object') return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.hostId === currentSessionId) {
@@ -2259,7 +2265,7 @@ io.on('connection', (socket) => {
 
 
   socket.on('draw:start-game', (callback) => {
-    if (!currentSessionId) return callback?.({ success: false, error: 'NO_SESSION' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ success: false, error: 'NO_SESSION' })
 
     let room = null
     for (const [, dr] of drawRooms) {
@@ -2358,7 +2364,7 @@ io.on('connection', (socket) => {
 
 
   socket.on('draw:choose-word', (payload, callback) => {
-    if (!currentSessionId) return callback?.({ error: 'No session' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'No session' })
     const word = payload?.word
     let room = null
     for (const [rid, dr] of drawRooms) {
@@ -2385,7 +2391,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:stroke', (strokeData) => {
-    if (!currentSessionId) return
+    if (!isCurrentDrawSession(currentSessionId)) return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
@@ -2419,7 +2425,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:undo', () => {
-    if (!currentSessionId) return
+    if (!isCurrentDrawSession(currentSessionId)) return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
@@ -2434,7 +2440,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:clear-canvas', () => {
-    if (!currentSessionId) return
+    if (!isCurrentDrawSession(currentSessionId)) return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
@@ -2455,7 +2461,7 @@ io.on('connection', (socket) => {
   }
 
   socket.on('draw:reaction', (reactionType) => {
-    if (!currentSessionId) return
+    if (!isCurrentDrawSession(currentSessionId)) return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
@@ -2493,7 +2499,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:guess', ({ message }) => {
-    if (!currentSessionId) return
+    if (!isCurrentDrawSession(currentSessionId)) return
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
@@ -2619,7 +2625,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:request-strokes', (callback) => {
-    if (!currentSessionId) return callback?.({ strokes: [] })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ strokes: [] })
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
@@ -2632,7 +2638,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:play-again', (callback) => {
-    if (!currentSessionId) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.hostId === currentSessionId) {
@@ -2668,7 +2674,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:make-host', ({ targetId }, callback) => {
-    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
     if (targetId === currentSessionId) return callback?.({ error: 'CANNOT_TARGET_SELF' })
     
     let room = null
@@ -2694,7 +2700,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:kick-player', ({ targetId }, callback) => {
-    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
     if (targetId === currentSessionId) return callback?.({ error: 'CANNOT_TARGET_SELF' })
     
     let room = null
@@ -2732,7 +2738,7 @@ io.on('connection', (socket) => {
 
   socket.on('draw:add-dev-bots', (callback) => {
     if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
-    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
@@ -2756,7 +2762,7 @@ io.on('connection', (socket) => {
 
   socket.on('draw:remove-dev-bots', (callback) => {
     if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
-    if (!currentSessionId) return callback?.({ error: 'PLAYER_NOT_FOUND' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === currentSessionId)) {
