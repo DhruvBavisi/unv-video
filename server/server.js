@@ -884,7 +884,7 @@ function reassignDrawHostIfNeeded(room) {
 
 function disconnectDrawPlayer(sessionId, socketId) {
   if (!sessionId) return
-  if (socketId && sessionSockets.get(sessionId) && sessionSockets.get(sessionId) !== socketId) {
+  if (socketId && sessionSockets.get(sessionId) !== socketId) {
     return
   }
 
@@ -914,7 +914,7 @@ function disconnectDrawPlayer(sessionId, socketId) {
         }
       }
 
-      if (sessionSockets.get(sessionId) === socketId) {
+      if (!socketId || sessionSockets.get(sessionId) === socketId) {
         sessionSockets.delete(sessionId)
       }
 
