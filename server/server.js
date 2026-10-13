@@ -2107,17 +2107,17 @@ io.on('connection', (socket) => {
 
     const existing = room.players.find(p => p.id === sessionId)
     if (existing) {
-      // Legacy records without a token: migrate server-side, never silently grant access
-      if (!existing.resumeToken) {
-        ensureResumeToken(existing)
-        if (room.playerRecords && room.playerRecords[sessionId]) {
-          room.playerRecords[sessionId].resumeToken = existing.resumeToken
-        }
-      }
-
-      const tokenOk = typeof resumeToken === 'string' && resumeToken === existing.resumeToken
+      const knownToken = existing.resumeToken || (room.playerRecords && room.playerRecords[sessionId]?.resumeToken)
+      const tokenOk = Boolean(knownToken) && typeof resumeToken === 'string' && resumeToken === knownToken
       if (!tokenOk) {
         return callback?.({ error: 'SESSION_EXPIRED' })
+      }
+
+      if (!existing.resumeToken && knownToken) {
+        existing.resumeToken = knownToken
+      }
+      if (room.playerRecords && room.playerRecords[sessionId] && !room.playerRecords[sessionId].resumeToken) {
+        room.playerRecords[sessionId].resumeToken = existing.resumeToken
       }
 
       existing.isConnected = true
@@ -2141,12 +2141,8 @@ io.on('connection', (socket) => {
 
     const record = room.playerRecords ? room.playerRecords[sessionId] : null
     if (record) {
-      if (!record.resumeToken) {
-        ensureResumeToken(record)
-      }
-
-      const tokenOk = typeof resumeToken === 'string' && resumeToken === record.resumeToken
-      if (!tokenOk) {
+      const recordTokenOk = Boolean(record.resumeToken) && typeof resumeToken === 'string' && resumeToken === record.resumeToken
+      if (!recordTokenOk) {
         return callback?.({ error: 'SESSION_EXPIRED' })
       }
     }
