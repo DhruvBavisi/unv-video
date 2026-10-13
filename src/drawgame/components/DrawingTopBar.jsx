@@ -78,7 +78,6 @@ export default function DrawingTopBar({
         </div>
 
       </div>
-      <div className="sk-topbar-divider"></div>
     </div>
   )
 }

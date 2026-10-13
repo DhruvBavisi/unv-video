@@ -6307,22 +6307,6 @@ input, select, textarea, button { font-size: 16px; }
   border-bottom: 2px solid #2345B5; /* Thin blue divider */
   --sk-topbar-extra: 14px; /* extra space under the status bar; raise it to push the bar further down */
   padding: calc(env(safe-area-inset-top, 0px) + var(--sk-topbar-extra)) 6px 6px;
-  /* subtle glitch animation on border can be done here if needed */
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .sk-topbar-wrapper {
-    animation: sk-topbar-glitch 5s infinite linear;
-  }
-}
-
-@keyframes sk-topbar-glitch {
-  0% { border-bottom-color: #2345B5; }
-  98% { border-bottom-color: #2345B5; transform: translate(0, 0); }
-  98.5% { border-bottom-color: #f0f; transform: translate(1px, -1px); }
-  99% { border-bottom-color: #0ff; transform: translate(-1px, 1px); }
-  99.5% { border-bottom-color: #2345B5; transform: translate(0, 0); }
-  100% { border-bottom-color: #2345B5; }
 }
 
 .sk-topbar-container {
