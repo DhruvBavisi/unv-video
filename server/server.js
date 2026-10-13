@@ -674,7 +674,7 @@ function startDrawingTurn(room, word, isResume = false) {
   }, durationMs)
 }
 
-function endDrawRound(room, { broadcast = true, scheduleNext = true } = {}) {
+function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDrawerId = null, originalDrawer = null, drawerId = null, drawerPlayer: passedDrawerPlayer = null, drawerRecord: passedDrawerRecord = null } = {}) {
   if (room.phase !== 'DRAWING' && room.phase !== 'WORD_CHOICE') return
   
   if (room.turnTimeout) {
@@ -698,30 +698,38 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true } = {}) {
   room.hintRevealed = null
   
   // Calculate and apply points
-  const drawerPlayer = room.players.find(p => p.id === room.currentDrawerId)
+  const targetDrawerId = originalDrawerId || drawerId || room.currentDrawerId
+  const drawerPlayer = (targetDrawerId && room.players.find(p => p.id === targetDrawerId)) || originalDrawer || passedDrawerPlayer || null
+  const drawerRecord = (targetDrawerId && room.playerRecords && room.playerRecords[targetDrawerId]) || passedDrawerRecord || null
   let drawerPoints = 0
   
   room.turnScores = room.turnScores || {}
   
-  if (drawerPlayer) {
+  if (drawerPlayer || drawerRecord) {
     const sum = Object.values(room.turnScores).reduce((a, b) => a + b, 0)
     drawerPoints = Math.round(sum * 0.5)
-    drawerPlayer.score += drawerPoints
-    room.turnScores[room.currentDrawerId] = drawerPoints
-    if (room.playerRecords && room.playerRecords[room.currentDrawerId]) {
-      room.playerRecords[room.currentDrawerId].score = drawerPlayer.score
+    if (drawerPlayer) {
+      drawerPlayer.score = (drawerPlayer.score || 0) + drawerPoints
+    }
+    if (targetDrawerId) {
+      room.turnScores[targetDrawerId] = drawerPoints
+      if (drawerRecord) {
+        drawerRecord.score = drawerPlayer ? drawerPlayer.score : ((drawerRecord.score || 0) + drawerPoints)
+      }
     }
   }
   
   // Apply guesser points to persistent totals exactly once here
   for (const [pid, pts] of Object.entries(room.turnScores)) {
-    if (pid !== room.currentDrawerId) {
+    if (pid !== targetDrawerId) {
       const p = room.players.find(x => x.id === pid)
       if (p) {
         p.score += pts
         if (room.playerRecords && room.playerRecords[pid]) {
           room.playerRecords[pid].score = p.score
         }
+      } else if (room.playerRecords && room.playerRecords[pid]) {
+        room.playerRecords[pid].score = (room.playerRecords[pid].score || 0) + pts
       }
     }
   }
@@ -920,8 +928,14 @@ function removeDrawPlayer(sessionId) {
   const idx = foundRoom.players.findIndex(p => p.id === sessionId)
   if (idx === -1) return { roomId: null, room: null }
 
-  const wasHost = foundRoom.players[idx].isHost
+  // Preserve departing player reference and drawer identity before modifying room
+  const departingPlayerId = sessionId
+  const departingPlayer = foundRoom.players[idx]
+  const departingPlayerRecord = foundRoom.playerRecords ? foundRoom.playerRecords[sessionId] : null
+  const wasHost = departingPlayer.isHost
   const isDrawer = foundRoom.currentDrawerId === sessionId
+  const originalDrawerId = foundRoom.currentDrawerId
+  const originalDrawer = isDrawer ? departingPlayer : (foundRoom.players.find(p => p.id === originalDrawerId) || null)
 
   if (isDrawer) {
     foundRoom.currentDrawerId = null
@@ -952,10 +966,6 @@ function removeDrawPlayer(sessionId) {
 
   if (foundRoom.scores) {
     delete foundRoom.scores[sessionId]
-  }
-
-  if (foundRoom.turnScores) {
-    delete foundRoom.turnScores[sessionId]
   }
 
   clearDrawRateLimits(sessionId)
@@ -1000,7 +1010,10 @@ function removeDrawPlayer(sessionId) {
       // reveal state or scheduling another turn.
       endDrawRound(foundRoom, {
         broadcast: false,
-        scheduleNext: false
+        scheduleNext: false,
+        originalDrawerId,
+        originalDrawer,
+        drawerRecord: isDrawer ? departingPlayerRecord : null
       })
     } else {
       // A ROUND_REVEAL may already have settled this turn's scores.
@@ -1028,7 +1041,11 @@ function removeDrawPlayer(sessionId) {
       foundRoom.phase === 'DRAWING')
   ) {
     // Keep the existing round-ending/next-turn flow when enough players remain.
-    endDrawRound(foundRoom)
+    endDrawRound(foundRoom, {
+      originalDrawerId,
+      originalDrawer,
+      drawerRecord: departingPlayerRecord
+    })
   }
 
   if (wasHost) {
