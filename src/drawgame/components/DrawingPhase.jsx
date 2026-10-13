@@ -6,6 +6,7 @@ import DrawingToolbar, { DRAW_COLORS } from './DrawingToolbar.jsx'
 import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
 import DrawingTopBar from './DrawingTopBar.jsx'
+import SettingsPanel from './SettingsPanel.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
 
 export default function DrawingPhase({ room, onLeave }) {
@@ -20,6 +21,14 @@ export default function DrawingPhase({ room, onLeave }) {
   const [timeRemaining, setTimeRemaining] = useState(room.configuration.drawTimeSec)
   const [guessInput, setGuessInput] = useState('')
   const [isChoosing, setIsChoosing] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [settingsRect, setSettingsRect] = useState(null)
+  const handleOpenSettings = useCallback((rect) => {
+    document.activeElement?.blur?.() // close the keyboard first so the layout is back to full height
+    setSettingsRect(rect)
+    setShowSettings(true)
+  }, [])
+  const handleCloseSettings = useCallback(() => setShowSettings(false), [])
 
   const [chatNotifications, setChatNotifications] = useState([])
   const seenMessageIds = useRef(new Set())
@@ -275,7 +284,7 @@ export default function DrawingPhase({ room, onLeave }) {
         timeRemaining={timeRemaining}
         isDrawer={isDrawer}
         hasGuessed={room.guessedPlayerIds?.includes(sessionId)}
-        onOpenSettings={onLeave}
+        onOpenSettings={handleOpenSettings}
       />
 
       {/* CANVAS AREA */}
@@ -581,7 +590,6 @@ export default function DrawingPhase({ room, onLeave }) {
         minHeight: 0,
         background: '#ffffff',
         zIndex: 10,
-        paddingBottom: isDrawer ? 'env(safe-area-inset-bottom)' : 0,
         boxSizing: 'border-box'
       }}>
         {/* Left Column: Player List */}
@@ -617,6 +625,10 @@ export default function DrawingPhase({ room, onLeave }) {
             SEND
           </button>
         </form>
+      )}
+
+      {showSettings && (
+        <SettingsPanel buttonRect={settingsRect} onClose={handleCloseSettings} onLeave={onLeave} />
       )}
     </div>
   )

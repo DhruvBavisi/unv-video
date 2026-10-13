@@ -6305,7 +6305,8 @@ input, select, textarea, button { font-size: 16px; }
   position: relative;
   z-index: 10;
   border-bottom: 2px solid #2345B5; /* Thin blue divider */
-  padding: calc(env(safe-area-inset-top, 0px) + 6px) 6px 6px;
+  --sk-topbar-extra: 14px; /* extra space under the status bar; raise it to push the bar further down */
+  padding: calc(env(safe-area-inset-top, 0px) + var(--sk-topbar-extra)) 6px 6px;
   /* subtle glitch animation on border can be done here if needed */
 }
 
@@ -6513,12 +6514,21 @@ html.sk-screen-lock body {
 
 .sk-view--game {
   animation: none;
-  height: var(--sk-vvh, 100dvh);   /* glued to the visual viewport while the keyboard is open */
+  position: fixed;               /* anchored to the real screen edges, covers the home-indicator area */
+  left: 0;
+  right: 0;
+  top: var(--sk-vvtop, 0px);     /* 0 unless the keyboard is open */
+  bottom: 0;
+  height: auto;
   min-height: 0;
   overflow: hidden;
   overflow: clip;
-  position: relative;
-  top: var(--sk-vvtop, 0px);
+}
+
+/* Keyboard open: glue the shell to the visible area above the keyboard */
+html.sk-kb-open .sk-view--game {
+  bottom: auto;
+  height: var(--sk-vvh);
 }
 
 /* Guess dock: last child of the shell, sits directly on the keyboard */
@@ -6528,12 +6538,9 @@ html.sk-screen-lock body {
   z-index: 10;
   display: flex;
   gap: 8px;
-  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 16px;
   background: var(--sk-surface);
   border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-html.sk-kb-open .sk-guess-dock {
-  padding-bottom: 8px; /* keyboard covers the home indicator */
 }
 
 @media (max-width: 768px) {
@@ -6554,4 +6561,71 @@ html.sk-kb-open .sk-guess-dock {
   html.sk-kb-open .sk-lower-info-section {
     overflow: hidden;
   }
+}
+
+/* --- SKRIBBL SETTINGS PANEL (reuses the Undercover players-panel fly-in/out animation) --- */
+.sk-settings-overlay.players-panel-overlay--entering,
+.sk-settings-overlay:not(.players-panel-overlay--exiting):not(.players-panel-overlay--entering) {
+  background: rgba(38, 51, 74, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.sk-settings-panel {
+  width: min(340px, 88vw);
+  max-height: 85dvh;
+  padding: 20px;
+  gap: 16px;
+  background: var(--sk-surface);
+  color: var(--sk-text);
+  border: 3px solid var(--sk-primary);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(38, 51, 74, 0.35);
+  font-family: var(--sk-font-body);
+}
+
+.sk-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sk-settings-title {
+  margin: 0;
+  font-family: var(--sk-font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: var(--sk-primary);
+}
+
+.sk-settings-close {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--sk-muted);
+  cursor: pointer;
+}
+
+.sk-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sk-settings-text {
+  margin: 0;
+  color: var(--sk-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.sk-btn--danger {
+  background: var(--sk-coral);
+  box-shadow: 0 6px 20px rgba(255, 111, 112, 0.3);
+}
+.sk-btn--danger:active {
+  box-shadow: 0 2px 8px rgba(255, 111, 112, 0.2);
 }

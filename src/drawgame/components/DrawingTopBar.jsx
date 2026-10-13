@@ -66,7 +66,7 @@ export default function DrawingTopBar({
         <div className="sk-topbar-right">
           <button 
             className="sk-topbar-settings-btn"
-            onClick={onOpenSettings}
+            onClick={(e) => onOpenSettings(e.currentTarget.getBoundingClientRect())}
             aria-label="Settings"
           >
             <img 

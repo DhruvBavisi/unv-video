@@ -268,15 +268,28 @@ export default function SkribblApp({ onExit }) {
   }
 
   const handleLeaveRoom = () => {
-    const socket = getSocket()
-    socket.emit('draw:leave-room', (res) => {
-      if (res && res.error) {
-        setError(getFriendlyError(res.error))
-      } else {
+    const finish = (() => {
+      let done = false
+      return () => {
+        if (done) return
+        done = true
         clearSession()
         setRoomState(null)
         setView('menu')
       }
+    })()
+
+    const socket = getSocket()
+    if (!socket) { finish(); return }
+
+    // If the server never answers (offline / reconnecting), leave locally anyway after 3s
+    const fallback = setTimeout(finish, 3000)
+    socket.emit('draw:leave-room', (res) => {
+      clearTimeout(fallback)
+      if (res && res.error && res.error !== 'NOT_IN_ROOM') {
+        setError(getFriendlyError(res.error)) // shown on the menu screen
+      }
+      finish()
     })
   }
 
