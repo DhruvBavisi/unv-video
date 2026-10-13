@@ -867,6 +867,21 @@ function generateWordChoices(room) {
   return shuffled.slice(0, count)
 }
 
+function reassignDrawHostIfNeeded(room) {
+  if (!room || !Array.isArray(room.players)) return
+  const currentHost = room.players.find((p) => p.id === room.hostId)
+  if (currentHost && currentHost.isConnected && !currentHost.isBot) {
+    room.players.forEach((p) => { p.isHost = p.id === room.hostId })
+    return
+  }
+
+  const next = room.players.find((p) => p.isConnected && !p.isBot)
+  if (!next) return
+
+  room.players.forEach((p) => { p.isHost = p.id === next.id })
+  room.hostId = next.id
+}
+
 function disconnectDrawPlayer(sessionId, socketId) {
   if (!sessionId) return
   if (socketId && sessionSockets.get(sessionId) && sessionSockets.get(sessionId) !== socketId) {
@@ -879,9 +894,8 @@ function disconnectDrawPlayer(sessionId, socketId) {
     if (player) {
       player.isConnected = false
       player.disconnectedAt = Date.now()
-      if ((dr.status === 'LOBBY' || dr.phase === 'LOBBY') && dr.hostId === sessionId) {
-        const next = dr.players.find(p => p.id !== sessionId && p.isConnected && !p.isBot)
-        if (next) { dr.players.forEach(p => { p.isHost = false }); next.isHost = true; dr.hostId = next.id }
+      if (dr.hostId === sessionId) {
+        reassignDrawHostIfNeeded(dr)
       }
 
       // Pause drawer timers
@@ -1763,6 +1777,7 @@ io.on('connection', (socket) => {
     player.disconnectedAt = null
     
     if (isDrawRoom) {
+      reassignDrawHostIfNeeded(room)
       socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
       console.log('[ROOM] draw session reconnected', { sessionId, roomId })
       resumeDrawTimersIfDrawer(room, sessionId)
@@ -2098,6 +2113,7 @@ io.on('connection', (socket) => {
       existing.name = trimmed
       existing.disconnectedAt = null
       currentSessionId = sessionId
+      reassignDrawHostIfNeeded(room)
       socket.join(`draw:${normalizedId}`)
       socket.join(sessionId) // Join private room for Skribbl direct messaging
       connectPlayer(socket, sessionId)
