@@ -434,10 +434,10 @@ function broadcastDrawRoomState(room) {
 
 function resumeDrawTimersIfDrawer(room, sessionId) {
   if (room.currentDrawerId === sessionId) {
-    if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs !== undefined) {
+    if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs != null) {
       scheduleWordChoiceTimeout(room, room.wordChoiceRemainingMs)
       room.wordChoiceRemainingMs = undefined
-    } else if (room.phase === 'DRAWING' && room.drawingRemainingMs !== undefined) {
+    } else if (room.phase === 'DRAWING' && room.drawingRemainingMs != null) {
       startDrawingTurn(room, room.selectedWord, true)
       room.drawingRemainingMs = undefined
     }
@@ -448,8 +448,25 @@ function getSafeStateForPlayer(room, playerId) {
   const isDrawer = room.currentDrawerId === playerId
   const isReveal = room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT'
   const hasGuessed = room.guessedPlayerIds?.includes(playerId)
+  let remainingMs = null
+  if (room.phase === 'DRAWING') {
+    if (room.roundEndsAt) {
+      remainingMs = Math.max(0, room.roundEndsAt - Date.now())
+    } else if (room.drawingRemainingMs != null) {
+      remainingMs = Math.max(0, room.drawingRemainingMs)
+    }
+  } else if (room.phase === 'WORD_CHOICE') {
+    if (room.wordChoiceEndsAt) {
+      remainingMs = Math.max(0, room.wordChoiceEndsAt - Date.now())
+    } else if (room.wordChoiceRemainingMs != null) {
+      remainingMs = Math.max(0, room.wordChoiceRemainingMs)
+    }
+  }
+
   return {
     ...room,
+    remainingMs,
+    remainingSec: remainingMs != null ? Math.ceil(remainingMs / 1000) : null,
     players: room.players.map(p => ({ ...p })),
     chatMessages: [...(room.chatMessages || [])],
     wordChoices: isDrawer ? room.wordChoices : undefined,
@@ -470,6 +487,7 @@ function scheduleWordChoiceTimeout(room, durationMs = 15000) {
   const expectedDrawerId = room.currentDrawerId
   
   room.wordChoiceEndsAt = Date.now() + durationMs
+  room.remainingMs = durationMs
   
   room.wordChoiceTimeout = setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
@@ -526,6 +544,7 @@ function startDrawingTurn(room, word, isResume = false) {
   
   const durationMs = isResume && room.drawingRemainingMs != null ? room.drawingRemainingMs : (room.configuration.drawTimeSec * 1000)
   room.roundEndsAt = Date.now() + durationMs
+  room.remainingMs = durationMs
 
   // Initialize Hint System
   let numHints = room.configuration.hints ?? 2
@@ -624,6 +643,9 @@ function endDrawRound(room) {
   }
 
   room.phase = 'ROUND_REVEAL'
+  room.roundEndsAt = null
+  room.wordChoiceEndsAt = null
+  room.remainingMs = null
   room.hint = ''
   room.hintRevealed = null
   
@@ -788,32 +810,40 @@ function generateWordChoices(room) {
 }
 
 function disconnectDrawPlayer(sessionId, socketId) {
-  if (socketId && sessionSockets.get(sessionId) !== socketId) {
+  if (!sessionId) return
+  if (socketId && sessionSockets.get(sessionId) && sessionSockets.get(sessionId) !== socketId) {
     return
   }
 
   for (const [rid, dr] of drawRooms) {
+    if (!dr || !Array.isArray(dr.players)) continue
     const player = dr.players.find((p) => p.id === sessionId)
     if (player) {
       player.isConnected = false
       player.disconnectedAt = Date.now()
-    if (player && room.status === 'LOBBY' && room.hostId === sessionId) {
-      const next = room.players.find(p => p.id !== sessionId && p.isConnected && !p.isBot)
-      if (next) { room.players.forEach(p => { p.isHost = false }); next.isHost = true; room.hostId = next.id }
-    }
+      if ((dr.status === 'LOBBY' || dr.phase === 'LOBBY') && dr.hostId === sessionId) {
+        const next = dr.players.find(p => p.id !== sessionId && p.isConnected && !p.isBot)
+        if (next) { dr.players.forEach(p => { p.isHost = false }); next.isHost = true; dr.hostId = next.id }
+      }
 
       // Pause drawer timers
       if (dr.currentDrawerId === sessionId) {
         if (dr.phase === 'WORD_CHOICE' && dr.wordChoiceEndsAt) {
           dr.wordChoiceRemainingMs = Math.max(0, dr.wordChoiceEndsAt - Date.now())
           dr.wordChoiceEndsAt = null
+          dr.remainingMs = dr.wordChoiceRemainingMs
           if (dr.wordChoiceTimeout) { clearTimeout(dr.wordChoiceTimeout); dr.wordChoiceTimeout = null }
         } else if (dr.phase === 'DRAWING' && dr.roundEndsAt) {
           dr.drawingRemainingMs = Math.max(0, dr.roundEndsAt - Date.now())
           dr.roundEndsAt = null
+          dr.remainingMs = dr.drawingRemainingMs
           if (dr.turnTimeout) { clearTimeout(dr.turnTimeout); dr.turnTimeout = null }
           if (dr.hintTimer) { clearInterval(dr.hintTimer); dr.hintTimer = null }
         }
+      }
+
+      if (sessionSockets.get(sessionId) === socketId) {
+        sessionSockets.delete(sessionId)
       }
 
       broadcastDrawRoomState(dr)

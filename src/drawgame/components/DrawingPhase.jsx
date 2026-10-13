@@ -7,9 +7,10 @@ import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
 import DrawingTopBar from './DrawingTopBar.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
+import SkribblError from './SkribblError.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
 
-export default function DrawingPhase({ room, onLeave }) {
+export default function DrawingPhase({ room, onLeave, error }) {
   const { sessionId } = ensureIdentity()
   const isDrawer = room.currentDrawerId === sessionId
   const guessInputRef = useRef(null)
@@ -78,18 +79,52 @@ export default function DrawingPhase({ room, onLeave }) {
   const strokesRef = useRef([])
   const canvasRef = useRef(null)
   
-  // Handle timer sync
+  // Handle timer sync (monotonic elapsed-time countdown, independent of device wall clock)
+  const timerSyncRef = useRef({ initialRemainingMs: 0, startLocalTime: 0, roundEndsAt: null })
+
   useEffect(() => {
-    const updateTimer = () => {
-      if (room.roundEndsAt) {
-        const remaining = Math.ceil((room.roundEndsAt - Date.now()) / 1000)
-        setTimeRemaining(Math.max(0, remaining))
-      }
+    if (room.phase !== 'DRAWING') {
+      return
     }
+
+    const serverRemainingMs = room.remainingMs != null
+      ? room.remainingMs
+      : (room.configuration?.drawTimeSec ? room.configuration.drawTimeSec * 1000 : 80000)
+
+    // When timer is paused (e.g. drawer is offline, roundEndsAt is null)
+    if (!room.roundEndsAt) {
+      timerSyncRef.current = { initialRemainingMs: serverRemainingMs, startLocalTime: 0, roundEndsAt: null }
+      setTimeRemaining(Math.max(0, Math.ceil(serverRemainingMs / 1000)))
+      return
+    }
+
+    const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
+    const isNewInterval = timerSyncRef.current.roundEndsAt !== room.roundEndsAt
+    const currentElapsed = timerSyncRef.current.startLocalTime ? (now - timerSyncRef.current.startLocalTime) : 0
+    const currentRemaining = Math.max(0, timerSyncRef.current.initialRemainingMs - currentElapsed)
+    const drift = Math.abs(currentRemaining - serverRemainingMs)
+
+    // Re-anchor if this is a new turn/resume or if local elapsed time drifted > 1500ms from server
+    if (isNewInterval || drift > 1500) {
+      timerSyncRef.current = {
+        initialRemainingMs: serverRemainingMs,
+        startLocalTime: now,
+        roundEndsAt: room.roundEndsAt
+      }
+      setTimeRemaining(Math.max(0, Math.ceil(serverRemainingMs / 1000)))
+    }
+
+    const updateTimer = () => {
+      const curNow = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
+      const elapsed = curNow - timerSyncRef.current.startLocalTime
+      const curRemainingMs = Math.max(0, timerSyncRef.current.initialRemainingMs - elapsed)
+      setTimeRemaining(Math.ceil(curRemainingMs / 1000))
+    }
+
     updateTimer()
-    const interval = setInterval(updateTimer, 500)
+    const interval = setInterval(updateTimer, 250)
     return () => clearInterval(interval)
-  }, [room.roundEndsAt])
+  }, [room.phase, room.roundEndsAt, room.round, room.turnIndex, room.remainingMs])
 
   // Networking for strokes
   useEffect(() => {
@@ -286,6 +321,12 @@ export default function DrawingPhase({ room, onLeave }) {
         hasGuessed={room.guessedPlayerIds?.includes(sessionId)}
         onOpenSettings={handleOpenSettings}
       />
+
+      {error && (
+        <div className="sk-game-error-banner">
+          <SkribblError message={error} style={{ marginBottom: 0 }} />
+        </div>
+      )}
 
       {/* CANVAS AREA */}
       <style>{`

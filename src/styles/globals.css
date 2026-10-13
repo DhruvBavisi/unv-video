@@ -6496,6 +6496,12 @@ input, select, textarea, button { font-size: 16px; }
   margin-top: 8px;
 }
 
+.sk-game-error-banner {
+  padding: 6px 12px 0;
+  flex: none;
+  z-index: 15;
+}
+
 html.sk-screen-lock {
   height: 100%;
   overflow: hidden;

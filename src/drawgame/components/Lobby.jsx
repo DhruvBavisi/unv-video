@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { ensureIdentity } from '../../game/identity.js'
 import { getSocket } from '../../game/socket.js'
 import QRModal from '../../game/QRModal.jsx'
+import SkribblError from './SkribblError.jsx'
 
 function SegmentControl({ label, value, options, onChange, disabled }) {
   return (
@@ -89,7 +90,7 @@ const START_ERRORS = {
   START_GAME_FAILED: 'The game could not be started. Please try again.'
 }
 
-export default function Lobby({ room, onLeave, onUpdateConfig }) {
+export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
   const { sessionId } = ensureIdentity()
   const isHost = room.hostId === sessionId
   const [startError, setStartError] = useState('')
@@ -157,7 +158,8 @@ export default function Lobby({ room, onLeave, onUpdateConfig }) {
       </div>
 
       <div className="sk-container">
-        
+        <SkribblError message={error} />
+
         {/* ROOM CODE */}
         <div className="sk-card sk-card--animated" style={{ animationDelay: '0ms', padding: '16px' }}>
           <div className="sk-card-title" style={{ justifyContent: 'space-between', marginBottom: '12px' }}>

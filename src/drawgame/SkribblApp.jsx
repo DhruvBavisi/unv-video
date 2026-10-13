@@ -1,29 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { connectSocket, getSocket } from '../game/socket.js'
-import { ensureIdentity, readIdentity, clearSession } from '../game/identity.js'
+import { ensureIdentity, readIdentity, clearSession, setResumeToken } from '../game/identity.js'
 import Lobby from './components/Lobby.jsx'
 import DrawingPhase from './components/DrawingPhase.jsx'
 import QRScannerModal from '../game/QRScannerModal.jsx'
 
-function SkribblError({ message }) {
-  if (!message) return null
-  return (
-    <div style={{
-      background: 'var(--sk-coral)',
-      color: 'white',
-      padding: '12px 16px',
-      borderRadius: '12px',
-      textAlign: 'center',
-      fontFamily: 'var(--sk-font-body)',
-      fontWeight: 'bold',
-      fontSize: '0.9rem',
-      marginBottom: '20px',
-      animation: 'skFadeIn 300ms ease forwards'
-    }}>
-      {message}
-    </div>
-  )
-}
+import SkribblError from './components/SkribblError.jsx'
+export { SkribblError }
 
 function getFriendlyError(errCode) {
   const map = {
@@ -41,7 +24,7 @@ function getFriendlyError(errCode) {
   return map[errCode] || errCode || 'Something went wrong.'
 }
 
-function SkribblPhaseShell({ phase, onLeave }) {
+function SkribblPhaseShell({ phase, onLeave, error }) {
   return (
     <div className="sk-view">
       <div className="sk-bg-shapes">
@@ -54,6 +37,7 @@ function SkribblPhaseShell({ phase, onLeave }) {
         <p className="sk-tagline" style={{ transform: 'none', color: 'var(--sk-primary)' }}>PHASE: {phase}</p>
       </div>
       <div className="sk-container" style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+        <SkribblError message={error} />
         <div className="sk-card" style={{ width: '100%', textAlign: 'center' }}>
           <h2 className="sk-card-title" style={{ justifyContent: 'center' }}>GAME IN PROGRESS</h2>
           <p style={{ color: 'var(--sk-muted)', marginBottom: '24px' }}>This phase is coming in the next update!</p>
@@ -113,6 +97,12 @@ export default function SkribblApp({ onExit }) {
     const socket = connectSocket(sessionId)
 
     const handleRoomState = (state) => {
+      if (!state) return
+      const currentSessionId = readIdentity().sessionId
+      const inRoom = state.players?.some(p => p.id === currentSessionId)
+      if (!inRoom) {
+        return
+      }
       setRoomState(state)
       setView('lobby')
     }
@@ -125,7 +115,7 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleError = (err) => {
-      setError(getFriendlyError(err.error || err.message))
+      setError(getFriendlyError(err?.error || err?.message || err))
       setView(prev => prev === 'restoring' ? 'menu' : prev)
     }
 
@@ -142,23 +132,33 @@ export default function SkribblApp({ onExit }) {
 
     const handleNoRoom = () => {
       clearSession()
-      setView(prev => (prev === 'restoring' || prev === 'lobby') ? 'menu' : prev)
+      setRoomState(null)
+      setError(getFriendlyError('ROOM_NOT_FOUND'))
+      setView('menu')
     }
 
     const handleExpired = () => {
       clearSession()
-      setView(prev => (prev === 'restoring' || prev === 'lobby') ? 'menu' : prev)
+      setRoomState(null)
+      setError(getFriendlyError('NO_SESSION'))
+      setView('menu')
+    }
+
+    const handleRoomClosed = (data) => {
+      clearSession()
+      setRoomState(null)
+      setError(data?.message || 'Room closed.')
+      setView('menu')
     }
 
     const handleSessionToken = ({ resumeToken, roomId, playerName, gameMode }) => {
       if (gameMode !== 'skribbl') return
-      import('../game/identity.js').then(({ setResumeToken }) => {
-        setResumeToken(resumeToken, roomId, playerName, 'skribbl')
-      })
+      setResumeToken(resumeToken, roomId, playerName, 'skribbl')
     }
 
     const handleKicked = () => {
       clearSession()
+      setRoomState(null)
       setError('You have been kicked from the room.')
       setView('menu')
     }
@@ -166,6 +166,7 @@ export default function SkribblApp({ onExit }) {
     socket.on('draw:room-state', handleRoomState)
     socket.on('draw:error', handleError)
     socket.on('draw:kicked', handleKicked)
+    socket.on('room-closed', handleRoomClosed)
     socket.on('connect', handleConnect)
     socket.on('connect_error', handleConnectError)
     socket.on('disconnect', handleDisconnect)
@@ -181,6 +182,7 @@ export default function SkribblApp({ onExit }) {
       socket.off('draw:room-state', handleRoomState)
       socket.off('draw:error', handleError)
       socket.off('draw:kicked', handleKicked)
+      socket.off('room-closed', handleRoomClosed)
       socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)
@@ -243,6 +245,7 @@ export default function SkribblApp({ onExit }) {
     socket.emit('draw:create-room', { sessionId, playerName }, (res) => {
       if (res.error) setError(getFriendlyError(res.error))
       else if (res.room) {
+        setError(null)
         setRoomState(res.room)
         setView('lobby')
       }
@@ -261,6 +264,7 @@ export default function SkribblApp({ onExit }) {
     socket.emit('draw:join-room', { sessionId, resumeToken, roomId, playerName }, (res) => {
       if (res.error) setError(getFriendlyError(res.error))
       else if (res.room) {
+        setError(null)
         setRoomState(res.room)
         setView('lobby')
       }
@@ -305,13 +309,14 @@ export default function SkribblApp({ onExit }) {
           room={roomState} 
           onLeave={handleLeaveRoom}
           onUpdateConfig={handleUpdateConfig}
+          error={error}
         />
       )
     }
     if (['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)) {
-      return <DrawingPhase room={roomState} onLeave={handleLeaveRoom} />
+      return <DrawingPhase room={roomState} onLeave={handleLeaveRoom} error={error} />
     }
-    return <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} />
+    return <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} error={error} />
   }
 
   // ENTRY EXPERIENCE
