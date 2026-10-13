@@ -59,7 +59,7 @@ export default function QRModal({ joinUrl, roomId, onClose, buttonRect, mode = '
 
   const isSkribbl = mode === 'skribbl'
   const panelStyle = isSkribbl 
-    ? { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative', background: 'var(--sk-card)', color: 'var(--sk-text)', borderRadius: '24px', border: '3px solid var(--sk-primary)' }
+    ? { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative', background: 'var(--sk-surface)', color: 'var(--sk-text)', borderRadius: '24px', border: '3px solid var(--sk-primary)' }
     : { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative' }
 
   return createPortal(
