@@ -4,6 +4,7 @@ import { ensureIdentity, readIdentity, clearSession, setResumeToken } from '../g
 import Lobby from './components/Lobby.jsx'
 import DrawingPhase from './components/DrawingPhase.jsx'
 import QRScannerModal from '../game/QRScannerModal.jsx'
+import SkribblNetworkStatus from './components/SkribblNetworkStatus.jsx'
 
 import SkribblError from './components/SkribblError.jsx'
 export { SkribblError }
@@ -64,6 +65,11 @@ export default function SkribblApp({ onExit }) {
   usePageBackground('#EEF5FF')
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
+  const [connectionStatus, setConnectionStatus] = useState(() => {
+    const socket = getSocket()
+    if (socket?.connected) return 'Connected'
+    return 'Connecting'
+  })
   const connectPromiseRef = useRef(null)
   const createNameRef = useRef(null)
   const joinIdRef = useRef(null)
@@ -96,6 +102,12 @@ export default function SkribblApp({ onExit }) {
     const { sessionId } = ensureIdentity()
     const socket = connectSocket(sessionId)
 
+    if (socket.connected) {
+      setConnectionStatus('Connected')
+    } else {
+      setConnectionStatus('Connecting')
+    }
+
     const handleRoomState = (state) => {
       if (!state) return
       const currentSessionId = readIdentity().sessionId
@@ -108,6 +120,7 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleConnect = () => {
+      setConnectionStatus('Connected')
       setError((prev) => (
         prev === 'Unable to connect to the game server. Please try again.' ||
         prev === 'Connection lost. Reconnecting...'
@@ -120,14 +133,40 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleConnectError = () => {
+      const isAttempting = socket.active || Boolean(socket.io?._reconnecting)
+      if (isAttempting) {
+        setConnectionStatus('Connecting')
+      } else {
+        setConnectionStatus('Disconnected')
+      }
       setError('Unable to connect to the game server. Please try again.')
       setView(prev => prev === 'restoring' ? 'menu' : prev)
     }
 
     const handleDisconnect = (reason) => {
-      if (reason !== 'io client disconnect') {
+      if (reason === 'io client disconnect') {
+        setConnectionStatus('Disconnected')
+      } else {
+        setConnectionStatus('Connecting')
         setError('Connection lost. Reconnecting...')
       }
+    }
+
+    const handleReconnectAttempt = () => {
+      setConnectionStatus('Connecting')
+    }
+
+    const handleReconnectError = () => {
+      const isAttempting = socket.active || Boolean(socket.io?._reconnecting)
+      if (isAttempting) {
+        setConnectionStatus('Connecting')
+      } else {
+        setConnectionStatus('Disconnected')
+      }
+    }
+
+    const handleReconnectFailed = () => {
+      setConnectionStatus('Disconnected')
     }
 
     const handleNoRoom = () => {
@@ -187,11 +226,15 @@ export default function SkribblApp({ onExit }) {
     socket.on('connect', handleConnect)
     socket.on('connect_error', handleConnectError)
     socket.on('disconnect', handleDisconnect)
+    socket.io?.on('reconnect_attempt', handleReconnectAttempt)
+    socket.io?.on('reconnect_error', handleReconnectError)
+    socket.io?.on('reconnect_failed', handleReconnectFailed)
     socket.on('session-no-room', handleNoRoom)
     socket.on('session-expired', handleExpired)
     socket.on('session-token', handleSessionToken)
 
     if (!socket.connected) {
+      setConnectionStatus('Connecting')
       socket.connect()
     }
 
@@ -204,6 +247,9 @@ export default function SkribblApp({ onExit }) {
       socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)
+      socket.io?.off('reconnect_attempt', handleReconnectAttempt)
+      socket.io?.off('reconnect_error', handleReconnectError)
+      socket.io?.off('reconnect_failed', handleReconnectFailed)
       socket.off('session-no-room', handleNoRoom)
       socket.off('session-expired', handleExpired)
       socket.off('session-token', handleSessionToken)
@@ -320,26 +366,51 @@ export default function SkribblApp({ onExit }) {
     socket.emit('draw:update-config', config)
   }
 
+  const isInGame = Boolean(
+    view === 'lobby' &&
+    roomState &&
+    ['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)
+  )
+
+  const networkStatusElement = (
+    <SkribblNetworkStatus status={connectionStatus} inGame={isInGame} />
+  )
+
   if (view === 'lobby' && roomState) {
     if (roomState.phase === 'LOBBY') {
       return (
-        <Lobby 
-          room={roomState} 
-          onLeave={handleLeaveRoom}
-          onUpdateConfig={handleUpdateConfig}
-          error={error}
-        />
+        <>
+          {networkStatusElement}
+          <Lobby 
+            room={roomState} 
+            onLeave={handleLeaveRoom}
+            onUpdateConfig={handleUpdateConfig}
+            error={error}
+          />
+        </>
       )
     }
     if (['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)) {
-      return <DrawingPhase room={roomState} onLeave={handleLeaveRoom} error={error} />
+      return (
+        <>
+          {networkStatusElement}
+          <DrawingPhase room={roomState} onLeave={handleLeaveRoom} error={error} />
+        </>
+      )
     }
-    return <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} error={error} />
+    return (
+      <>
+        {networkStatusElement}
+        <SkribblPhaseShell phase={roomState.phase} onLeave={handleLeaveRoom} error={error} />
+      </>
+    )
   }
 
   // ENTRY EXPERIENCE
   return (
-    <div className="sk-view">
+    <>
+      {networkStatusElement}
+      <div className="sk-view">
       <div className="sk-bg-shapes">
         <div className="sk-bg-shape sk-bg-shape-1" />
         <div className="sk-bg-shape sk-bg-shape-2" />
@@ -485,5 +556,6 @@ export default function SkribblApp({ onExit }) {
         )}
       </div>
     </div>
-  )
+  </>
+)
 }

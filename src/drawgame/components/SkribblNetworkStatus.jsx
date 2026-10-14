@@ -1,0 +1,19 @@
+import React from 'react'
+
+export default function SkribblNetworkStatus({ status = 'Connected', inGame = false }) {
+  const normalizedStatus = status === 'Connecting' ? 'Connecting' : status === 'Disconnected' ? 'Disconnected' : 'Connected'
+  const stateClass = normalizedStatus.toLowerCase()
+
+  return (
+    <div 
+      className={`sk-network-status sk-network-status--${stateClass} ${inGame ? 'sk-network-status--in-game' : ''}`}
+      role="status"
+      aria-live="polite"
+      aria-label={`Network status: ${normalizedStatus}`}
+      title={`Network status: ${normalizedStatus}`}
+    >
+      <span className="sk-network-status__dot" aria-hidden="true" />
+      <span className="sk-network-status__text">{normalizedStatus}</span>
+    </div>
+  )
+}

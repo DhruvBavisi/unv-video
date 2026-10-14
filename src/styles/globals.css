@@ -6619,3 +6619,173 @@ html.sk-kb-open .sk-view--game {
 .sk-btn--danger:active {
   box-shadow: 0 2px 8px rgba(255, 111, 112, 0.2);
 }
+
+/* --- SKRIBBL PERSISTENT NETWORK STATUS --- */
+.sk-network-status {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: clamp(12px, 3vw, 24px);
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-family: var(--sk-font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  transition: all 250ms ease;
+}
+
+.sk-network-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 300ms ease, box-shadow 300ms ease;
+}
+
+.sk-network-status__text {
+  line-height: 1;
+  transition: color 300ms ease;
+}
+
+/* Connected State */
+.sk-network-status--connected .sk-network-status__dot {
+  background-color: var(--sk-mint);
+  box-shadow: 0 0 6px rgba(85, 214, 176, 0.6);
+}
+.sk-network-status--connected .sk-network-status__text {
+  color: #108e68;
+}
+
+/* Connecting / Reconnecting State */
+.sk-network-status--connecting .sk-network-status__dot {
+  background-color: var(--sk-yellow);
+  box-shadow: 0 0 6px rgba(255, 200, 87, 0.6);
+  animation: sk-status-pulse 1.4s infinite ease-in-out;
+}
+.sk-network-status--connecting .sk-network-status__text {
+  color: #b37d00;
+}
+
+/* Disconnected State */
+.sk-network-status--disconnected .sk-network-status__dot {
+  background-color: var(--sk-coral);
+  box-shadow: 0 0 6px rgba(255, 111, 112, 0.6);
+}
+.sk-network-status--disconnected .sk-network-status__text {
+  color: var(--sk-coral);
+}
+
+@keyframes sk-status-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.65; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* In-game offset to safely avoid settings button, notch, and canvas */
+.sk-network-status--in-game {
+  top: calc(env(safe-area-inset-top, 0px) + 9px);
+  right: 56px;
+}
+
+@media (max-width: 440px) {
+  .sk-network-status--in-game {
+    padding: 5px;
+    width: 22px;
+    height: 22px;
+    justify-content: center;
+    right: 52px;
+  }
+  .sk-network-status--in-game .sk-network-status__text {
+    display: none;
+  }
+}
+
+/* --- SKRIBBL SETTINGS ROOM ROW --- */
+.sk-settings-room-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--sk-bg);
+  border: 2px solid var(--sk-bg-soft);
+  border-radius: 16px;
+  gap: 12px;
+}
+
+.sk-settings-room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sk-settings-room-label {
+  font-family: var(--sk-font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--sk-muted);
+  text-transform: uppercase;
+}
+
+.sk-settings-room-code {
+  font-family: var(--sk-font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--sk-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sk-settings-room-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sk-settings-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--sk-surface);
+  border: 2px solid var(--sk-bg-soft);
+  border-radius: 10px;
+  color: var(--sk-text);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.sk-settings-icon-btn:hover {
+  border-color: var(--sk-primary);
+  color: var(--sk-primary);
+  transform: translateY(-1px);
+}
+
+.sk-settings-icon-btn:active {
+  transform: translateY(0);
+}
+
+.sk-settings-icon-btn--success {
+  background: rgba(85, 214, 176, 0.15);
+  border-color: var(--sk-mint);
+  color: #108e68;
+}
+

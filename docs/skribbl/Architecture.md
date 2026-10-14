@@ -49,5 +49,10 @@ Never create a duplicate player.
 ## Lifecycle
 Only explicit leave or host kick removes a player. Do not add stale-player auto-removal.
 
+## Network State & Persistent UI
+- `SkribblApp.jsx` actively observes Socket.IO lifecycle events (`connect`, `disconnect`, `connect_error`, `reconnect_attempt`, `reconnect_error`, `reconnect_failed`) and propagates normalized state (`Connected`, `Connecting`, `Disconnected`) to `SkribblNetworkStatus`.
+- Reconnection attempts do not drop the persistent indicator; stale events are ignored.
+- `SettingsPanel.jsx` consumes `room.id` during active gameplay, offering in-panel room copying and overlay-level `QRModal` invocation.
+
 ## Mobile
 Drawing and guessing are mobile-first. Shared keyboard-focus and safe-area handling must remain intact.

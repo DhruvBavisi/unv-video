@@ -49,16 +49,6 @@ if (IS_DEV_BOTS_ENABLED) {
   })
 }
 
-const app = express()
-app.use(cors())
-
-// Liveness probe for the host (Render healthCheckPath) and uptime checks.
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: Math.round(process.uptime()) })
-})
-
-const httpServer = createServer(app)
-
 function normalizeOrigin(origin) {
   const value = String(origin || '').trim()
   if (!value) return value
@@ -77,13 +67,84 @@ if (process.env.NODE_ENV === 'production' && originList.join(',') === 'http://lo
   process.exit(1)
 }
 
-const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigin,
-    methods: ['GET', 'POST'],
-    credentials: true,
+function isOriginAllowed(origin) {
+  // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+  if (!origin) return true
+
+  // In development, allow all origins (local network IPs, localhost, etc.)
+  if (process.env.NODE_ENV !== 'production') return true
+
+  // Check configured production origins
+  if (originList.includes(origin)) return true
+
+  // Allow local and private network ranges (192.168.x.x, 10.x.x.x, 172.16-31.x.x, *.local)
+  try {
+    const { hostname } = new URL(origin)
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.endsWith('.local') ||
+      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+    ) {
+      return true
+    }
+  } catch {
+    return false
+  }
+
+  return false
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isOriginAllowed(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS blocked for origin: ${origin}`))
+    }
   },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+}
+
+const app = express()
+
+// Support Private Network Access (PNA) for Chrome/Chromium devices on local network
+app.use((req, res, next) => {
+  if (req.headers['access-control-request-private-network']) {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true')
+  }
+  next()
 })
+
+app.use(cors(corsOptions))
+
+// Liveness probe for the host (Render healthCheckPath) and uptime checks.
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()) })
+})
+
+const httpServer = createServer(app)
+
+const io = new Server(httpServer, {
+  cors: corsOptions,
+})
+
+if (io.engine) {
+  io.engine.on('initial_headers', (headers, req) => {
+    if (req?.headers?.['access-control-request-private-network']) {
+      headers['Access-Control-Allow-Private-Network'] = 'true'
+    }
+  })
+  io.engine.on('headers', (headers, req) => {
+    if (req?.headers?.['access-control-request-private-network']) {
+      headers['Access-Control-Allow-Private-Network'] = 'true'
+    }
+  })
+}
 
 const rooms = new Map()
 const drawRooms = new Map()
@@ -4447,5 +4508,5 @@ process.once('SIGINT', () => shutdown('SIGINT'))
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`UNDERCOVER server running on ${HOST}:${PORT}`)
-  console.log(`CORS allowed origin: ${allowedOrigin}`)
+  console.log(`CORS allowed: Local network, private IPs, and ${process.env.NODE_ENV === 'production' ? originList.join(', ') : 'all development origins'}`)
 })

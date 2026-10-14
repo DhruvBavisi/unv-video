@@ -37,6 +37,9 @@ export default defineConfig({
     })
   ],
   server: {
+    host: true,
+    port: 5173,
+    cors: true,
     proxy: {
       '/socket.io': {
         target: 'http://localhost:3001',
@@ -44,5 +47,10 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  preview: {
+    host: true,
+    port: 4173,
+    cors: true,
   },
 })

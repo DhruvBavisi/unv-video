@@ -37,5 +37,15 @@ Scores are server-authoritative. Round/result rankings are descending; dense lis
 ## Results
 Show word/reveal state, round points, final ranking and available next actions.
 
+## Network Status Indicator
+- Always-visible indicator across all Skribbl views (entry, lobby, gameplay phases).
+- Three explicit connection states: `Connected` (mint/green), `Connecting` (pulsing amber/yellow), and `Disconnected` (coral).
+- Styled as a compact status pill using `--sk-*` design variables with safe-area notch awareness, non-blocking click behavior (`pointer-events: none`), and responsive mobile collapse during active gameplay.
+
+## Settings Panel — Room Sharing
+- In-game Settings dialog displays a compact room code row above action buttons.
+- Features a quick copy button with temporary visible confirmation (`COPIED!`) and graceful fallback.
+- Features a QR button triggering `QRModal` with origin-flyout animations originating from the button rect, positioned strictly above the settings overlay.
+
 ## Accessibility
 Keyboard-accessible controls, visible focus, >=16px form text, reduced motion and no color-only meaning.

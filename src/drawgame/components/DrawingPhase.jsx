@@ -669,7 +669,12 @@ export default function DrawingPhase({ room, onLeave, error }) {
       )}
 
       {showSettings && (
-        <SettingsPanel buttonRect={settingsRect} onClose={handleCloseSettings} onLeave={onLeave} />
+        <SettingsPanel 
+          buttonRect={settingsRect} 
+          onClose={handleCloseSettings} 
+          onLeave={onLeave} 
+          roomId={room.id} 
+        />
       )}
     </div>
   )
