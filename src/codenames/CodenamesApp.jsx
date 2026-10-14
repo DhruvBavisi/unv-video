@@ -151,7 +151,21 @@ export default function CodenamesApp({ onExit }) {
     )
   }
 
-  if (!room && restoring) return (<div className="codenames-app codenames-setup"><div className="codenames-header"><h1>RESTORING CASE FILE...</h1></div></div>)
+  if (!room && restoring) {
+    return (
+      <div className="codenames-app codenames-setup">
+        <div className="codenames-header">
+          <h1>RESTORING CASE FILE...</h1>
+        </div>
+        <div className="codenames-setup-actions" style={{ textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ color: '#aaa', marginBottom: '20px' }}>Reconnecting to your Codenames session...</p>
+          <button className="cn-btn danger" onClick={() => { setRestoring(false); onExit?.(); }}>
+            Back to Game Modes
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!room) {
     return (

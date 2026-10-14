@@ -38,3 +38,9 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 - Compact, persistent network status indicator (`Connected`, `Connecting`, `Disconnected`) on every Skribbl screen (menu, create/join, lobby, gameplay phases) safely positioned around the top bar/notch with `--sk-*` theme styling and no obstruction to canvas or controls.
 - Active Socket.IO connection and reconnection tracking in `SkribblApp.jsx` without stale state overrides.
 - In-game room code row in `SettingsPanel.jsx` with one-tap clipboard copy confirmation and integrated `QRModal` supporting fly-in/fly-out animations above Settings.
+
+## Phase 12 — Mobile LAN Stability & Insecure Context Hardening
+**Implemented:**
+- Resilient identity generation in `src/game/identity.js` preventing runtime crashes when accessing the app over LAN HTTP where `crypto.randomUUID` is unavailable.
+- Added timeout and cancel action to Skribbl session restoration screen so users are not trapped if the server is offline or reconnecting.
+- Root error boundary in `App.jsx` preventing blank screen on unexpected exceptions.

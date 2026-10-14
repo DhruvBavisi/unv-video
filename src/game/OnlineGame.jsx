@@ -1337,6 +1337,11 @@ export default function OnlineGame({ onExit }) {
         <h1>Restoring session…</h1>
         <p>Recovering your investigation. Please wait.</p>
         <div className="restore-spinner" aria-label="Loading" />
+        <div style={{ marginTop: '20px' }}>
+          <Button onClick={() => { clearSession(); dispatch({ type: 'SESSION_NO_ROOM' }) }}>
+            Cancel
+          </Button>
+        </div>
       </section>
     )
   } else if (activePhase === GAME_PHASES.MODE_SELECTION) {
@@ -1437,26 +1442,45 @@ export default function OnlineGame({ onExit }) {
       return `${origin}/?room=${state.roomId}`
     }
 
-    const handleCopyUrl = (e) => {
-      const url = getJoinUrl()
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url)
-      } else {
-        // fallback
+    const fallbackCopy = (text, onCopied) => {
+      try {
         const textArea = document.createElement("textarea")
-        textArea.value = url
+        textArea.value = text
+        textArea.style.position = "fixed"
+        textArea.style.left = "-9999px"
         document.body.appendChild(textArea)
+        textArea.focus()
         textArea.select()
-        try { document.execCommand('copy') } catch (err) {}
+        document.execCommand('copy')
         document.body.removeChild(textArea)
+        if (onCopied) onCopied()
+      } catch (err) {
+        console.warn('Fallback copy failed:', err)
+      }
+    }
+
+    const handleCopyUrl = () => {
+      const url = getJoinUrl()
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).catch(() => fallbackCopy(url))
+      } else {
+        fallbackCopy(url)
       }
     }
 
     const handleCopyRoomIdClick = () => {
-      navigator.clipboard.writeText(state.roomId).then(() => {
+      const notifyCopied = () => {
         dispatch({ type: 'COPY_ROOM' })
         setTimeout(() => dispatch({ type: 'UPDATE_FIELD', field: 'copied', value: false }), 2000)
-      })
+      }
+
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(state.roomId).then(notifyCopied).catch(() => {
+          fallbackCopy(state.roomId, notifyCopied)
+        })
+      } else {
+        fallbackCopy(state.roomId, notifyCopied)
+      }
     }
 
     const handleQROpen = (e) => {
@@ -1535,7 +1559,19 @@ export default function OnlineGame({ onExit }) {
       <ResultPhase state={state} dispatch={dispatch} onPlayAgain={handlePlayAgain} />
     )
   }
-  // Every GAME_PHASES value has an explicit branch above — no fallback needed.
+
+  if (!content) {
+    content = (
+      <section className="online-panel">
+        <p style={{ margin: '1rem 0' }}>Loading case file...</p>
+        <Button variant="secondary" onClick={handleExit}>
+          Back to Mode Selection
+        </Button>
+      </section>
+    )
+  }
+
+  const connState = state.connectionState || 'DISCONNECTED'
 
   return (
     <main className="online-game">
@@ -1543,8 +1579,8 @@ export default function OnlineGame({ onExit }) {
         <button onClick={handleExit} aria-label="Return to landing page">Undercover</button>
         <span>Case File #001</span>
         <div style={{ justifySelf: 'end', display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span className={`online-topbar__status online-topbar__status--${state.connectionState.toLowerCase()}`}>
-            {state.connectionState}
+          <span className={`online-topbar__status online-topbar__status--${connState.toLowerCase()}`}>
+            {connState}
           </span>
           <button 
             id="players-navbar-button" 

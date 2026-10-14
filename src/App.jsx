@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { Component, useEffect, useState } from 'react'
 import AssetTest from './asset-test/AssetTest.jsx'
 import Navbar from './components/Navbar.jsx'
 import Hero from './sections/Hero.jsx'
@@ -12,6 +12,104 @@ import SkribblApp from './drawgame/SkribblApp.jsx'
 import CodenamesApp from './codenames/CodenamesApp.jsx'
 import { readIdentity, ensureIdentity, clearSession } from './game/identity.js'
 import { connectSocket } from './game/socket.js'
+
+class GameErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[GameErrorBoundary] Rendering failure caught:', error, errorInfo)
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null })
+    if (this.props.onReset) {
+      this.props.onReset()
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#0b0c0d',
+          color: '#ffffff',
+          padding: '24px',
+          textAlign: 'center',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '12px', color: '#ff6f70' }}>
+            Something went wrong
+          </h2>
+          <p style={{ maxWidth: '420px', color: '#a0a0a0', marginBottom: '24px', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            An unexpected error occurred while loading this view. You can return to mode selection or reload the page.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: '10px 20px',
+                background: '#6174f4',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Return to Mode Selection
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Reload Page
+            </button>
+          </div>
+          {import.meta.env.DEV && this.state.error && (
+            <pre style={{
+              marginTop: '24px',
+              padding: '12px',
+              background: 'rgba(255, 0, 0, 0.1)',
+              border: '1px solid rgba(255, 0, 0, 0.3)',
+              borderRadius: '6px',
+              color: '#ff9999',
+              fontSize: '0.8rem',
+              maxWidth: '90vw',
+              overflowX: 'auto',
+              textAlign: 'left'
+            }}>
+              {this.state.error.toString()}
+            </pre>
+          )}
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 function Transition({ text }) {
   return (
@@ -32,12 +130,20 @@ function SessionResolver({ onResolved }) {
     const { sessionId } = ensureIdentity()
     const socket = connectSocket(sessionId)
 
+    const timer = setTimeout(() => {
+      console.warn('[SessionResolver] timeout resolving session, returning to mode-select')
+      clearSession()
+      onResolved('mode-select')
+    }, 5000)
+
     const handleSessionToken = ({ gameMode }) => {
+      clearTimeout(timer)
       if (gameMode === 'skribbl') onResolved('skribbl')
       else if (gameMode === 'codenames') onResolved('codenames')
       else onResolved('undercover')
     }
     const handleExpiredOrNoRoom = () => {
+      clearTimeout(timer)
       clearSession()
       onResolved('mode-select')
     }
@@ -51,6 +157,7 @@ function SessionResolver({ onResolved }) {
     }
 
     return () => {
+      clearTimeout(timer)
       socket.off('session-token', handleSessionToken)
       socket.off('session-no-room', handleExpiredOrNoRoom)
       socket.off('session-expired', handleExpiredOrNoRoom)
@@ -58,8 +165,25 @@ function SessionResolver({ onResolved }) {
   }, [onResolved])
 
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh', alignItems: 'center', justifyContent: 'center', background: '#0b0c0d', color: 'white' }}>
-      <p>Resolving session...</p>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', alignItems: 'center', justifyContent: 'center', background: '#0b0c0d', color: 'white', gap: '16px' }}>
+      <div className="restore-spinner" aria-label="Loading" />
+      <p style={{ color: 'var(--text-secondary)' }}>Resolving previous session...</p>
+      <button
+        style={{
+          padding: '8px 16px',
+          background: 'rgba(255,255,255,0.1)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          color: 'white',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+        onClick={() => {
+          clearSession()
+          onResolved('mode-select')
+        }}
+      >
+        Cancel
+      </button>
     </div>
   )
 }
@@ -114,30 +238,48 @@ export default function App() {
   }
 
   if (gameView === 'resolving-session') {
-    return <SessionResolver onResolved={setGameView} />
+    return (
+      <GameErrorBoundary onReset={() => setGameView('mode-select')}>
+        <SessionResolver onResolved={setGameView} />
+      </GameErrorBoundary>
+    )
   }
 
   if (gameView === 'mode-select') {
     return (
-      <ModeSelect 
-        onSelectUndercover={() => setGameView('undercover')}
-        onSelectSkribbl={() => setGameView('skribbl')}
-        onSelectCodenames={() => setGameView('codenames')}
-        onBack={() => setGameView('landing')}
-      />
+      <GameErrorBoundary onReset={() => setGameView('landing')}>
+        <ModeSelect 
+          onSelectUndercover={() => setGameView('undercover')}
+          onSelectSkribbl={() => setGameView('skribbl')}
+          onSelectCodenames={() => setGameView('codenames')}
+          onBack={() => setGameView('landing')}
+        />
+      </GameErrorBoundary>
     )
   }
 
   if (gameView === 'undercover') {
-    return <OnlineGame onExit={() => setGameView('mode-select')} />
+    return (
+      <GameErrorBoundary onReset={() => setGameView('mode-select')}>
+        <OnlineGame onExit={() => setGameView('mode-select')} />
+      </GameErrorBoundary>
+    )
   }
 
   if (gameView === 'skribbl') {
-    return <SkribblApp onExit={() => setGameView('mode-select')} />
+    return (
+      <GameErrorBoundary onReset={() => setGameView('mode-select')}>
+        <SkribblApp onExit={() => setGameView('mode-select')} />
+      </GameErrorBoundary>
+    )
   }
 
   if (gameView === 'codenames') {
-    return <CodenamesApp onExit={() => setGameView('mode-select')} />
+    return (
+      <GameErrorBoundary onReset={() => setGameView('mode-select')}>
+        <CodenamesApp onExit={() => setGameView('mode-select')} />
+      </GameErrorBoundary>
+    )
   }
 
   return (

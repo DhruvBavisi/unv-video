@@ -5,7 +5,12 @@ let socket = null
 let listenersAttached = false
 
 export function connectSocket(sessionId) {
-  if (socket) return socket
+  if (socket) {
+    if (!socket.connected && !socket.active) {
+      socket.connect()
+    }
+    return socket
+  }
 
   const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.SOCKET_URL
   const socketUrl = (
@@ -31,6 +36,10 @@ export function connectSocket(sessionId) {
     const { sessionId: storedId, resumeToken, roomId } = readIdentity()
     socket.emit('register', { sessionId: storedId || sessionId, resumeToken, roomId })
   })
+
+  if (!socket.connected) {
+    socket.connect()
+  }
 
   return socket
 }

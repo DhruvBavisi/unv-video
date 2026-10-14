@@ -78,10 +78,35 @@ export default function PlayersPanel({ state, onClose, buttonRect, onActionReque
   const spectators = players.filter(p => p.spectator)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(roomId).then(() => {
+    const notifyCopied = () => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    }
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(roomId).then(notifyCopied).catch(() => {
+        fallbackCopy(roomId, notifyCopied)
+      })
+    } else {
+      fallbackCopy(roomId, notifyCopied)
+    }
+  }
+
+  const fallbackCopy = (text, onCopied) => {
+    try {
+      const textArea = document.createElement("textarea")
+      textArea.value = text
+      textArea.style.position = "fixed"
+      textArea.style.left = "-9999px"
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      if (onCopied) onCopied()
+    } catch (err) {
+      console.warn('Fallback copy failed:', err)
+    }
   }
 
   const renderCard = (p, statusClass, index) => {

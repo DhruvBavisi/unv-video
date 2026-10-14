@@ -256,6 +256,15 @@ export default function SkribblApp({ onExit }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (view === 'restoring') {
+      const timer = setTimeout(() => {
+        setView(prev => prev === 'restoring' ? 'menu' : prev)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [view])
+
   const ensureSocketConnected = async () => {
     const socket = getSocket()
     if (!socket) throw new Error('SOCKET_UNAVAILABLE')
@@ -431,6 +440,13 @@ export default function SkribblApp({ onExit }) {
               <h2 className="sk-card-title" style={{ justifyContent: 'center' }}>RESTORING SESSION...</h2>
               <div className="restore-spinner" aria-label="Loading" style={{ margin: '20px auto' }} />
               <p style={{ color: 'var(--sk-muted)' }}>Recovering your Skribbl session. Please wait.</p>
+              <button 
+                className="sk-btn sk-btn--secondary" 
+                onClick={() => setView('menu')}
+                style={{ marginTop: '20px', maxWidth: '200px', marginInline: 'auto' }}
+              >
+                CANCEL
+              </button>
             </div>
           )}
 
