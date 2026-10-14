@@ -41,3 +41,15 @@ Refer to the mode-specific phase roadmaps for authoritative tracking:
   - `src/codenames/CodenamesApp.jsx`: Added a Back to Game Modes cancel button to the session restoration screen.
 - **Socket.IO Connection Resilience (`src/game/socket.js`):**
   - Ensured `connectSocket()` properly invokes `socket.connect()` when an existing disconnected socket instance is reused or newly initialized.
+
+---
+
+## Mobile Keyboard Native Word Suggestions
+
+### Phase 13 — Mobile Keyboard Native Word Suggestions Restoration
+- **Skribbl Guess / Chat Input (`src/drawgame/components/DrawingPhase.jsx`):**
+  - Removed suppression attributes (`autoComplete="off"`, `autoCorrect="off"`, `spellCheck={false}`) that disabled the mobile operating system's native predictive text and word suggestion bar above virtual keyboards (iOS QuickType and Android Gboard/Samsung Keyboard).
+  - Configured mobile-friendly attributes: `autoComplete="on"`, `autoCorrect="on"`, `spellCheck={true}`, and `autoCapitalize="sentences"`.
+  - Preserved native keyboard behavior without injecting custom keyboards or suggestion bars.
+  - Kept secret word privacy intact with generic placeholders and zero drawer word exposure to guessers.
+  - Preserved Enter-to-submit behavior, focus management, touch responsiveness, letterboxed 4:3 canvas layout, and `useGuessKeyboard` visual viewport integration.

@@ -44,3 +44,8 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 - Resilient identity generation in `src/game/identity.js` preventing runtime crashes when accessing the app over LAN HTTP where `crypto.randomUUID` is unavailable.
 - Added timeout and cancel action to Skribbl session restoration screen so users are not trapped if the server is offline or reconnecting.
 - Root error boundary in `App.jsx` preventing blank screen on unexpected exceptions.
+
+## Phase 13 — Mobile Keyboard Native Word Suggestions Restoration
+**Implemented:**
+- Restored mobile keyboard native word suggestions, predictive text, and spellcheck on the Skribbl guess/chat input in `DrawingPhase.jsx` using `autoComplete="on"`, `autoCorrect="on"`, `spellCheck={true}`, and `autoCapitalize="sentences"`.
+- Removed legacy suppression attributes (`autoComplete="off"`, `autoCorrect="off"`, `spellCheck={false}`) without affecting Enter-to-submit handling, focus behavior, secret-word privacy, or canvas layout.

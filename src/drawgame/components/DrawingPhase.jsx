@@ -658,9 +658,10 @@ export default function DrawingPhase({ room, onLeave, error }) {
             disabled={room.guessedPlayerIds?.includes(sessionId)}
             maxLength={120}
             enterKeyHint="send"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
+            autoComplete="on"
+            autoCorrect="on"
+            spellCheck={true}
+            autoCapitalize="sentences"
           />
           <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
             SEND
