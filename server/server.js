@@ -473,10 +473,10 @@ function disconnectPlayer(sessionId, socketId) {
     return { roomId: null, room: null }
   }
 
-  sessionSockets.delete(sessionId)
-
   const { roomId, room } = findRoomByPlayer(sessionId)
   if (!room) return { roomId: null, room: null }
+
+  sessionSockets.delete(sessionId)
 
   const player = room.players.find((p) => p.id === sessionId)
   if (player) {
@@ -524,6 +524,9 @@ function disconnectPlayer(sessionId, socketId) {
 }
 
 function broadcastDrawRoomState(room) {
+  if (!room) return
+  room.version = (room.version || 0) + 1
+  room.updatedAt = Date.now()
   for (const p of room.players) {
     try {
       io.to(p.id).emit('draw:room-state', getSafeStateForPlayer(room, p.id))
@@ -538,13 +541,19 @@ function broadcastDrawRoomState(room) {
 }
 
 function resumeDrawTimersIfDrawer(room, sessionId) {
-  if (room.currentDrawerId === sessionId) {
-    if (room.phase === 'WORD_CHOICE' && room.wordChoiceRemainingMs != null) {
-      scheduleWordChoiceTimeout(room, room.wordChoiceRemainingMs)
+  if (!room || room.currentDrawerId !== sessionId) return
+
+  if (room.phase === 'WORD_CHOICE') {
+    if (room.wordChoiceTimeout === null && room.wordChoiceRemainingMs != null) {
+      const remainingMs = room.wordChoiceRemainingMs
       room.wordChoiceRemainingMs = undefined
-    } else if (room.phase === 'DRAWING' && room.drawingRemainingMs != null) {
-      startDrawingTurn(room, room.selectedWord, true)
+      scheduleWordChoiceTimeout(room, remainingMs)
+    }
+  } else if (room.phase === 'DRAWING') {
+    if (room.turnTimeout === null && room.drawingRemainingMs != null) {
+      const remainingMs = room.drawingRemainingMs
       room.drawingRemainingMs = undefined
+      startDrawingTurn(room, room.selectedWord, true, remainingMs)
     }
   }
 }
@@ -570,12 +579,17 @@ function getSafeStateForPlayer(room, playerId) {
 
   return {
     ...room,
+    version: room.version || 1,
+    updatedAt: room.updatedAt || Date.now(),
     remainingMs,
     remainingSec: remainingMs != null ? Math.ceil(remainingMs / 1000) : null,
     players: room.players.map(p => ({ ...p })),
     chatMessages: [...(room.chatMessages || [])],
-    wordChoices: isDrawer ? room.wordChoices : undefined,
+    wordChoices: (isDrawer && room.phase === 'WORD_CHOICE') ? room.wordChoices : undefined,
     selectedWord: (isDrawer || isReveal || hasGuessed) ? room.selectedWord : undefined,
+    usedWords: undefined,
+    revealIndices: undefined,
+    hintRevealed: undefined,
     strokes: undefined,
     turnTimeout: undefined,
     wordChoiceTimeout: undefined,
@@ -587,9 +601,23 @@ function getSafeStateForPlayer(room, playerId) {
 }
 
 function scheduleWordChoiceTimeout(room, durationMs = 15000) {
+  if (room.wordChoiceTimeout) {
+    clearTimeout(room.wordChoiceTimeout)
+    room.wordChoiceTimeout = null
+  }
+  if (room.turnTimeout) {
+    clearTimeout(room.turnTimeout)
+    room.turnTimeout = null
+  }
+  if (room.hintTimer) {
+    clearInterval(room.hintTimer)
+    room.hintTimer = null
+  }
+
   const expectedRound = room.round
   const expectedTurnIndex = room.turnIndex
   const expectedDrawerId = room.currentDrawerId
+  const expectedTurnSequence = room.turnSequence
   
   room.wordChoiceEndsAt = Date.now() + durationMs
   room.remainingMs = durationMs
@@ -601,15 +629,17 @@ function scheduleWordChoiceTimeout(room, durationMs = 15000) {
       currentRoom.phase === 'WORD_CHOICE' && 
       currentRoom.round === expectedRound && 
       currentRoom.turnIndex === expectedTurnIndex &&
-      currentRoom.currentDrawerId === expectedDrawerId
+      currentRoom.currentDrawerId === expectedDrawerId &&
+      currentRoom.turnSequence === expectedTurnSequence
     ) {
+      currentRoom.wordChoiceTimeout = null
+      currentRoom.wordChoiceEndsAt = null
+
       // Auto-select the first word if timeout expires
       if (!currentRoom.wordChoices || currentRoom.wordChoices.length === 0) {
-        // No words available (pool exhausted) — skip this turn
-        endDrawRound(currentRoom)
-        return
+        currentRoom.wordChoices = generateWordChoices(currentRoom)
       }
-      const word = currentRoom.wordChoices[0]
+      const word = (currentRoom.wordChoices && currentRoom.wordChoices[0]) || 'apple'
       startDrawingTurn(currentRoom, word)
     }
   }, durationMs)
@@ -624,9 +654,15 @@ function updateRoomHintString(room) {
   room.hint = str
 }
 
-function startDrawingTurn(room, word, isResume = false) {
-  if (room.turnTimeout) { clearTimeout(room.turnTimeout); room.turnTimeout = null; }
-  if (room.hintTimer) { clearInterval(room.hintTimer); room.hintTimer = null; }
+function startDrawingTurn(room, word, isResume = false, resumeDurationMs = null) {
+  if (room.turnTimeout) {
+    clearTimeout(room.turnTimeout)
+    room.turnTimeout = null
+  }
+  if (room.hintTimer) {
+    clearInterval(room.hintTimer)
+    room.hintTimer = null
+  }
   if (room.wordChoiceTimeout) {
     clearTimeout(room.wordChoiceTimeout)
     room.wordChoiceTimeout = null
@@ -647,14 +683,26 @@ function startDrawingTurn(room, word, isResume = false) {
     room.hintsGiven = 0
   }
   
-  const durationMs = isResume && room.drawingRemainingMs != null ? room.drawingRemainingMs : (room.configuration.drawTimeSec * 1000)
+  const baseDrawDuration = (room.configuration?.drawTimeSec || 80) * 1000
+  let durationMs = baseDrawDuration
+  if (isResume) {
+    if (resumeDurationMs != null) {
+      durationMs = Math.max(1000, resumeDurationMs)
+    } else if (room.drawingRemainingMs != null) {
+      durationMs = Math.max(1000, room.drawingRemainingMs)
+      room.drawingRemainingMs = undefined
+    } else if (room.roundEndsAt && room.roundEndsAt > Date.now()) {
+      durationMs = Math.max(1000, room.roundEndsAt - Date.now())
+    }
+  }
+  
   room.roundEndsAt = Date.now() + durationMs
   room.remainingMs = durationMs
 
   // Initialize Hint System
-  let numHints = room.configuration.hints ?? 2
+  let numHints = room.configuration?.hints ?? 2
   if (word && word.length >= 10) numHints = 3
-  const isHidden = typeof room.configuration.gameMode === 'string' && room.configuration.gameMode.toUpperCase() === 'HIDDEN'
+  const isHidden = typeof room.configuration?.gameMode === 'string' && room.configuration.gameMode.toUpperCase() === 'HIDDEN'
   
   if (isHidden || numHints <= 0 || !word) {
     if (!isResume) room.hint = word ? word.replace(/[a-zA-Z0-9]/g, '_') : ''
@@ -679,19 +727,41 @@ function startDrawingTurn(room, word, isResume = false) {
     
     if (room.hintsToGive > 0 && room.hintsGiven < room.hintsToGive) {
       const hintsRemaining = room.hintsToGive - room.hintsGiven
-      const hintIntervalMs = isResume ? (durationMs / (hintsRemaining + 1)) : ((room.configuration.drawTimeSec * 1000) / (room.hintsToGive + 1))
+      const hintIntervalMs = isResume ? (durationMs / (hintsRemaining + 1)) : (((room.configuration?.drawTimeSec || 80) * 1000) / (room.hintsToGive + 1))
       const expectedDrawerId = room.currentDrawerId
+      const expectedRound = room.round
+      const expectedTurnIndex = room.turnIndex
+      const expectedTurnSequence = room.turnSequence
+      
       room.hintTimer = setInterval(() => {
-        if (!drawRooms.has(room.id) || room.phase !== 'DRAWING' || room.currentDrawerId !== expectedDrawerId) {
-          return clearInterval(room.hintTimer)
+        const checkRoom = drawRooms.get(room.id)
+        if (
+          !checkRoom || 
+          checkRoom.phase !== 'DRAWING' || 
+          checkRoom.round !== expectedRound ||
+          checkRoom.turnIndex !== expectedTurnIndex ||
+          checkRoom.currentDrawerId !== expectedDrawerId ||
+          checkRoom.turnSequence !== expectedTurnSequence
+        ) {
+          if (room.hintTimer) {
+            clearInterval(room.hintTimer)
+            room.hintTimer = null
+          }
+          return
         }
-        if (room.hintsGiven >= room.hintsToGive) return clearInterval(room.hintTimer)
+        if (checkRoom.hintsGiven >= checkRoom.hintsToGive) {
+          if (checkRoom.hintTimer) {
+            clearInterval(checkRoom.hintTimer)
+            checkRoom.hintTimer = null
+          }
+          return
+        }
         
-        const idx = room.revealIndices[room.hintsGiven]
-        room.hintRevealed[idx] = true
-        room.hintsGiven++
-        updateRoomHintString(room)
-        broadcastDrawRoomState(room)
+        const idx = checkRoom.revealIndices[checkRoom.hintsGiven]
+        checkRoom.hintRevealed[idx] = true
+        checkRoom.hintsGiven++
+        updateRoomHintString(checkRoom)
+        broadcastDrawRoomState(checkRoom)
       }, hintIntervalMs)
     }
     if (!isResume) updateRoomHintString(room)
@@ -723,13 +793,18 @@ function startDrawingTurn(room, word, isResume = false) {
   const expectedTurnIndex = room.turnIndex
   const expectedRound = room.round
   const expectedDrawerId = room.currentDrawerId
+  const expectedTurnSequence = room.turnSequence
   
   room.turnTimeout = setTimeout(() => {
     const checkRoom = drawRooms.get(room.id)
-    if (checkRoom && checkRoom.phase === 'DRAWING' && 
-        checkRoom.round === expectedRound && 
-        checkRoom.turnIndex === expectedTurnIndex &&
-        checkRoom.currentDrawerId === expectedDrawerId) {
+    if (
+      checkRoom && 
+      checkRoom.phase === 'DRAWING' && 
+      checkRoom.round === expectedRound && 
+      checkRoom.turnIndex === expectedTurnIndex &&
+      checkRoom.currentDrawerId === expectedDrawerId &&
+      checkRoom.turnSequence === expectedTurnSequence
+    ) {
       endDrawRound(checkRoom)
     }
   }, durationMs)
@@ -755,6 +830,8 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDra
   room.roundEndsAt = null
   room.wordChoiceEndsAt = null
   room.remainingMs = null
+  room.drawingRemainingMs = undefined
+  room.wordChoiceRemainingMs = undefined
   room.hint = ''
   room.hintRevealed = null
   
@@ -796,11 +873,13 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDra
   }
   
   // Add system message
+  room.chatMessages = room.chatMessages || []
   room.chatMessages.push({
     id: crypto.randomUUID(),
     type: 'SYSTEM',
     message: `The word was ${room.selectedWord || '(None Selected)'}.`
   })
+  if (room.chatMessages.length > 100) room.chatMessages.shift()
   
   if (broadcast) broadcastDrawRoomState(room)
 
@@ -813,12 +892,74 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDra
   // Schedule next turn
   room.turnTimeout = setTimeout(() => {
     const currentRoom = drawRooms.get(room.id)
-    if (currentRoom && currentRoom.phase === 'ROUND_REVEAL' && currentRoom.round === expectedRound && currentRoom.turnSequence === expectedTurnSequence) {
-      currentRoom.turnIndex++
+    if (
+      !currentRoom || 
+      currentRoom.phase !== 'ROUND_REVEAL' || 
+      currentRoom.round !== expectedRound || 
+      currentRoom.turnSequence !== expectedTurnSequence
+    ) {
+      return
+    }
+
+    currentRoom.turnTimeout = null
+    currentRoom.turnSequence = (currentRoom.turnSequence || 0) + 1
+
+    // Filter turnOrder to only current eligible non-spectator players without duplicates
+    const eligibleSet = new Set(currentRoom.players.filter(p => !p.spectator).map(p => p.id))
+    currentRoom.turnOrder = Array.from(new Set((currentRoom.turnOrder || []).filter(id => eligibleSet.has(id))))
+
+    const eligiblePlayers = currentRoom.players.filter(p => !p.spectator)
+    if (eligiblePlayers.length < 2) {
+      currentRoom.phase = 'GAME_RESULT'
+      currentRoom.currentDrawerId = null
+      broadcastDrawRoomState(currentRoom)
+      return
+    }
+
+    currentRoom.turnIndex = Math.max(0, (currentRoom.turnIndex ?? -1) + 1)
+    
+    if (currentRoom.turnIndex < currentRoom.turnOrder.length) {
+      // Next drawer
+      currentRoom.currentDrawerId = currentRoom.turnOrder[currentRoom.turnIndex]
+      currentRoom.phase = 'WORD_CHOICE'
+      currentRoom.wordChoices = generateWordChoices(currentRoom)
+      currentRoom.selectedWord = null
+      currentRoom.strokes = []
+      currentRoom.guessedPlayerIds = []
+      currentRoom.turnScores = {}
+      currentRoom.reactions = {}
+      currentRoom.hint = ''
+      currentRoom.hintRevealed = null
+      currentRoom.drawingRemainingMs = undefined
+      currentRoom.wordChoiceRemainingMs = undefined
       
-      if (currentRoom.turnIndex < currentRoom.turnOrder.length) {
-        // Next drawer
+      io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
+      scheduleWordChoiceTimeout(currentRoom)
+      broadcastDrawRoomState(currentRoom)
+    } else {
+      // End of round
+      if (currentRoom.round < currentRoom.totalRounds) {
+        currentRoom.round++
+        
+        // Fisher-Yates shuffle using unique eligible player IDs
+        const playerIds = Array.from(new Set(eligiblePlayers.map(p => p.id)))
+        if (playerIds.length < 2) {
+          currentRoom.phase = 'GAME_RESULT'
+          currentRoom.currentDrawerId = null
+          broadcastDrawRoomState(currentRoom)
+          return
+        }
+
+        for (let i = playerIds.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const temp = playerIds[i]
+          playerIds[i] = playerIds[j]
+          playerIds[j] = temp
+        }
+        currentRoom.turnOrder = playerIds
+        currentRoom.turnIndex = 0
         currentRoom.currentDrawerId = currentRoom.turnOrder[currentRoom.turnIndex]
+        
         currentRoom.phase = 'WORD_CHOICE'
         currentRoom.wordChoices = generateWordChoices(currentRoom)
         currentRoom.selectedWord = null
@@ -828,51 +969,17 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDra
         currentRoom.reactions = {}
         currentRoom.hint = ''
         currentRoom.hintRevealed = null
+        currentRoom.drawingRemainingMs = undefined
+        currentRoom.wordChoiceRemainingMs = undefined
         
         io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
         scheduleWordChoiceTimeout(currentRoom)
         broadcastDrawRoomState(currentRoom)
       } else {
-        // End of round
-        if (currentRoom.round < currentRoom.totalRounds) {
-          currentRoom.round++
-          
-          // Fisher-Yates shuffle using eligible player IDs
-          const playerIds = [...currentRoom.players].filter(p => !p.spectator).map(p => p.id)
-          if (playerIds.length === 0) {
-            currentRoom.phase = 'GAME_RESULT'
-            broadcastDrawRoomState(currentRoom)
-            return
-          }
-
-          for (let i = playerIds.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1))
-            const temp = playerIds[i]
-            playerIds[i] = playerIds[j]
-            playerIds[j] = temp
-          }
-          currentRoom.turnOrder = playerIds
-          currentRoom.turnIndex = 0
-          currentRoom.currentDrawerId = currentRoom.turnOrder[currentRoom.turnIndex]
-          
-          currentRoom.phase = 'WORD_CHOICE'
-          currentRoom.wordChoices = generateWordChoices(currentRoom)
-          currentRoom.selectedWord = null
-          currentRoom.strokes = []
-          currentRoom.guessedPlayerIds = []
-          currentRoom.turnScores = {}
-          currentRoom.reactions = {}
-          currentRoom.hint = ''
-          currentRoom.hintRevealed = null
-          
-          io.to(`draw:${currentRoom.id}`).emit('draw:clear-canvas')
-          scheduleWordChoiceTimeout(currentRoom)
-          broadcastDrawRoomState(currentRoom)
-        } else {
-          // End of game
-          currentRoom.phase = 'GAME_RESULT'
-          broadcastDrawRoomState(currentRoom)
-        }
+        // End of game
+        currentRoom.phase = 'GAME_RESULT'
+        currentRoom.currentDrawerId = null
+        broadcastDrawRoomState(currentRoom)
       }
     }
   }, 5000)
@@ -881,20 +988,22 @@ function endDrawRound(room, { broadcast = true, scheduleNext = true, originalDra
 function generateWordChoices(room) {
   room.usedWords = room.usedWords || []
   
-  // defaultWords is imported at module scope
-  
   let customWords = []
-  if (Array.isArray(room.configuration.customWords)) {
-    customWords = room.configuration.customWords.map(w => w.trim()).filter(Boolean)
-  } else if (typeof room.configuration.customWords === 'string') {
+  if (Array.isArray(room.configuration?.customWords)) {
+    customWords = room.configuration.customWords.map(w => typeof w === 'string' ? w.trim() : '').filter(Boolean)
+  } else if (typeof room.configuration?.customWords === 'string') {
     customWords = room.configuration.customWords.split(',').map(w => w.trim()).filter(Boolean)
   }
 
   // Build pool based on mode
   let pool = []
-  if (room.configuration.useCustomOnly) {
+  if (room.configuration?.useCustomOnly) {
     pool = [...customWords]
-  } else if (room.configuration.gameMode && room.configuration.gameMode.toLowerCase() === 'combination') {
+    if (pool.length === 0) {
+      // Fallback if custom words list is empty or invalid
+      pool = [...defaultWords]
+    }
+  } else if (room.configuration?.gameMode && room.configuration.gameMode.toLowerCase() === 'combination') {
     pool = [...defaultWords, ...customWords]
   } else {
     pool = [...defaultWords]
@@ -903,17 +1012,29 @@ function generateWordChoices(room) {
   // Deduplicate pool (case-insensitive, keep first occurrence)
   const seen = new Set()
   pool = pool.filter(w => {
+    if (!w || typeof w !== 'string') return false
     const key = w.toLowerCase()
     if (seen.has(key)) return false
     seen.add(key)
     return true
   })
   
+  if (pool.length === 0) {
+    pool = [...defaultWords]
+  }
+
   // Remove already-used words (case-insensitive)
-  const eligible = pool.filter(w => !room.usedWords.includes(w.toLowerCase()))
+  let eligible = pool.filter(w => !room.usedWords.includes(w.toLowerCase()))
   
-  // Never fall back to used words or default words when pool is exhausted
-  if (eligible.length === 0) return []
+  // If all eligible words in pool have been exhausted, recycle the pool
+  if (eligible.length === 0 && pool.length > 0) {
+    room.usedWords = []
+    eligible = [...pool]
+  }
+
+  if (eligible.length === 0) {
+    eligible = [...defaultWords]
+  }
 
   // Fisher-Yates shuffle on a copy
   const shuffled = [...eligible]
@@ -924,8 +1045,8 @@ function generateWordChoices(room) {
     shuffled[j] = temp
   }
   
-  const count = room.configuration.wordCount || 3
-  return shuffled.slice(0, count)
+  const count = room.configuration?.wordCount || 3
+  return shuffled.slice(0, Math.min(count, shuffled.length))
 }
 
 function isDrawSocketOwner(sessionId, socket) {
@@ -963,19 +1084,48 @@ function disconnectDrawPlayer(sessionId, socketId) {
         reassignDrawHostIfNeeded(dr)
       }
 
-      // Pause drawer timers
+      // Pause drawer timers ONLY if the disconnected player is the current drawer
       if (dr.currentDrawerId === sessionId) {
-        if (dr.phase === 'WORD_CHOICE' && dr.wordChoiceEndsAt) {
-          dr.wordChoiceRemainingMs = Math.max(0, dr.wordChoiceEndsAt - Date.now())
-          dr.wordChoiceEndsAt = null
-          dr.remainingMs = dr.wordChoiceRemainingMs
-          if (dr.wordChoiceTimeout) { clearTimeout(dr.wordChoiceTimeout); dr.wordChoiceTimeout = null }
-        } else if (dr.phase === 'DRAWING' && dr.roundEndsAt) {
-          dr.drawingRemainingMs = Math.max(0, dr.roundEndsAt - Date.now())
-          dr.roundEndsAt = null
-          dr.remainingMs = dr.drawingRemainingMs
-          if (dr.turnTimeout) { clearTimeout(dr.turnTimeout); dr.turnTimeout = null }
-          if (dr.hintTimer) { clearInterval(dr.hintTimer); dr.hintTimer = null }
+        if (dr.phase === 'WORD_CHOICE') {
+          if (dr.wordChoiceTimeout) {
+            clearTimeout(dr.wordChoiceTimeout)
+            dr.wordChoiceTimeout = null
+          }
+          if (dr.wordChoiceEndsAt) {
+            const rem = Math.max(0, dr.wordChoiceEndsAt - Date.now())
+            dr.wordChoiceEndsAt = null
+            if (rem <= 0) {
+              dr.wordChoiceRemainingMs = undefined
+              if (!dr.wordChoices || dr.wordChoices.length === 0) {
+                endDrawRound(dr)
+              } else {
+                startDrawingTurn(dr, dr.wordChoices[0])
+              }
+            } else {
+              dr.wordChoiceRemainingMs = rem
+              dr.remainingMs = rem
+            }
+          }
+        } else if (dr.phase === 'DRAWING') {
+          if (dr.turnTimeout) {
+            clearTimeout(dr.turnTimeout)
+            dr.turnTimeout = null
+          }
+          if (dr.hintTimer) {
+            clearInterval(dr.hintTimer)
+            dr.hintTimer = null
+          }
+          if (dr.roundEndsAt) {
+            const rem = Math.max(0, dr.roundEndsAt - Date.now())
+            dr.roundEndsAt = null
+            if (rem <= 0) {
+              dr.drawingRemainingMs = undefined
+              endDrawRound(dr)
+            } else {
+              dr.drawingRemainingMs = rem
+              dr.remainingMs = rem
+            }
+          }
         }
       }
 
@@ -990,7 +1140,7 @@ function disconnectDrawPlayer(sessionId, socketId) {
   }
 }
 
-function removeDrawPlayer(sessionId) {
+function removeDrawPlayer(sessionId, { isKick = false } = {}) {
   let foundRoomId = null
   let foundRoom = null
 
@@ -1015,6 +1165,13 @@ function removeDrawPlayer(sessionId) {
   const isDrawer = foundRoom.currentDrawerId === sessionId
   const originalDrawerId = foundRoom.currentDrawerId
   const originalDrawer = isDrawer ? departingPlayer : (foundRoom.players.find(p => p.id === originalDrawerId) || null)
+
+  if (departingPlayerRecord) {
+    departingPlayerRecord.departed = true
+    if (isKick) {
+      departingPlayerRecord.kicked = true
+    }
+  }
 
   if (isDrawer) {
     foundRoom.currentDrawerId = null
@@ -1043,10 +1200,6 @@ function removeDrawPlayer(sessionId) {
       foundRoom.guessedPlayerIds.filter(id => id !== sessionId)
   }
 
-  if (foundRoom.scores) {
-    delete foundRoom.scores[sessionId]
-  }
-
   clearDrawRateLimits(sessionId)
 
   const realPlayers = foundRoom.players.filter(p => !p.isBot)
@@ -1065,6 +1218,11 @@ function removeDrawPlayer(sessionId) {
     foundRoom.wordChoiceTimeout = null
     foundRoom.hintTimer = null
     foundRoom.turnSequence = (foundRoom.turnSequence || 0) + 1
+
+    for (const p of foundRoom.players) {
+      clearDrawRateLimits(p.id)
+    }
+    clearDrawRateLimits(departingPlayerId)
 
     drawRooms.delete(foundRoomId)
     io.to(`draw:${foundRoomId}`).emit('room-closed', {
@@ -1125,11 +1283,23 @@ function removeDrawPlayer(sessionId) {
       originalDrawer,
       drawerRecord: departingPlayerRecord
     })
+  } else if (
+    !isDrawer &&
+    foundRoom.phase === 'DRAWING'
+  ) {
+    // If a guesser departs and all remaining active guessers have already guessed, end the turn early
+    const remainingGuessers = foundRoom.players.filter(p => !p.spectator && p.id !== foundRoom.currentDrawerId)
+    const allRemainingGuessed = remainingGuessers.length > 0 && remainingGuessers.every(p => foundRoom.guessedPlayerIds && foundRoom.guessedPlayerIds.includes(p.id))
+    if (allRemainingGuessed) {
+      endDrawRound(foundRoom)
+    }
   }
 
   if (wasHost) {
     const nextHost =
       foundRoom.players.find(p => p.isConnected && !p.isBot) ||
+      foundRoom.players.find(p => p.isConnected) ||
+      foundRoom.players.find(p => !p.isBot) ||
       foundRoom.players[0]
 
     if (nextHost) {
@@ -1137,6 +1307,7 @@ function removeDrawPlayer(sessionId) {
         p.isHost = p.id === nextHost.id
       })
       foundRoom.hostId = nextHost.id
+      io.to(nextHost.id).emit('draw:host-promoted')
     }
   }
 
@@ -1732,6 +1903,12 @@ function reapAbandonedRooms() {
 
   for (const [roomId, room] of drawRooms) {
     if (room.players.length === 0) {
+      if (room.turnTimeout) clearTimeout(room.turnTimeout)
+      if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
+      if (room.hintTimer) clearInterval(room.hintTimer)
+      room.turnTimeout = null
+      room.wordChoiceTimeout = null
+      room.hintTimer = null
       drawRooms.delete(roomId)
       continue
     }
@@ -1739,10 +1916,33 @@ function reapAbandonedRooms() {
     if (realPlayers.length === 0) {
       console.log('[ROOM] destroying empty draw room (no real players)', { roomId })
       if (room.turnTimeout) clearTimeout(room.turnTimeout)
+      if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
       if (room.hintTimer) clearInterval(room.hintTimer)
+      room.turnTimeout = null
+      room.wordChoiceTimeout = null
+      room.hintTimer = null
+      room.players.forEach(p => clearDrawRateLimits(p.id))
       drawRooms.delete(roomId)
       io.to(`draw:${roomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
       continue
+    }
+
+    const allDisconnected = realPlayers.every((p) => !p.isConnected && p.disconnectedAt)
+    if (allDisconnected) {
+      const longestOffline = Math.max(...realPlayers.map(p => now - p.disconnectedAt))
+      if (longestOffline > DISCONNECT_GRACE_MS) {
+        console.log('[ROOM] destroying abandoned draw room', { roomId, longestOffline })
+        if (room.turnTimeout) clearTimeout(room.turnTimeout)
+        if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
+        if (room.hintTimer) clearInterval(room.hintTimer)
+        room.turnTimeout = null
+        room.wordChoiceTimeout = null
+        room.hintTimer = null
+        room.players.forEach(p => clearDrawRateLimits(p.id))
+        drawRooms.delete(roomId)
+        io.to(`draw:${roomId}`).emit('room-closed', { message: 'Room closed — all players disconnected.' })
+        continue
+      }
     }
   }
 
@@ -1770,7 +1970,9 @@ function reapAbandonedRooms() {
   }
 
   for (const [sessionId] of sessionSockets) {
-    if (!findRoomByPlayer(sessionId).room) sessionSockets.delete(sessionId)
+    if (!findRoomByPlayer(sessionId).room && !findDrawRoomByPlayer(sessionId).room && !findCodenamesRoomByPlayer(sessionId).room) {
+      sessionSockets.delete(sessionId)
+    }
   }
 }
 setInterval(reapAbandonedRooms, 60 * 1000)
@@ -1785,30 +1987,71 @@ io.on('connection', (socket) => {
     if (!sessionId || typeof sessionId !== 'string') return
     currentSessionId = sessionId
 
-    let { roomId, room } = findRoomByPlayer(sessionId)
+    // If client provided neither a roomId nor a resumeToken, this is simply a socket registration,
+    // not a session restoration attempt. Do not emit session-no-room.
+    if (!clientRoomId && !resumeToken) {
+      connectPlayer(socket, sessionId)
+      return
+    }
+
+    let roomId = null
+    let room = null
     let isDrawRoom = false
     let isCodenamesRoom = false
-    
-    if (!room) {
-      const drawResult = findDrawRoomByPlayer(sessionId)
-      if (drawResult.room) {
-        roomId = drawResult.roomId
-        room = drawResult.room
-        isDrawRoom = true
-      } else {
-        const codenamesResult = findCodenamesRoomByPlayer(sessionId)
-        if (codenamesResult.room) {
-          roomId = codenamesResult.roomId
-          room = codenamesResult.room
+
+    // Target the specific room first if clientRoomId was provided
+    if (clientRoomId) {
+      const normalizedClientRoomId = (clientRoomId || '').trim().toUpperCase()
+      if (drawRooms.has(normalizedClientRoomId)) {
+        const dr = drawRooms.get(normalizedClientRoomId)
+        if (dr.players.some(p => p.id === sessionId)) {
+          roomId = normalizedClientRoomId
+          room = dr
+          isDrawRoom = true
+        }
+      } else if (codenamesRooms.has(normalizedClientRoomId)) {
+        const cr = codenamesRooms.get(normalizedClientRoomId)
+        if (cr.players.some(p => p.id === sessionId)) {
+          roomId = normalizedClientRoomId
+          room = cr
           isCodenamesRoom = true
-        } else {
-          socket.emit('session-no-room')
-          return
+        }
+      } else if (rooms.has(normalizedClientRoomId)) {
+        const ur = rooms.get(normalizedClientRoomId)
+        if (ur.players.some(p => p.id === sessionId)) {
+          roomId = normalizedClientRoomId
+          room = ur
         }
       }
     }
 
-    if (clientRoomId && clientRoomId !== roomId) {
+    // Fallback search across active rooms if not resolved by clientRoomId
+    if (!room) {
+      const undercoverResult = findRoomByPlayer(sessionId)
+      if (undercoverResult.room) {
+        roomId = undercoverResult.roomId
+        room = undercoverResult.room
+      } else {
+        const drawResult = findDrawRoomByPlayer(sessionId)
+        if (drawResult.room) {
+          roomId = drawResult.roomId
+          room = drawResult.room
+          isDrawRoom = true
+        } else {
+          const codenamesResult = findCodenamesRoomByPlayer(sessionId)
+          if (codenamesResult.room) {
+            roomId = codenamesResult.roomId
+            room = codenamesResult.room
+            isCodenamesRoom = true
+          } else {
+            socket.emit('session-no-room')
+            return
+          }
+        }
+      }
+    }
+
+    if (clientRoomId && (clientRoomId || '').trim().toUpperCase() !== (roomId || '').trim().toUpperCase()) {
       console.warn('[AUTH] register rejected - room mismatch', { sessionId, clientRoomId, roomId })
       socket.emit('session-no-room')
       return
@@ -1849,7 +2092,6 @@ io.on('connection', (socket) => {
       socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'skribbl' })
       console.log('[ROOM] draw session reconnected', { sessionId, roomId })
       resumeDrawTimersIfDrawer(room, sessionId)
-      socket.emit('draw:room-state', getSafeStateForPlayer(room, sessionId))
       broadcastDrawRoomState(room)
       return
     }
@@ -2108,6 +2350,17 @@ io.on('connection', (socket) => {
     // Ensure player is not already in a draw room
     for (const [rid, dr] of drawRooms) {
       if (dr.players.some(p => p.id === sessionId)) {
+        if (dr.hostId === sessionId && dr.status === 'LOBBY') {
+          currentSessionId = sessionId
+          socket.join(`draw:${rid}`)
+          socket.join(sessionId)
+          connectPlayer(socket, sessionId)
+          return callback?.({
+            room: getSafeStateForPlayer(dr, sessionId),
+            resumeToken: dr.playerRecords?.[sessionId]?.resumeToken,
+            sessionId
+          })
+        }
         return callback?.({ error: 'ALREADY_IN_DRAW_ROOM' })
       }
     }
@@ -2201,16 +2454,31 @@ io.on('connection', (socket) => {
       // Resume drawer timers
       resumeDrawTimersIfDrawer(room, sessionId)
       
-      callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       broadcastDrawRoomState(room)
+      callback?.({ room: getSafeStateForPlayer(room, sessionId) })
       return
     }
 
     const record = room.playerRecords ? room.playerRecords[sessionId] : null
     if (record) {
+      if (record.kicked) {
+        return callback?.({ error: 'KICKED_FROM_ROOM' })
+      }
+      if (record.departed) {
+        if (room.status !== 'LOBBY') {
+          return callback?.({ error: 'GAME_ALREADY_STARTED' })
+        }
+        record.departed = false
+        record.kicked = false
+        record.score = 0
+      }
       const recordTokenOk = Boolean(record.resumeToken) && typeof resumeToken === 'string' && resumeToken === record.resumeToken
       if (!recordTokenOk) {
         return callback?.({ error: 'SESSION_EXPIRED' })
+      }
+    } else {
+      if (room.status !== 'LOBBY') {
+        return callback?.({ error: 'GAME_ALREADY_STARTED' })
       }
     }
 
@@ -2253,16 +2521,17 @@ io.on('connection', (socket) => {
     }
     socket.emit('session-token', { resumeToken: newPlayer.resumeToken, roomId: normalizedId, playerName: newPlayer.name, gameMode: 'skribbl' })
     
-    resumeDrawTimersIfDrawer(room, sessionId)
-
-    callback?.({ room: getSafeStateForPlayer(room, sessionId) })
     broadcastDrawRoomState(room)
+    callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
 
 
-  socket.on('draw:leave-room', (callback) => {
-    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'NOT_IN_ROOM' })
+  socket.on('draw:leave-room', (payloadOrCallback, maybeCallback) => {
+    const callback = typeof payloadOrCallback === 'function' ? payloadOrCallback : (typeof maybeCallback === 'function' ? maybeCallback : null)
+    if (!isCurrentDrawSession(currentSessionId)) {
+      return callback?.({ success: true, alreadyLeft: true })
+    }
     
     let foundRoomId = null
     for (const [rid, dr] of drawRooms) {
@@ -2272,12 +2541,26 @@ io.on('connection', (socket) => {
       }
     }
 
-    if (!foundRoomId) return callback?.({ error: 'NOT_IN_ROOM' })
+    if (!foundRoomId) {
+      currentRoomId = null
+      currentSessionId = null
+      return callback?.({ success: true, alreadyLeft: true })
+    }
 
-    const removed = removeDrawPlayer(currentSessionId)
+    const leavingSessionId = currentSessionId
+    const removed = removeDrawPlayer(leavingSessionId, { isKick: false })
     socket.leave(`draw:${foundRoomId}`)
-    socket.leave(currentSessionId) // Cleanup private room
+    socket.leave(leavingSessionId) // Cleanup private room
     
+    // Only clean sessionSockets if this socket is the registered owner and player is not in other modes
+    if (sessionSockets.get(leavingSessionId) === socket.id) {
+      const inUndercover = Array.from(rooms.values()).some(r => r.players.some(p => p.id === leavingSessionId))
+      const inCodenames = Array.from(codenamesRooms.values()).some(r => r.players.some(p => p.id === leavingSessionId))
+      if (!inUndercover && !inCodenames) {
+        sessionSockets.delete(leavingSessionId)
+      }
+    }
+
     if (removed.room) {
       broadcastDrawRoomState(removed.room)
     }
@@ -2325,7 +2608,8 @@ io.on('connection', (socket) => {
 
 
 
-  socket.on('draw:start-game', (callback) => {
+  socket.on('draw:start-game', (payloadOrCallback, maybeCallback) => {
+    const callback = typeof payloadOrCallback === 'function' ? payloadOrCallback : (typeof maybeCallback === 'function' ? maybeCallback : null)
     if (!isCurrentDrawSession(currentSessionId)) return callback?.({ success: false, error: 'NO_SESSION' })
 
     let room = null
@@ -2347,7 +2631,7 @@ io.on('connection', (socket) => {
     try {
       // Build the complete start state before mutating the room. This prevents
       // a startup exception from leaving a half-started room.
-      const playerIds = eligiblePlayers.map(p => p.id)
+      const playerIds = Array.from(new Set(eligiblePlayers.map(p => p.id)))
       for (let i = playerIds.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
         ;[playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]]
@@ -2384,9 +2668,11 @@ io.on('connection', (socket) => {
       room.guessedPlayerIds = []
       room.turnScores = {}
       room.hintsGiven = 0
-      room.turnSequence = 0
+      room.turnSequence = 1
       room.roundEndsAt = null
       room.wordChoiceEndsAt = null
+      room.drawingRemainingMs = undefined
+      room.wordChoiceRemainingMs = undefined
 
       io.to(`draw:${room.id}`).emit('draw:clear-canvas')
       scheduleWordChoiceTimeout(room)
@@ -2412,6 +2698,8 @@ io.on('connection', (socket) => {
       room.turnSequence = 0
       room.roundEndsAt = null
       room.wordChoiceEndsAt = null
+      room.drawingRemainingMs = undefined
+      room.wordChoiceRemainingMs = undefined
 
       console.error('[DRAW] Failed to start game', {
         roomId: room.id,
@@ -2429,13 +2717,21 @@ io.on('connection', (socket) => {
     const word = payload?.word
     let room = null
     for (const [rid, dr] of drawRooms) {
-      if (dr.currentDrawerId === currentSessionId && dr.phase === 'WORD_CHOICE') {
+      if (dr.players.some(p => p.id === currentSessionId)) {
         room = dr
         break
       }
     }
-    if (!room) return callback?.({ error: 'Not your turn or wrong phase' })
-    if (room.selectedWord) return callback?.({ error: 'Already selected a word' })
+    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
+    if (room.currentDrawerId !== currentSessionId) {
+      return callback?.({ error: 'NOT_DRAWER' })
+    }
+    if (room.phase !== 'WORD_CHOICE') {
+      return callback?.({ error: 'WRONG_PHASE' })
+    }
+    if (room.selectedWord) {
+      return callback?.({ error: 'ALREADY_CHOSEN' })
+    }
     
     if (!room.wordChoices || !room.wordChoices.includes(word)) {
       if (!room.wordChoices || room.wordChoices.length === 0) {
@@ -2443,9 +2739,16 @@ io.on('connection', (socket) => {
         endDrawRound(room)
         return callback?.({ success: true, endedEarly: true })
       } else {
-        return callback?.({ error: 'Invalid word choice' })
+        return callback?.({ error: 'INVALID_WORD_CHOICE' })
       }
     }
+
+    if (room.wordChoiceTimeout) {
+      clearTimeout(room.wordChoiceTimeout)
+      room.wordChoiceTimeout = null
+    }
+    room.wordChoiceEndsAt = null
+    room.phase = 'DRAWING'
 
     startDrawingTurn(room, word)
     callback?.({ success: true })
@@ -2710,6 +3013,14 @@ io.on('connection', (socket) => {
     if (!room) return callback?.({ success: false, error: 'NOT_HOST_OR_ROOM_NOT_FOUND' })
     if (room.phase !== 'GAME_RESULT') return callback?.({ success: false, error: 'GAME_NOT_ENDED' })
 
+    if (room.turnTimeout) clearTimeout(room.turnTimeout)
+    if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
+    if (room.hintTimer) clearInterval(room.hintTimer)
+
+    room.turnTimeout = null
+    room.wordChoiceTimeout = null
+    room.hintTimer = null
+
     room.status = 'LOBBY'
     room.phase = 'LOBBY'
     room.round = 1
@@ -2723,10 +3034,26 @@ io.on('connection', (socket) => {
     room.guessedPlayerIds = []
     room.turnScores = {}
     room.reactions = {}
+    room.usedWords = []
+    room.turnSequence = 0
+    room.roundEndsAt = null
+    room.wordChoiceEndsAt = null
+    room.remainingMs = null
+    room.drawingRemainingMs = undefined
+    room.wordChoiceRemainingMs = undefined
+    room.hint = ''
+    room.hintRevealed = null
     
     room.players.forEach(p => {
       p.spectator = false
+      p.score = 0
     })
+
+    if (room.playerRecords) {
+      for (const rec of Object.values(room.playerRecords)) {
+        rec.score = 0
+      }
+    }
 
     io.to(`draw:${room.id}`).emit('draw:clear-canvas')
     
@@ -2781,13 +3108,19 @@ io.on('connection', (socket) => {
 
     io.to(targetId).emit('draw:kicked')
     
-    const removed = removeDrawPlayer(targetId)
+    const removed = removeDrawPlayer(targetId, { isKick: true })
 
     const targetSocketId = sessionSockets.get(targetId)
     if (targetSocketId) {
       const targetSocket = io.sockets.sockets.get(targetSocketId)
       if (targetSocket) {
         targetSocket.leave(`draw:${roomId}`)
+        targetSocket.leave(targetId)
+      }
+      const inUndercover = Array.from(rooms.values()).some(r => r.players.some(p => p.id === targetId))
+      const inCodenames = Array.from(codenamesRooms.values()).some(r => r.players.some(p => p.id === targetId))
+      if (!inUndercover && !inCodenames) {
+        sessionSockets.delete(targetId)
       }
     }
 
@@ -4507,6 +4840,6 @@ process.once('SIGTERM', () => shutdown('SIGTERM'))
 process.once('SIGINT', () => shutdown('SIGINT'))
 
 httpServer.listen(PORT, HOST, () => {
-  console.log(`UNDERCOVER server running on ${HOST}:${PORT}`)
+  console.log(`UNDERCOVER server running on port ${PORT} (${HOST})`)
   console.log(`CORS allowed: Local network, private IPs, and ${process.env.NODE_ENV === 'production' ? originList.join(', ') : 'all development origins'}`)
 })

@@ -10,7 +10,7 @@ import SettingsPanel from './SettingsPanel.jsx'
 import SkribblError from './SkribblError.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
 
-export default function DrawingPhase({ room, onLeave, error }) {
+export default function DrawingPhase({ room, onLeave, error, connectionStatus = 'Connected' }) {
   const { sessionId } = ensureIdentity()
   const isDrawer = room.currentDrawerId === sessionId
   const guessInputRef = useRef(null)
@@ -277,8 +277,12 @@ export default function DrawingPhase({ room, onLeave, error }) {
     socket.emit('draw:undo')
   }
 
+  useEffect(() => {
+    setIsChoosing(false)
+  }, [room.phase, room.round, room.turnIndex, room.currentDrawerId])
+
   const handleChooseWord = (word) => {
-    if (isChoosing) return
+    if (isChoosing || !isDrawer || room.phase !== 'WORD_CHOICE') return
     setIsChoosing(true)
     const socket = getSocket()
     socket.emit('draw:choose-word', { word }, (res) => {
@@ -291,7 +295,7 @@ export default function DrawingPhase({ room, onLeave, error }) {
 
   const handleGuessSubmit = (e) => {
     e.preventDefault()
-    if (!guessInput.trim() || isDrawer) return
+    if (!guessInput.trim() || isDrawer || room.phase !== 'DRAWING') return
     const socket = getSocket()
     socket.emit('draw:guess', { message: guessInput.trim() })
     setGuessInput('')
@@ -444,11 +448,12 @@ export default function DrawingPhase({ room, onLeave, error }) {
               textColor = '#b08d00'
               content = <strong style={{ color: textColor }}>{notif.playerName} is close!</strong>
             } else if (notif.type === 'REACTION') {
-              const text = notif.message || ''
-              if (text.includes('liked')) {
-                textColor = '#359b35'
-              } else if (text.includes('disliked')) {
+              const isDislike = notif.reaction === 'DISLIKE' || (!notif.reaction && notif.message?.includes('disliked'))
+              const isLike = notif.reaction === 'LIKE' || (!notif.reaction && notif.message?.includes('liked'))
+              if (isDislike) {
                 textColor = '#DC2626'
+              } else if (isLike) {
+                textColor = '#359b35'
               } else {
                 textColor = '#777777'
               }
@@ -650,6 +655,8 @@ export default function DrawingPhase({ room, onLeave, error }) {
           <input
             ref={guessInputRef}
             type="text"
+            id="sk-guess-input"
+            name="guess"
             placeholder="Type your guess..."
             className="sk-input"
             style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1, minWidth: 0 }}
@@ -675,6 +682,7 @@ export default function DrawingPhase({ room, onLeave, error }) {
           onClose={handleCloseSettings} 
           onLeave={onLeave} 
           roomId={room.id} 
+          connectionStatus={connectionStatus}
         />
       )}
     </div>

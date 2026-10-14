@@ -14,5 +14,5 @@
 .sk-view--game {
   min-height: 0;
   animation: none;
-  background-color: #EEF5FF;
+  background-color: var(--sk-surface, #ffffff);
 }

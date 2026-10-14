@@ -87,7 +87,8 @@ const START_ERRORS = {
   GAME_ALREADY_STARTED: 'The game has already started.',
   NOT_ENOUGH_PLAYERS: 'At least 2 players are required to start.',
   NO_WORDS_AVAILABLE: 'No unused words are available for this game.',
-  START_GAME_FAILED: 'The game could not be started. Please try again.'
+  START_GAME_FAILED: 'The game could not be started. Please try again.',
+  KICKED_FROM_ROOM: 'You have been kicked from this room.'
 }
 
 export default function Lobby({ room, onLeave, onUpdateConfig, error }) {

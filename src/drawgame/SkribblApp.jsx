@@ -20,7 +20,8 @@ function getFriendlyError(errCode) {
     'GAME_ALREADY_STARTED': "The game has already started.",
     'NOT_ENOUGH_PLAYERS': "At least 2 players are required to start.",
     'NO_WORDS_AVAILABLE': "No unused words are available for this game.",
-    'START_GAME_FAILED': "The game could not be started. Please reconnect and try again."
+    'START_GAME_FAILED': "The game could not be started. Please reconnect and try again.",
+    'KICKED_FROM_ROOM': "You have been kicked from this room."
   }
   return map[errCode] || errCode || 'Something went wrong.'
 }
@@ -98,6 +99,31 @@ export default function SkribblApp({ onExit }) {
     return 'menu'
   })
 
+  const clearSkribblSession = () => {
+    const id = readIdentity()
+    if (id.gameMode === 'skribbl') {
+      clearSession()
+    }
+  }
+
+  const updateRoomStateSafe = (nextState) => {
+    if (!nextState) return
+    setRoomState(prev => {
+      if (!prev) return nextState
+      if (prev.id === nextState.id) {
+        const prevVer = prev.version || 0
+        const nextVer = nextState.version || 0
+        if (nextVer < prevVer) {
+          return prev
+        }
+        if (nextVer === prevVer && prev.updatedAt && nextState.updatedAt && nextState.updatedAt < prev.updatedAt) {
+          return prev
+        }
+      }
+      return nextState
+    })
+  }
+
   useEffect(() => {
     const { sessionId } = ensureIdentity()
     const socket = connectSocket(sessionId)
@@ -109,13 +135,24 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleRoomState = (state) => {
-      if (!state) return
-      const currentSessionId = readIdentity().sessionId
-      const inRoom = state.players?.some(p => p.id === currentSessionId)
-      if (!inRoom) {
+      if (!state || !state.id) return
+      const identity = readIdentity()
+      const currentSessionId = identity.sessionId || sessionId
+      const storedRoomId = (identity.roomId || '').toUpperCase()
+      const incomingRoomId = (state.id || '').toUpperCase()
+
+      const inPlayers = state.players?.some(p => p.id === currentSessionId || p.id === sessionId)
+      const inRecords = state.playerRecords && (state.playerRecords[currentSessionId] || state.playerRecords[sessionId])
+      const isExpectedRoom = (roomState && roomState.id.toUpperCase() === incomingRoomId) || 
+                             (storedRoomId && storedRoomId === incomingRoomId)
+
+      // Only discard if there is no indication whatsoever that this update is for this client
+      if (!inPlayers && !inRecords && !isExpectedRoom) {
         return
       }
-      setRoomState(state)
+
+      updateRoomStateSafe(state)
+      setError(null)
       setView('lobby')
     }
 
@@ -170,21 +207,31 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleNoRoom = () => {
-      clearSession()
+      clearSkribblSession()
       setRoomState(null)
-      setError(getFriendlyError('ROOM_NOT_FOUND'))
-      setView('menu')
+      setView(prev => {
+        if (prev === 'restoring') {
+          setError('The previous room is no longer available.')
+          return 'menu'
+        }
+        return prev
+      })
     }
 
     const handleExpired = () => {
-      clearSession()
+      clearSkribblSession()
       setRoomState(null)
-      setError(getFriendlyError('NO_SESSION'))
-      setView('menu')
+      setView(prev => {
+        if (prev === 'restoring') {
+          setError('Your previous session has expired.')
+          return 'menu'
+        }
+        return prev
+      })
     }
 
     const handleRoomClosed = (data) => {
-      clearSession()
+      clearSkribblSession()
       setRoomState(null)
       setError(data?.message || 'Room closed.')
       setView('menu')
@@ -196,7 +243,7 @@ export default function SkribblApp({ onExit }) {
     }
 
     const handleKicked = () => {
-      clearSession()
+      clearSkribblSession()
       setRoomState(null)
       setError('You have been kicked from the room.')
       setView('menu')
@@ -258,8 +305,33 @@ export default function SkribblApp({ onExit }) {
 
   useEffect(() => {
     if (view === 'restoring') {
+      const identity = readIdentity()
+      if (identity.resumeToken && identity.roomId && identity.gameMode === 'skribbl') {
+        const socket = getSocket() || connectSocket(identity.sessionId)
+        if (socket?.connected) {
+          socket.emit('register', {
+            sessionId: identity.sessionId,
+            resumeToken: identity.resumeToken,
+            roomId: identity.roomId
+          })
+        }
+      } else {
+        setView('menu')
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'restoring') {
       const timer = setTimeout(() => {
-        setView(prev => prev === 'restoring' ? 'menu' : prev)
+        setView(prev => {
+          if (prev === 'restoring') {
+            clearSkribblSession()
+            setError('Could not restore previous session. Please create or join a room.')
+            return 'menu'
+          }
+          return prev
+        })
       }, 5000)
       return () => clearTimeout(timer)
     }
@@ -316,10 +388,10 @@ export default function SkribblApp({ onExit }) {
       return
     }
     socket.emit('draw:create-room', { sessionId, playerName }, (res) => {
-      if (res.error) setError(getFriendlyError(res.error))
-      else if (res.room) {
+      if (res?.error) setError(getFriendlyError(res.error))
+      else if (res?.room) {
         setError(null)
-        setRoomState(res.room)
+        updateRoomStateSafe(res.room)
         setView('lobby')
       }
     })
@@ -335,10 +407,11 @@ export default function SkribblApp({ onExit }) {
       return
     }
     socket.emit('draw:join-room', { sessionId, resumeToken, roomId, playerName }, (res) => {
-      if (res.error) setError(getFriendlyError(res.error))
-      else if (res.room) {
+      if (res?.error) {
+        setError(getFriendlyError(res.error))
+      } else if (res?.room) {
         setError(null)
-        setRoomState(res.room)
+        updateRoomStateSafe(res.room)
         setView('lobby')
       }
     })
@@ -350,7 +423,7 @@ export default function SkribblApp({ onExit }) {
       return () => {
         if (done) return
         done = true
-        clearSession()
+        clearSkribblSession()
         setRoomState(null)
         setView('menu')
       }
@@ -401,10 +474,12 @@ export default function SkribblApp({ onExit }) {
     }
     if (['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)) {
       return (
-        <>
-          {networkStatusElement}
-          <DrawingPhase room={roomState} onLeave={handleLeaveRoom} error={error} />
-        </>
+        <DrawingPhase 
+          room={roomState} 
+          onLeave={handleLeaveRoom} 
+          error={error} 
+          connectionStatus={connectionStatus}
+        />
       )
     }
     return (
@@ -442,7 +517,11 @@ export default function SkribblApp({ onExit }) {
               <p style={{ color: 'var(--sk-muted)' }}>Recovering your Skribbl session. Please wait.</p>
               <button 
                 className="sk-btn sk-btn--secondary" 
-                onClick={() => setView('menu')}
+                onClick={() => {
+                  clearSkribblSession()
+                  setError(null)
+                  setView('menu')
+                }}
                 style={{ marginTop: '20px', maxWidth: '200px', marginInline: 'auto' }}
               >
                 CANCEL
@@ -486,10 +565,15 @@ export default function SkribblApp({ onExit }) {
                 ref={createNameRef}
                 type="text" 
                 id="sk-create-name" 
+                name="name"
                 placeholder="Enter your name" 
                 className="sk-input"
                 autoFocus
                 maxLength={24}
+                autoComplete="name"
+                autoCapitalize="words"
+                autoCorrect="on"
+                spellCheck={true}
               />
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                 <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>
@@ -514,12 +598,17 @@ export default function SkribblApp({ onExit }) {
                   ref={joinIdRef}
                   type="text" 
                   id="sk-join-id" 
+                  name="roomCode"
                   placeholder="ROOM CODE" 
                   className="sk-input"
                   autoFocus
                   maxLength={6}
                   defaultValue={new URLSearchParams(window.location.search).get('room') || ''}
                   style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <button
                   type="button"
@@ -534,10 +623,15 @@ export default function SkribblApp({ onExit }) {
                 ref={joinNameRef}
                 type="text" 
                 id="sk-join-name" 
+                name="name"
                 placeholder="YOUR NAME" 
                 className="sk-input"
                 maxLength={24}
                 style={{ marginTop: '12px' }}
+                autoComplete="name"
+                autoCapitalize="words"
+                autoCorrect="on"
+                spellCheck={true}
               />
               <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
                 <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>

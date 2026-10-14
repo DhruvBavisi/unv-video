@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import QRModal from '../../game/QRModal.jsx'
+import SkribblNetworkStatus from './SkribblNetworkStatus.jsx'
 
 // Same state machine as the Undercover PlayersPanel (src/game/PlayersPanel.jsx):
 // ENTERING (500ms fly-out from the button) -> OPEN -> EXITING (480ms fly-back) -> onClose()
@@ -8,7 +9,7 @@ const ANIM_ENTERING = 'ENTERING'
 const ANIM_OPEN = 'OPEN'
 const ANIM_EXITING = 'EXITING'
 
-export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId }) {
+export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, connectionStatus = 'Connected' }) {
   const [animState, setAnimState] = useState(ANIM_ENTERING)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -168,6 +169,10 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId }) 
                     </div>
                   </div>
                 )}
+                <div className="sk-settings-status-row">
+                  <span className="sk-settings-status-label">CONNECTION</span>
+                  <SkribblNetworkStatus status={connectionStatus} inline />
+                </div>
                 <button type="button" className="sk-btn sk-btn--danger" onClick={() => setConfirmLeave(true)}>
                   LEAVE GAME
                 </button>

@@ -72,12 +72,13 @@ export default function ChatBox({ room }) {
             style.color = '#d69e2e'
             content = `${msg.playerName} is close!`
           } else if (msg.type === 'REACTION') {
-            if (msg.reaction === 'LIKE') {
+            const isDislike = msg.reaction === 'DISLIKE' || (!msg.reaction && msg.message?.includes('disliked'))
+            if (isDislike) {
+              style.background = '#FEE2E2'
+              style.color = '#DC2626'
+            } else {
               style.background = '#CFFFBD'
               style.color = '#359b35'
-            } else {
-              style.background = '#FFDCDC'
-              style.color = '#cc4e14'
             }
             content = msg.message
           } else {
