@@ -169,3 +169,8 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
   - Allowed the host to update game configuration (`drawTimeSec`, `rounds`, `gameMode`, etc.) immediately upon entering the lobby, even while the room remains in transitional `GAME_RESULT`.
   - Disabled the `START GAME` button and displayed `"WAITING FOR PLAYERS..."` whenever `room.phase !== 'LOBBY'`, preventing premature game starts while players remain on the result screen.
   - Displayed `(In results)` next to players in the lobby player strip who have not yet opted in.
+- **Acknowledgement Recovery & Timeout Hardening (`src/drawgame/components/DrawingPhase.jsx`, `src/drawgame/skribblRouting.js`):**
+  - Added a 7000ms bounded acknowledgement timeout to `handlePlayAgain` to prevent the button from getting stuck if server acknowledgement drops.
+  - Implemented connection-aware recovery: socket disconnects or `connectionStatus` drops automatically clear submitting state and display a clear error message, allowing retry upon reconnect.
+  - Added monotonic request ID tracking to isolate stale callbacks so delayed or out-of-order responses cannot overwrite newer submission states.
+  - Extracted pure navigation routing helpers into `src/drawgame/skribblRouting.js` (`getSkribblActiveComponent`, `shouldRenderIndividualLobby`) with automated regression coverage in `tests/skribbl-play-again.test.mjs`.

@@ -67,6 +67,9 @@ function SkribblScreenTransition({ view, children }) {
 
 import { useMobileKeyboardFocus } from '../hooks/useMobileKeyboardFocus.js'
 import { usePageBackground } from '../hooks/usePageBackground.js'
+import { getSkribblActiveComponent, shouldRenderIndividualLobby } from './skribblRouting.js'
+
+export { getSkribblActiveComponent, shouldRenderIndividualLobby }
 
 export default function SkribblApp({ onExit }) {
   usePageBackground('#EEF5FF')
@@ -477,10 +480,9 @@ export default function SkribblApp({ onExit }) {
 
   if (view === 'lobby' && roomState) {
     const { sessionId } = ensureIdentity()
-    const me = roomState.players?.find(p => p.id === sessionId)
-    const isIndividualLobby = roomState.phase === 'GAME_RESULT' && Boolean(me?.playAgain)
+    const activeComponent = getSkribblActiveComponent(view, roomState, sessionId)
 
-    if (roomState.phase === 'LOBBY' || isIndividualLobby) {
+    if (activeComponent === 'LOBBY') {
       return (
         <>
           {networkStatusElement}
@@ -493,7 +495,7 @@ export default function SkribblApp({ onExit }) {
         </>
       )
     }
-    if (['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)) {
+    if (activeComponent === 'DRAWING_PHASE') {
       return (
         <DrawingPhase 
           room={roomState} 

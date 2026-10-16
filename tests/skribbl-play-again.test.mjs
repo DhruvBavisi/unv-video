@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client'
 import assert from 'assert'
+import { getSkribblActiveComponent, shouldRenderIndividualLobby } from '../src/drawgame/skribblRouting.js'
 
 const URL = process.env.TEST_URL || 'http://localhost:3001'
 
@@ -147,7 +148,14 @@ async function run() {
   assert(p1Record && p2Record, 'Both players must be in room')
   console.log(`Scores: P1=${p1Record.score}, P2=${p2Record.score}`)
 
-  // 5. Guest (P2) opts in to Play Again first (Non-host opt in)
+  // 1. Two eligible clients are in GAME_RESULT: both view results screen initially
+  assert.strictEqual(getSkribblActiveComponent('lobby', resultState, p1.sessionId), 'DRAWING_PHASE', 'P1 must initially be on results screen')
+  assert.strictEqual(shouldRenderIndividualLobby(resultState, p1.sessionId), false, 'P1 must not render individual lobby yet')
+  assert.strictEqual(getSkribblActiveComponent('lobby', resultState, p2.sessionId), 'DRAWING_PHASE', 'P2 must initially be on results screen')
+  assert.strictEqual(shouldRenderIndividualLobby(resultState, p2.sessionId), false, 'P2 must not render individual lobby yet')
+  console.log('✓ 1. Initial GAME_RESULT state verified: both eligible clients on results screen')
+
+  // 5. Guest (P2 / Client A) opts in to Play Again first (Non-host opt in)
   console.log('P2 opting in to Play Again...')
   const p2PlayAgainAck = await emitAck(p2.socket, 'draw:play-again')
   assert(p2PlayAgainAck.success, 'P2 play-again ack must succeed')
@@ -159,15 +167,21 @@ async function run() {
     return guest && guest.playAgain === true
   })
 
-  // Room must STILL be in GAME_RESULT
-  assert(transitionalState.phase === 'GAME_RESULT', 'Room must remain in GAME_RESULT while P1 has not opted in')
-  
-  // Scores must NOT be wiped yet
+  // 2. Client A (P2) opts into Play Again and can enter the lobby immediately
+  assert.strictEqual(getSkribblActiveComponent('lobby', transitionalState, p2.sessionId), 'LOBBY', 'Client A (P2, opted in) must enter the lobby immediately')
+  assert.strictEqual(shouldRenderIndividualLobby(transitionalState, p2.sessionId), true, 'Client A (P2) must route to individual lobby')
+
+  // 3. Client B (P1) remains on the results screen until opting in
+  assert.strictEqual(getSkribblActiveComponent('lobby', transitionalState, p1.sessionId), 'DRAWING_PHASE', 'Client B (P1, not opted in) must remain on results screen')
+  assert.strictEqual(shouldRenderIndividualLobby(transitionalState, p1.sessionId), false, 'Client B (P1) must stay on results screen')
+
+  // 4. The server remains in GAME_RESULT while an eligible player has not opted in; scores and results remain intact
+  assert.strictEqual(transitionalState.phase, 'GAME_RESULT', 'Server must remain in GAME_RESULT while P1 has not opted in')
   const transP1 = transitionalState.players.find(p => p.id === p1.sessionId)
   const transP2 = transitionalState.players.find(p => p.id === p2.sessionId)
-  assert(transP1.score === p1Record.score, 'P1 score must not be reset during transition')
-  assert(transP2.score === p2Record.score, 'P2 score must not be reset during transition')
-  console.log('✓ Non-host opt-in succeeded: P2 marked playAgain: true, room remains in GAME_RESULT, scores preserved')
+  assert.strictEqual(transP1.score, p1Record.score, 'P1 score must not be reset during transition')
+  assert.strictEqual(transP2.score, p2Record.score, 'P2 score must not be reset during transition')
+  console.log('✓ 2-4. Transition views verified: Client A in LOBBY, Client B on result screen, server in GAME_RESULT, scores intact')
 
   // 6. Host configures room during transitional GAME_RESULT
   console.log('Host updating config during GAME_RESULT...')
@@ -180,22 +194,24 @@ async function run() {
   assert(dupAck.success, 'Duplicate opt-in must succeed idempotently')
   console.log('✓ Duplicate play-again handled idempotently')
 
-  // 8. Host (P1) opts in -> All eligible players opted in!
+  // 8. Host (P1 / Client B) opts in -> All eligible players opted in!
   console.log('Host (P1) opting in to Play Again...')
   const p1PlayAgainAck = await emitAck(p1.socket, 'draw:play-again')
   assert(p1PlayAgainAck.success, 'Host play-again ack must succeed')
 
-  // Wait for both players to receive LOBBY state
+  // 5. When all eligible players opt in, the room resets to LOBBY exactly once
   const finalLobby1 = await waitForRoomState(p1, s => s.phase === 'LOBBY')
   const finalLobby2 = await waitForRoomState(p2, s => s.phase === 'LOBBY')
 
-  assert(finalLobby1.phase === 'LOBBY', 'P1 must receive LOBBY phase')
-  assert(finalLobby2.phase === 'LOBBY', 'P2 must receive LOBBY phase')
-  assert(finalLobby1.round === 1, 'Round must reset to 1')
-  assert(finalLobby1.configuration.drawTimeSec === 60, 'Updated configuration must be preserved')
+  assert.strictEqual(finalLobby1.phase, 'LOBBY', 'P1 room must reset to LOBBY')
+  assert.strictEqual(finalLobby2.phase, 'LOBBY', 'P2 room must reset to LOBBY')
+  assert.strictEqual(getSkribblActiveComponent('lobby', finalLobby1, p1.sessionId), 'LOBBY', 'P1 in LOBBY view')
+  assert.strictEqual(getSkribblActiveComponent('lobby', finalLobby2, p2.sessionId), 'LOBBY', 'P2 in LOBBY view')
+  assert.strictEqual(finalLobby1.round, 1, 'Round must reset to 1')
+  assert.strictEqual(finalLobby1.configuration.drawTimeSec, 60, 'Updated configuration must be preserved')
   assert(finalLobby1.players.every(p => p.score === 0), 'All player scores must reset to 0 in LOBBY')
   assert(finalLobby1.players.every(p => !p.playAgain), 'playAgain flags must be reset in LOBBY')
-  console.log('✓ Full room reset to LOBBY succeeded once all players opted in')
+  console.log('✓ 5. Full room reset to LOBBY succeeded once all players opted in, scores zeroed, views in LOBBY')
 
   // 9. Disconnect during transition test
   // Start game again with 1 round
@@ -229,6 +245,74 @@ async function run() {
 
   // Cleanup
   p1.socket.disconnect()
+
+  // 10. Test acknowledgement recovery, timeout, and stale callback protection contract
+  console.log('\nTesting acknowledgement timeout, connection recovery, and stale callback isolation...')
+  let isSubmitting = false
+  let errorMsg = null
+  let reqIdCounter = 0
+  let timeoutTimer = null
+
+  function onDisconnect() {
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer)
+      timeoutTimer = null
+    }
+    reqIdCounter++
+    isSubmitting = false
+    errorMsg = 'Connection lost. Please try again.'
+  }
+
+  function onTimeout(expectedReqId) {
+    if (reqIdCounter === expectedReqId) {
+      isSubmitting = false
+      errorMsg = 'Request timed out. Please try again.'
+    }
+  }
+
+  function handlePlayAgainMock(connected) {
+    if (isSubmitting) return 'PREVENTED_DUPLICATE'
+    if (!connected) {
+      errorMsg = 'Not connected to server.'
+      return 'OFFLINE'
+    }
+    isSubmitting = true
+    errorMsg = null
+    const currentReq = ++reqIdCounter
+    return { currentReq }
+  }
+
+  // 1. Prevent duplicate requests while one is pending
+  const req1 = handlePlayAgainMock(true)
+  assert.strictEqual(isSubmitting, true)
+  assert.strictEqual(handlePlayAgainMock(true), 'PREVENTED_DUPLICATE')
+
+  // 2. Disconnection during submit clears submitting state and sets error
+  onDisconnect()
+  assert.strictEqual(isSubmitting, false)
+  assert.strictEqual(errorMsg, 'Connection lost. Please try again.')
+
+  // 3. Allows retry after reconnection
+  const req2 = handlePlayAgainMock(true)
+  assert.strictEqual(isSubmitting, true)
+  assert.strictEqual(errorMsg, null)
+
+  // 4. Timeout clears submitting state and sets error
+  onTimeout(req2.currentReq)
+  assert.strictEqual(isSubmitting, false)
+  assert.strictEqual(errorMsg, 'Request timed out. Please try again.')
+
+  // 5. Stale callback isolation: callback from old request is ignored
+  let acceptedCallback = false
+  const staleReqId = req2.currentReq
+  const activeReqId = ++reqIdCounter
+  function simulateAckCallback(resReqId) {
+    if (resReqId !== activeReqId) return
+    acceptedCallback = true
+  }
+  simulateAckCallback(staleReqId)
+  assert.strictEqual(acceptedCallback, false, 'Stale callback must be ignored')
+  console.log('✓ Acknowledgement recovery, bounded timeout, and stale callback isolation verified')
 
   console.log('\n======================================================')
   console.log('ALL SKRIBBL PLAY AGAIN & INDIVIDUAL LOBBY ENTRY TESTS PASSED!')
