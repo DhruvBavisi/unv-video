@@ -7,6 +7,7 @@ import DrawingCanvas from './DrawingCanvas.jsx'
 import ChatBox from './ChatBox.jsx'
 import DrawingTopBar from './DrawingTopBar.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
+import FinalScores from './FinalScores.jsx'
 import SkribblError from './SkribblError.jsx'
 import Lobby from './Lobby.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
@@ -36,6 +37,11 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     setShowSettings(true)
   }, [])
   const handleCloseSettings = useCallback(() => setShowSettings(false), [])
+
+  // Game ended: close the keyboard if the guess input was focused (the dock is covered by the results screen)
+  useEffect(() => {
+    if (room.phase === 'GAME_RESULT') document.activeElement?.blur?.()
+  }, [room.phase])
 
   const [chatNotifications, setChatNotifications] = useState([])
   const seenMessageIds = useRef(new Set())
@@ -693,48 +699,6 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           </div>
         )}
 
-        {/* Game Result Overlay */}
-        {room.phase === 'GAME_RESULT' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 30, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)' }}>
-            <h1 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '2.5rem', marginBottom: '20px' }}>GAME OVER</h1>
-            <div className="sk-card" data-sk-scroll style={{ width: '100%', maxWidth: '400px', maxHeight: '60%', overflowY: 'auto' }}>
-              {(() => {
-                const sorted = [...room.players].sort((a, b) => b.score - a.score)
-                return sorted.map((p, idx) => (
-                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: idx < sorted.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none', background: idx === 0 ? 'rgba(255, 200, 87, 0.2)' : 'transparent', borderRadius: idx === 0 ? '8px' : 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontFamily: 'var(--sk-font-display)', fontSize: '1.2rem', color: idx === 0 ? '#FFC857' : 'var(--sk-muted)' }}>#{idx + 1}</span>
-                      <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)' }}>{p.name} {p.id === sessionId && '(You)'}</span>
-                      {p.playAgain && (
-                        <span className="sk-badge" style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--sk-success, #4CAF50)', color: '#fff', border: 'none' }}>
-                          READY
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-primary)' }}>{p.score} pts</div>
-                  </div>
-                ))
-              })()}
-            </div>
-            {playAgainError && (
-              <div role="alert" className="sk-error" style={{ marginTop: '12px', maxWidth: '400px', textAlign: 'center' }}>
-                {playAgainError}
-              </div>
-            )}
-            <button 
-              className="sk-btn" 
-              style={{ marginTop: '24px', padding: '16px 32px' }} 
-              onClick={handlePlayAgain}
-              disabled={isSubmittingPlayAgain || Boolean(myPlayer?.playAgain)}
-            >
-              {isSubmittingPlayAgain 
-                ? 'RETURNING TO LOBBY...' 
-                : myPlayer?.playAgain 
-                  ? 'WAITING FOR OTHERS...' 
-                  : 'PLAY AGAIN'}
-            </button>
-          </div>
-        )}
         </div>
       </div>
 
@@ -809,6 +773,18 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             autoCapitalize="sentences"
           />
         </form>
+      )}
+
+      {room.phase === 'GAME_RESULT' && (
+        <FinalScores
+          players={room.players}
+          sessionId={sessionId}
+          isSubmitting={isSubmittingPlayAgain}
+          hasOptedIn={Boolean(myPlayer?.playAgain)}
+          error={playAgainError}
+          onPlayAgain={handlePlayAgain}
+          onOpenSettings={handleOpenSettings}
+        />
       )}
 
       {showSettings && (
