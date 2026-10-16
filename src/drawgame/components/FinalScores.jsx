@@ -64,69 +64,74 @@ export default function FinalScores({
         )}
       </div>
 
-      {/* Podium Area: 2nd (left), 1st (center), 3rd (right) */}
-      <div className="sk-final-podium">
-        {slots.map(({ player: p, position, podiumPlace }, s) =>
-          p ? (
-            <div
-              key={p.id}
-              className={
-                `sk-final-slot sk-final-slot--${position} sk-final-slot--pos-${podiumPlace} sk-final-slot--place${p.rank} sk-final-slot--${tierOf(p.rank)}` +
-                (p.id === sessionId ? ' is-you' : '') +
-                (p.isConnected === false ? ' is-offline' : '')
-              }
-            >
-              <AvatarSlot player={p} size="podium" />
-              <div className="sk-final-box">
-                <span className="sk-final-rank">#{p.rank}</span>
-                <span className="sk-final-name" title={p.name}>{p.name}</span>
-                <span className="sk-final-points">{p.score} points</span>
-                {(p.id === sessionId || p.playAgain) && (
-                  <div className="sk-final-badges">
-                    {p.id === sessionId && <span className="sk-badge sk-final-you">YOU</span>}
-                    {p.playAgain && <span className="sk-badge sk-final-ready">READY</span>}
+      {/* Results Content Area: Podium centered in available space, lower players beneath */}
+      <div className="sk-final-content">
+        {/* Podium Area: 2nd (left), 1st (center), 3rd (right) */}
+        <div className="sk-final-podium-wrap">
+          <div className="sk-final-podium">
+            {slots.map(({ player: p, position, podiumPlace }, s) =>
+              p ? (
+                <div
+                  key={p.id}
+                  className={
+                    `sk-final-slot sk-final-slot--${position} sk-final-slot--pos-${podiumPlace} sk-final-slot--place${p.rank} sk-final-slot--${tierOf(p.rank)}` +
+                    (p.id === sessionId ? ' is-you' : '') +
+                    (p.isConnected === false ? ' is-offline' : '')
+                  }
+                >
+                  <AvatarSlot player={p} size="podium" />
+                  <div className="sk-final-box">
+                    <span className="sk-final-rank">#{p.rank}</span>
+                    <span className="sk-final-name" title={p.name}>{p.name}</span>
+                    <span className="sk-final-points">{p.score} points</span>
+                    {(p.id === sessionId || p.playAgain) && (
+                      <div className="sk-final-badges">
+                        {p.id === sessionId && <span className="sk-badge sk-final-you">YOU</span>}
+                        {p.playAgain && <span className="sk-badge sk-final-ready">READY</span>}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div
-              key={`empty-${s}`}
-              className={`sk-final-slot sk-final-slot--${position} sk-final-slot--pos-${podiumPlace} sk-final-slot--empty`}
-              aria-hidden="true"
-            />
-          )
-        )}
-      </div>
-
-      {/* Lower Row of Remaining Players (#4 and below) */}
-      {rest.length > 0 && (
-        <div className="sk-final-rest-container" data-sk-scroll>
-          <div className="sk-final-rest-row">
-            {rest.map((p) => (
-              <div
-                key={p.id}
-                className={
-                  'sk-final-rest-item' +
-                  (p.id === sessionId ? ' is-you' : '') +
-                  (p.isConnected === false ? ' is-offline' : '')
-                }
-              >
-                <span className="sk-final-rest-rank">#{p.rank}</span>
-                <AvatarSlot player={p} size="row" />
-                <span className="sk-final-rest-name" title={p.name}>{p.name}</span>
-                <span className="sk-final-rest-points">{p.score} points</span>
-                {(p.id === sessionId || p.playAgain) && (
-                  <div className="sk-final-rest-badges">
-                    {p.id === sessionId && <span className="sk-badge sk-final-you">YOU</span>}
-                    {p.playAgain && <span className="sk-badge sk-final-ready">READY</span>}
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ) : (
+                <div
+                  key={`empty-${s}`}
+                  className={`sk-final-slot sk-final-slot--${position} sk-final-slot--pos-${podiumPlace} sk-final-slot--empty`}
+                  aria-hidden="true"
+                />
+              )
+            )}
           </div>
         </div>
-      )}
+
+        {/* Lower Row / Grid of Remaining Players (#4 and below) */}
+        {rest.length > 0 && (
+          <div className="sk-final-rest-container" data-sk-scroll>
+            <div className="sk-final-rest-row">
+              {rest.map((p) => (
+                <div
+                  key={p.id}
+                  className={
+                    'sk-final-rest-item' +
+                    (p.id === sessionId ? ' is-you' : '') +
+                    (p.isConnected === false ? ' is-offline' : '')
+                  }
+                >
+                  <span className="sk-final-rest-rank">#{p.rank}</span>
+                  <AvatarSlot player={p} size="row" />
+                  <span className="sk-final-rest-name" title={p.name}>{p.name}</span>
+                  <span className="sk-final-rest-points">{p.score} points</span>
+                  {(p.id === sessionId || p.playAgain) && (
+                    <div className="sk-final-rest-badges">
+                      {p.id === sessionId && <span className="sk-badge sk-final-you">YOU</span>}
+                      {p.playAgain && <span className="sk-badge sk-final-ready">READY</span>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Footer / Controls */}
       <div className="sk-final-footer">

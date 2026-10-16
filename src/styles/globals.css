@@ -6891,7 +6891,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   z-index: 25;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   background: #1e2230; /* dark slate/charcoal */
   color: #ffffff;
@@ -6900,6 +6900,24 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   overflow: hidden;
   user-select: none;
   min-height: 0;
+  animation: skShutterDrop 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+
+@keyframes skShutterDrop {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-final {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* Headline */
@@ -6907,7 +6925,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   flex: none;
   text-align: center;
   margin-top: 2px;
-  margin-bottom: clamp(2px, 0.8vw, 6px);
+  margin-bottom: clamp(2px, 0.8vw, 4px);
 }
 .sk-final-title {
   margin: 0;
@@ -6925,6 +6943,29 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   font-size: clamp(0.7rem, 2vw, 0.82rem);
   color: rgba(255, 255, 255, 0.75);
   font-weight: 600;
+}
+
+/* Flexible results-content area */
+.sk-final-content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Podium wrapper: centers the podium in the available space above lower players */
+.sk-final-podium-wrap {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
 }
 
 /* Avatar slot placeholders */
@@ -6954,7 +6995,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
 
 /* Podium Grid: 2nd left, 1st center, 3rd right */
 .sk-final-podium {
-  flex: 0 1 auto;
+  flex: none;
   display: grid;
   grid-template-columns: 1fr 1.15fr 1fr;
   align-items: end;
@@ -6988,30 +7029,35 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   position: relative;
-  padding: 4px 4px 6px;
+  padding: 4px 4px 18px;
   text-align: center;
   background: rgba(25, 30, 42, 0.85);
   border: 2px solid var(--tier);
   border-radius: 8px 8px 4px 4px;
+  overflow: hidden;
 }
 
-/* Stepped heights: 1st tallest in center, 2nd medium on left, 3rd on right */
+/* Fixed responsive heights: 1st tallest in center, 2nd medium on left, 3rd on right */
 .sk-final-slot--first .sk-final-box,
 .sk-final-slot--pos-1 .sk-final-box {
-  min-height: clamp(65px, 17vw, 100px);
+  height: clamp(72px, 18vw, 105px);
+  min-height: 0;
 }
 .sk-final-slot--second .sk-final-box,
 .sk-final-slot--pos-2 .sk-final-box {
-  min-height: clamp(50px, 13vw, 78px);
+  height: clamp(56px, 14vw, 82px);
+  min-height: 0;
 }
 .sk-final-slot--third .sk-final-box,
 .sk-final-slot--pos-3 .sk-final-box {
-  min-height: clamp(40px, 10vw, 65px);
+  height: clamp(44px, 11vw, 68px);
+  min-height: 0;
 }
 
 .sk-final-rank {
@@ -7027,11 +7073,12 @@ html.sk-kb-open .sk-guess-dock .sk-input {
 
 .sk-final-name {
   max-width: 90%;
-  margin-top: clamp(10px, 2.5vw, 15px);
+  margin-top: clamp(8px, 2vw, 14px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(0.7rem, 2vw, 0.92rem);
+  font-size: clamp(0.68rem, 1.8vw, 0.88rem);
+  line-height: 1.2;
   font-weight: 700;
   color: #FFFFFF;
 }
@@ -7044,7 +7091,8 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(0.6rem, 1.6vw, 0.78rem);
+  font-size: clamp(0.56rem, 1.4vw, 0.74rem);
+  line-height: 1.2;
   font-weight: 700;
   color: var(--tier);
   opacity: 0.95;
@@ -7052,10 +7100,16 @@ html.sk-kb-open .sk-guess-dock .sk-input {
 }
 
 .sk-final-badges {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
   display: flex;
   justify-content: center;
-  gap: 3px;
-  margin-top: 2px;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  min-height: 0;
 }
 
 /* Local player indicator */
@@ -7074,30 +7128,35 @@ html.sk-kb-open .sk-guess-dock .sk-input {
 .sk-final-you {
   background: rgba(97, 116, 244, 0.25);
   color: #93a5ff;
-  font-size: 0.6rem;
-  padding: 1px 4px;
+  font-size: clamp(0.5rem, 1.2vw, 0.6rem);
+  line-height: 1.1;
+  padding: 1px 3px;
+  border-radius: 3px;
 }
 
 .sk-final-ready {
   background: rgba(85, 214, 176, 0.25);
   color: #55D6B0;
-  font-size: 0.6rem;
-  padding: 1px 4px;
+  font-size: clamp(0.5rem, 1.2vw, 0.6rem);
+  line-height: 1.1;
+  padding: 1px 3px;
+  border-radius: 3px;
 }
 
-/* Lower Row of Remaining Players */
+/* Lower Row / Grid of Remaining Players */
 .sk-final-rest-container {
-  flex: none;
+  flex: 0 1 auto;
   width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  max-width: 460px;
+  margin: 2px auto 0;
+  padding: 2px 0;
+  max-height: clamp(55px, 20vw, 90px);
+  overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  margin: clamp(2px, 0.8vw, 6px) 0 2px;
-  padding-bottom: 2px;
 }
 .sk-final-rest-container::-webkit-scrollbar {
-  height: 3px;
+  width: 3px;
 }
 .sk-final-rest-container::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
@@ -7106,24 +7165,27 @@ html.sk-kb-open .sk-guess-dock .sk-input {
 
 .sk-final-rest-row {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: center;
-  gap: clamp(6px, 1.6vw, 12px);
-  min-width: min-content;
-  padding: 0 8px;
+  gap: clamp(4px, 1.2vw, 8px);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 4px;
 }
 
 .sk-final-rest-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: clamp(40px, 9vw, 60px);
-  max-width: 76px;
+  min-width: clamp(38px, 9vw, 56px);
+  max-width: 72px;
   text-align: center;
   padding: 2px 3px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
+  box-sizing: border-box;
 }
 
 .sk-final-rest-rank {
@@ -7167,8 +7229,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   align-items: center;
   justify-content: center;
   gap: clamp(6px, 1.5vw, 10px);
-  margin-top: auto;
-  padding-top: clamp(2px, 0.8vw, 6px);
+  padding-top: clamp(2px, 0.8vw, 4px);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 

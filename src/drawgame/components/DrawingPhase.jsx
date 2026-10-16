@@ -434,7 +434,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   }
 
   return (
-    <div className="sk-view sk-view--game">
+    <div className={`sk-view sk-view--game ${room.phase === 'GAME_RESULT' ? 'is-game-result' : ''}`}>
       {/* Background (light layout) */}
       <div className="sk-bg-shapes">
         <div className="sk-bg-shape sk-bg-shape-1" />
@@ -465,31 +465,65 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           min-height: 0;
           background: var(--sk-canvas);
           z-index: 5;
+          overflow: hidden;
+          transition: flex 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sk-view--game.is-game-result .sk-drawing-surface-wrapper {
+          flex: 74;
         }
         .sk-drawing-surface {
           position: absolute;
           inset: 0;
+          overflow: hidden;
         }
         .sk-lower-info-section {
           flex: ${INFO_PANEL_FLEX};
+          min-height: 120px;
+          transition: flex 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sk-view--game.is-game-result .sk-lower-info-section {
+          flex: 26;
         }
         @media (max-width: 768px) {
           .sk-drawing-surface-wrapper {
             flex: none !important;
+            width: 100% !important;
+            height: 75vw !important;
+            max-height: 75vw !important;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden !important;
+            transition: height 1000ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+          }
+          .sk-view--game.is-game-result .sk-drawing-surface-wrapper {
+            height: clamp(340px, 92vw, min(420px, calc(100dvh - 160px))) !important;
+            max-height: none !important;
           }
           .sk-drawing-surface {
             position: relative !important;
             width: 100% !important;
+            height: 100% !important;
             max-width: 100% !important;
             max-height: 100% !important;
             aspect-ratio: 4 / 3 !important;
             inset: auto !important;
+            overflow: hidden !important;
+          }
+          .sk-view--game.is-game-result .sk-drawing-surface {
+            position: absolute !important;
+            inset: 0 !important;
+            aspect-ratio: auto !important;
           }
           .sk-lower-info-section {
-            flex: 1 !important;
+            flex: 1 1 0% !important;
+            min-height: 120px !important;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sk-drawing-surface-wrapper,
+          .sk-lower-info-section {
+            transition: none !important;
           }
         }
       `}</style>
@@ -785,7 +819,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             }}
             value={guessInput}
             onChange={e => setGuessInput(e.target.value)}
-            disabled={room.guessedPlayerIds?.includes(sessionId)}
+            disabled={room.phase === 'GAME_RESULT' || room.guessedPlayerIds?.includes(sessionId)}
             maxLength={120}
             enterKeyHint="send"
             autoComplete="on"
