@@ -7253,4 +7253,223 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   font-weight: 800;
 }
 
+/* --- SKRIBBL WORD CHOICE & ROUND REVEAL CANVAS OVERLAYS --- */
+.sk-word-choice-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: clamp(20px, 6vw, 36px);
+  padding-left: clamp(12px, 3vw, 24px);
+  padding-right: clamp(12px, 3vw, 24px);
+  background: rgba(30, 34, 48, 0.84); /* semi-transparent #1e2230 matching reference */
+  color: #ffffff;
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+  animation: skOverlayFadeIn 200ms ease forwards;
+}
+
+.sk-word-choice-overlay.is-waiting {
+  justify-content: center;
+  padding-top: clamp(12px, 3vw, 24px);
+}
+
+.sk-word-choice-title {
+  margin: 0 0 clamp(12px, 3vw, 18px);
+  font-family: var(--sk-font-body);
+  font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.sk-word-choice-options {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(8px, 2vw, 14px);
+  width: 100%;
+  max-width: 480px;
+}
+
+.sk-word-choice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: var(--sk-font-body);
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem);
+  font-weight: 700;
+  line-height: 1.2;
+  padding: clamp(6px, 1.4vw, 8px) clamp(12px, 2.5vw, 18px);
+  cursor: pointer;
+  box-sizing: border-box;
+  text-transform: lowercase;
+  white-space: nowrap;
+  outline: none;
+  transition: background 150ms ease, transform 100ms ease, border-color 150ms ease;
+}
+
+.sk-word-choice-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sk-word-choice-btn:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.sk-word-choice-waiting {
+  font-family: var(--sk-font-body);
+  font-size: clamp(1.05rem, 3vw, 1.25rem);
+  font-weight: 500;
+  color: #ffffff;
+  text-align: center;
+}
+
+.sk-word-choice-waiting-name {
+  color: #f6c367;
+  font-weight: 700;
+}
+
+/* Post-drawing points overlay (Round Reveal) */
+.sk-round-reveal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 34, 48, 0.84); /* semi-transparent #1e2230 matching reference */
+  color: #ffffff;
+  padding: clamp(10px, 2.5vw, 20px);
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+  animation: skOverlayFadeIn 200ms ease forwards;
+}
+
+.sk-round-reveal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: clamp(10px, 2.5vw, 16px);
+  flex: none;
+}
+
+.sk-round-reveal-word-line {
+  font-family: var(--sk-font-body);
+  font-size: clamp(1.15rem, 3.2vw, 1.45rem);
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.sk-round-reveal-word-highlight {
+  color: #f6c367;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.sk-round-reveal-status {
+  font-family: var(--sk-font-body);
+  font-size: clamp(0.82rem, 2vw, 0.95rem);
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: clamp(2px, 0.8vw, 4px);
+  font-weight: 400;
+}
+
+.sk-round-reveal-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.6vw, 5px);
+  width: auto;
+  min-width: clamp(180px, 46vw, 250px);
+  max-width: 90%;
+  max-height: clamp(130px, 35vw, 210px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sk-round-reveal-list::-webkit-scrollbar {
+  width: 3px;
+}
+.sk-round-reveal-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sk-round-reveal-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: clamp(16px, 4vw, 36px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sk-round-reveal-name {
+  font-family: var(--sk-font-body);
+  font-size: clamp(0.85rem, 2.2vw, 0.98rem);
+  font-weight: 500;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: clamp(120px, 32vw, 180px);
+  text-align: left;
+}
+
+.sk-round-reveal-points {
+  font-family: var(--sk-font-body);
+  font-size: clamp(0.85rem, 2.2vw, 0.98rem);
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 38px;
+}
+
+.sk-round-reveal-points--pos {
+  color: #4ade80;
+}
+
+.sk-round-reveal-points--zero {
+  color: #ef4444;
+}
+
+@keyframes skOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-word-choice-overlay,
+  .sk-round-reveal-overlay {
+    animation: none !important;
+  }
+}
+
+
 

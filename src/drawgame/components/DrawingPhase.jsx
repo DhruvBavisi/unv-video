@@ -532,7 +532,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         style={{ cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default' }}
       >
         <div className="sk-drawing-surface">
-        <div style={{ position: 'absolute', inset: 0, opacity: room.phase === 'WORD_CHOICE' ? 0.3 : 1, transition: 'opacity 300ms ease', pointerEvents: room.phase === 'WORD_CHOICE' ? 'none' : 'auto' }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: (room.phase === 'WORD_CHOICE' || room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT') ? 'none' : 'auto' }}>
           <DrawingCanvas 
             ref={canvasRef}
             color={color}
@@ -646,100 +646,73 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
         {/* Word Choice Overlay */}
         {room.phase === 'WORD_CHOICE' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 20 }}>
+          <div className={`sk-word-choice-overlay ${!isDrawer ? 'is-waiting' : ''}`}>
             {isDrawer ? (
-              <div style={{ width: '100%', maxWidth: '250px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-                <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', marginBottom: '8px', fontSize: '1.2rem', textShadow: '0 2px 8px rgba(255,255,255,0.8)' }}>CHOOSE A WORD</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+              <>
+                <h2 className="sk-word-choice-title">Choose a word</h2>
+                <div className="sk-word-choice-options">
                   {(room.wordChoices || []).map((word, idx) => (
-                    <div 
+                    <button
                       key={idx}
-                      className="sk-card"
-                      style={{ 
-                        cursor: 'pointer', 
-                        padding: '10px', 
-                        animationDelay: `${idx * 100}ms`,
-                        animation: 'skCardEnter 400ms ease both',
-                        transition: 'transform 150ms ease, box-shadow 150ms ease',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
-                      }}
+                      type="button"
+                      className="sk-word-choice-btn"
+                      disabled={isChoosing}
                       onClick={() => handleChooseWord(word)}
-                      onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.96)' }}
-                      onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
-                      onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
                     >
-                      <div style={{ fontSize: '1.2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {word}
-                      </div>
-                    </div>
+                      {word}
+                    </button>
                   ))}
                 </div>
-              </div>
+              </>
             ) : (
-              <div style={{ width: '100%', maxWidth: '400px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-                <div className="sk-card" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
-                  <svg width="60" height="60" viewBox="0 0 100 100" style={{ opacity: 0.8, margin: '0 auto 16px', display: 'block' }}>
-                    <circle cx="50" cy="50" r="40" fill="var(--sk-canvas)" stroke="var(--sk-muted)" strokeWidth="4" strokeDasharray="10 6" />
-                    <path d="M35,45 Q40,35 45,45 T55,45 T65,45" fill="none" stroke="var(--sk-primary)" strokeWidth="4" strokeLinecap="round" />
-                  </svg>
-                  <p style={{ color: 'var(--sk-muted)', fontFamily: 'var(--sk-font-body)', fontSize: '1.1rem', margin: 0 }}>
-                    <strong style={{ color: 'var(--sk-primary)' }}>{drawerName}</strong> is choosing a word...
-                  </p>
-                </div>
+              <div className="sk-word-choice-waiting">
+                <span className="sk-word-choice-waiting-name">{drawerName}</span> is choosing a word...
               </div>
             )}
           </div>
         )}
+
         {/* Round Reveal Overlay */}
-        {room.phase === 'ROUND_REVEAL' && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', zIndex: 20, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-            <div style={{ width: '100%', maxWidth: room.players.filter(p => !p.spectator).length > 8 ? '700px' : '500px', animation: 'skFadeIn 400ms ease forwards', textAlign: 'center' }}>
-              <div className="sk-card" style={{ padding: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '8px'}}>
-                  <h2 style={{ fontFamily: 'var(--sk-font-display)', color: 'var(--sk-primary)', fontSize: '1.1rem', margin: 0 }}>THE WORD WAS</h2>
-                  <div style={{ fontSize: '1.2rem', fontFamily: 'var(--sk-font-display)', color: 'var(--sk-text)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1 }}>
-                    {room.selectedWord}
-                  </div>
+        {room.phase === 'ROUND_REVEAL' && (() => {
+          const activePlayers = (room.players || []).filter(p => !p.spectator)
+          // Stable sort by round score descending
+          const sortedPlayers = [...activePlayers].sort((a, b) => {
+            const scoreA = room.turnScores?.[a.id] || 0
+            const scoreB = room.turnScores?.[b.id] || 0
+            return scoreB - scoreA
+          })
+          const eligibleGuessers = activePlayers.filter(p => p.id !== room.currentDrawerId)
+          const allGuessed = eligibleGuessers.length > 0 && eligibleGuessers.every(p => (room.turnScores?.[p.id] || 0) > 0 || room.guessedPlayerIds?.includes(p.id))
+
+          return (
+            <div className="sk-round-reveal-overlay">
+              <div className="sk-round-reveal-header">
+                <div className="sk-round-reveal-word-line">
+                  The word was <span className="sk-round-reveal-word-highlight">{room.selectedWord || room.currentWord || ''}</span>
                 </div>
-                {(() => {
-                  const activePlayers = room.players.filter(p => !p.spectator)
-                  // Stable sort by round score descending
-                  const sortedPlayers = [...activePlayers].sort((a, b) => {
-                    const scoreA = room.turnScores?.[a.id] || 0
-                    const scoreB = room.turnScores?.[b.id] || 0
-                    return scoreB - scoreA
-                  })
-                  
+                <div className="sk-round-reveal-status">
+                  {allGuessed ? 'Everyone guessed!' : 'Time is up!'}
+                </div>
+              </div>
+
+              <div className="sk-round-reveal-list" data-sk-scroll>
+                {sortedPlayers.map(p => {
+                  const pts = room.turnScores?.[p.id] || 0
                   return (
-                    <div style={{ 
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(auto-fit, minmax(${sortedPlayers.length > 8 ? '100px' : '130px'}, 1fr))`,
-                      gap: '4px',
-                      width: '100%',
-                      textAlign: 'left'
-                    }}>
-                      {sortedPlayers.map(p => {
-                        const pts = room.turnScores?.[p.id] || 0
-                        const isCorrect = pts > 0
-                        const isDrawerRow = p.id === room.currentDrawerId
-                        return (
-                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 6px', background: 'rgba(0,0,0,0.03)', borderRadius: '4px' }}>
-                            <span style={{ fontFamily: 'var(--sk-font-body)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--sk-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '4px' }}>
-                              {p.name} {isDrawerRow && <span style={{ color: 'var(--sk-muted)', fontSize: '0.85em' }}>(Drawer)</span>}
-                            </span>
-                            <span style={{ fontFamily: 'var(--sk-font-display)', color: isCorrect ? '#55D6B0' : '#FF6F70', fontWeight: 'bold', fontSize: '0.85rem', flexShrink: 0 }}>
-                              +{pts}
-                            </span>
-                          </div>
-                        )
-                      })}
+                    <div key={p.id} className="sk-round-reveal-row">
+                      <span className="sk-round-reveal-name" title={p.name}>
+                        {p.name}
+                      </span>
+                      <span className={`sk-round-reveal-points ${pts > 0 ? 'sk-round-reveal-points--pos' : 'sk-round-reveal-points--zero'}`}>
+                        {pts > 0 ? `+${pts}` : '0'}
+                      </span>
                     </div>
                   )
-                })()}
+                })}
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Game Result Overlay (Canvas Scope) */}
         {room.phase === 'GAME_RESULT' && (
