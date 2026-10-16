@@ -8,10 +8,13 @@ import ChatBox from './ChatBox.jsx'
 import DrawingTopBar from './DrawingTopBar.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import SkribblError from './SkribblError.jsx'
+import Lobby from './Lobby.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
+import { getFriendlyError } from '../SkribblApp.jsx'
 
-export default function DrawingPhase({ room, onLeave, error, connectionStatus = 'Connected' }) {
+export default function DrawingPhase({ room, onLeave, error, connectionStatus = 'Connected', onUpdateConfig }) {
   const { sessionId } = ensureIdentity()
+  const myPlayer = room.players?.find(p => p.id === sessionId)
   const isDrawer = room.currentDrawerId === sessionId
   const guessInputRef = useRef(null)
   useGuessKeyboard(guessInputRef, !isDrawer)
@@ -33,6 +36,69 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
   const [chatNotifications, setChatNotifications] = useState([])
   const seenMessageIds = useRef(new Set())
+
+  const [kickError, setKickError] = useState(null)
+  const [isKicking, setIsKicking] = useState(false)
+  const pendingKickTargetRef = useRef(null)
+
+  const [isSubmittingPlayAgain, setIsSubmittingPlayAgain] = useState(false)
+  const [playAgainError, setPlayAgainError] = useState(null)
+
+  const handlePlayAgain = useCallback(() => {
+    if (isSubmittingPlayAgain || myPlayer?.playAgain) return
+    setIsSubmittingPlayAgain(true)
+    setPlayAgainError(null)
+
+    const socket = getSocket()
+    if (!socket?.connected) {
+      setIsSubmittingPlayAgain(false)
+      setPlayAgainError('Not connected to server.')
+      return
+    }
+
+    socket.emit('draw:play-again', (res) => {
+      setIsSubmittingPlayAgain(false)
+      if (res && res.success === false) {
+        setPlayAgainError(res.error ? (getFriendlyError(res.error) || res.error) : 'Failed to return to lobby.')
+      }
+    })
+  }, [isSubmittingPlayAgain, myPlayer?.playAgain])
+
+  const handleKickPlayer = useCallback((targetId, onComplete) => {
+    if (isKicking) return
+    setIsKicking(true)
+    setKickError(null)
+    pendingKickTargetRef.current = targetId
+
+    const socket = getSocket()
+    if (!socket?.connected) {
+      setIsKicking(false)
+      pendingKickTargetRef.current = null
+      setKickError('Unable to kick player: Not connected to server.')
+      onComplete?.(false)
+      return
+    }
+
+    socket.emit('draw:kick-player', { targetId }, (res) => {
+      setIsKicking(false)
+      pendingKickTargetRef.current = null
+
+      if (res?.error || res?.success === false) {
+        const message = getFriendlyError(res?.error) || 'Failed to kick player.'
+        setKickError(message)
+        onComplete?.(false)
+      } else {
+        setKickError(null)
+        onComplete?.(true)
+      }
+    })
+  }, [isKicking])
+
+  const handleTargetLeft = useCallback((targetName) => {
+    setKickError(`${targetName || 'That player'} is no longer in the room.`)
+  }, [])
+
+  const displayError = kickError || error
 
   const hasInitialized = useRef(false)
 
@@ -308,6 +374,17 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
   const topBarColor = timeRemaining <= 10 ? 'var(--sk-coral)' : 'var(--sk-primary)'
 
+  if (room.phase === 'GAME_RESULT' && myPlayer?.playAgain) {
+    return (
+      <Lobby 
+        room={room} 
+        onLeave={onLeave} 
+        onUpdateConfig={onUpdateConfig} 
+        error={error} 
+      />
+    )
+  }
+
   return (
     <div className="sk-view sk-view--game">
       {/* Background (light layout) */}
@@ -326,9 +403,9 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         onOpenSettings={handleOpenSettings}
       />
 
-      {error && (
+      {displayError && (
         <div className="sk-game-error-banner">
-          <SkribblError message={error} style={{ marginBottom: 0 }} />
+          <SkribblError message={displayError} style={{ marginBottom: 0 }} />
         </div>
       )}
 
@@ -590,25 +667,38 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
               {(() => {
                 const sorted = [...room.players].sort((a, b) => b.score - a.score)
                 return sorted.map((p, idx) => (
-                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: idx < sorted.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none', background: idx === 0 ? 'rgba(255, 200, 87, 0.2)' : 'transparent', borderRadius: idx === 0 ? '8px' : 0 }}>
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: idx < sorted.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none', background: idx === 0 ? 'rgba(255, 200, 87, 0.2)' : 'transparent', borderRadius: idx === 0 ? '8px' : 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontFamily: 'var(--sk-font-display)', fontSize: '1.2rem', color: idx === 0 ? '#FFC857' : 'var(--sk-muted)' }}>#{idx + 1}</span>
                       <span style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-text)' }}>{p.name} {p.id === sessionId && '(You)'}</span>
+                      {p.playAgain && (
+                        <span className="sk-badge" style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--sk-success, #4CAF50)', color: '#fff', border: 'none' }}>
+                          READY
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: 'var(--sk-primary)' }}>{p.score} pts</div>
                   </div>
                 ))
               })()}
             </div>
-            {room.hostId === sessionId ? (
-              <button className="sk-btn" style={{ marginTop: '24px', padding: '16px 32px' }} onClick={() => getSocket().emit('draw:play-again')}>
-                PLAY AGAIN
-              </button>
-            ) : (
-              <div style={{ marginTop: '24px', color: 'var(--sk-muted)', fontFamily: 'var(--sk-font-body)', fontWeight: 700 }}>
-                Waiting for host to play again...
+            {playAgainError && (
+              <div role="alert" className="sk-error" style={{ marginTop: '12px', maxWidth: '400px', textAlign: 'center' }}>
+                {playAgainError}
               </div>
             )}
+            <button 
+              className="sk-btn" 
+              style={{ marginTop: '24px', padding: '16px 32px' }} 
+              onClick={handlePlayAgain}
+              disabled={isSubmittingPlayAgain || Boolean(myPlayer?.playAgain)}
+            >
+              {isSubmittingPlayAgain 
+                ? 'RETURNING TO LOBBY...' 
+                : myPlayer?.playAgain 
+                  ? 'WAITING FOR OTHERS...' 
+                  : 'PLAY AGAIN'}
+            </button>
           </div>
         )}
         </div>
@@ -640,7 +730,14 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       }}>
         {/* Left Column: Player List */}
         <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>
-          <PlayerStrip room={room} currentDrawerId={room.currentDrawerId} sessionId={sessionId} />
+          <PlayerStrip 
+            room={room} 
+            currentDrawerId={room.currentDrawerId} 
+            sessionId={sessionId}
+            onKickPlayer={handleKickPlayer}
+            isKicking={isKicking}
+            onTargetLeft={handleTargetLeft}
+          />
         </div>
         
         {/* Right Column: Chat Box */}
@@ -659,7 +756,14 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             name="guess"
             placeholder="Type your guess..."
             className="sk-input"
-            style={{ margin: 0, padding: '8px 12px', fontSize: '1rem', flex: 1, minWidth: 0 }}
+            style={{ 
+              margin: 0, 
+              fontSize: '18px', 
+              width: '100%', 
+              minWidth: 0, 
+              boxSizing: 'border-box',
+              textAlign: 'center'
+            }}
             value={guessInput}
             onChange={e => setGuessInput(e.target.value)}
             disabled={room.guessedPlayerIds?.includes(sessionId)}
@@ -670,9 +774,6 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             spellCheck={true}
             autoCapitalize="sentences"
           />
-          <button onPointerDown={(e) => e.preventDefault()} type="submit" className="sk-btn" style={{ width: 'auto', padding: '0 24px' }} disabled={!guessInput.trim()}>
-            SEND
-          </button>
         </form>
       )}
 

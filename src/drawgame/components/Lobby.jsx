@@ -132,18 +132,6 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
     })
   }
 
-  const handleAddBots = () => {
-    if (!isHost) return
-    const socket = getSocket()
-    socket.emit('draw:add-dev-bots')
-  }
-
-  const handleRemoveBots = () => {
-    if (!isHost) return
-    const socket = getSocket()
-    socket.emit('draw:remove-dev-bots')
-  }
-
   const eligibleCount = room.players.filter(p => !p.spectator).length
 
   return (
@@ -210,6 +198,7 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
                 <div className="sk-player-name" style={{ opacity: p.isConnected ? 1 : 0.4 }}>
                   {p.name}
                   {!p.isConnected && ' (Offline)'}
+                  {room.phase === 'GAME_RESULT' && !p.playAgain && ' (In results)'}
                 </div>
                 {p.isHost ? (
                   <div className="sk-badge sk-badge--host">HOST</div>
@@ -302,24 +291,22 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
       </div>
 
       <div className="sk-action-area">
-        {import.meta.env.VITE_DEV_BOTS_ENABLED === 'true' && isHost && (
-          <div className="sk-action-inner" style={{ marginBottom: '8px' }}>
-            <button className="sk-btn sk-btn--secondary" onClick={handleAddBots}>
-              ADD DEV BOTS
-            </button>
-            <button className="sk-btn sk-btn--secondary" onClick={handleRemoveBots}>
-              REMOVE DEV BOTS
-            </button>
-          </div>
-        )}
         <div className="sk-action-inner">
           <button className="sk-btn-icon" onClick={onLeave} aria-label="Leave Room">
             <svg viewBox="0 0 24 24">
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
             </svg>
           </button>
-          <button className="sk-btn" disabled={!isHost || eligibleCount < 2} onClick={handleStartGame}>
-            {isHost ? (eligibleCount < 2 ? 'NEED MORE PLAYERS' : 'START GAME') : 'WAITING FOR HOST'}
+          <button 
+            className="sk-btn" 
+            disabled={!isHost || eligibleCount < 2 || room.phase !== 'LOBBY'} 
+            onClick={handleStartGame}
+          >
+            {isHost ? (
+              room.phase !== 'LOBBY' 
+                ? 'WAITING FOR PLAYERS...' 
+                : (eligibleCount < 2 ? 'NEED MORE PLAYERS' : 'START GAME')
+            ) : 'WAITING FOR HOST'}
           </button>
         </div>
         {startError && (

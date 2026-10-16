@@ -28,7 +28,6 @@ if (fs.existsSync(envPath)) {
 const IS_DEV_BOTS_ENABLED = process.env.DEV_BOTS_ENABLED === 'true'
 
 let initBotManager, addBots, removeBots
-let initDrawBotManager, addDrawBots, removeDrawBots
 if (IS_DEV_BOTS_ENABLED) {
   import('./dev/botManager.js').then(module => {
     initBotManager = module.initBotManager
@@ -37,15 +36,6 @@ if (IS_DEV_BOTS_ENABLED) {
     initBotManager(process.env.PORT || 3001)
   }).catch(err => {
     console.error('Failed to load bot manager:', err)
-  })
-
-  import('./dev/drawBotManager.js').then(module => {
-    initDrawBotManager = module.initDrawBotManager
-    addDrawBots = module.addDrawBots
-    removeDrawBots = module.removeDrawBots
-    initDrawBotManager(process.env.PORT || 3001)
-  }).catch(err => {
-    console.error('Failed to load draw bot manager:', err)
   })
 }
 
@@ -781,13 +771,6 @@ function startDrawingTurn(room, word, isResume = false, resumeDurationMs = null)
   
   broadcastDrawRoomState(room)
   
-  if (IS_DEV_BOTS_ENABLED && !isResume) {
-    room.players.forEach(p => {
-      if (p.isBot) {
-        io.to(p.id).emit('draw:dev-secret-word', room.selectedWord)
-      }
-    })
-  }
   
   // Schedule round end
   const expectedTurnIndex = room.turnIndex
@@ -1056,12 +1039,12 @@ function isDrawSocketOwner(sessionId, socket) {
 function reassignDrawHostIfNeeded(room) {
   if (!room || !Array.isArray(room.players)) return
   const currentHost = room.players.find((p) => p.id === room.hostId)
-  if (currentHost && currentHost.isConnected && !currentHost.isBot) {
+  if (currentHost && currentHost.isConnected) {
     room.players.forEach((p) => { p.isHost = p.id === room.hostId })
     return
   }
 
-  const next = room.players.find((p) => p.isConnected && !p.isBot)
+  const next = room.players.find((p) => p.isConnected)
   if (!next) return
 
   room.players.forEach((p) => { p.isHost = p.id === next.id })
@@ -1133,11 +1116,78 @@ function disconnectDrawPlayer(sessionId, socketId) {
         sessionSockets.delete(sessionId)
       }
 
+      if (dr.phase === 'GAME_RESULT') {
+        checkDrawPlayAgainCompletion(dr)
+      }
+
       broadcastDrawRoomState(dr)
 
       break
     }
   }
+}
+
+function resetDrawRoomToLobby(room) {
+  if (room.turnTimeout) clearTimeout(room.turnTimeout)
+  if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
+  if (room.hintTimer) clearInterval(room.hintTimer)
+
+  room.turnTimeout = null
+  room.wordChoiceTimeout = null
+  room.hintTimer = null
+
+  room.status = 'LOBBY'
+  room.phase = 'LOBBY'
+  room.round = 1
+  room.turnOrder = []
+  room.turnIndex = 0
+  room.currentDrawerId = null
+  room.selectedWord = null
+  room.wordChoices = []
+  room.strokes = []
+  room.chatMessages = []
+  room.guessedPlayerIds = []
+  room.turnScores = {}
+  room.reactions = {}
+  room.usedWords = []
+  room.turnSequence = 0
+  room.roundEndsAt = null
+  room.wordChoiceEndsAt = null
+  room.remainingMs = null
+  room.drawingRemainingMs = undefined
+  room.wordChoiceRemainingMs = undefined
+  room.hint = ''
+  room.hintRevealed = null
+
+  room.players.forEach(p => {
+    p.spectator = false
+    p.score = 0
+    p.playAgain = false
+  })
+
+  if (room.playerRecords) {
+    for (const rec of Object.values(room.playerRecords)) {
+      rec.score = 0
+      rec.playAgain = false
+    }
+  }
+
+  io.to(`draw:${room.id}`).emit('draw:clear-canvas')
+  broadcastDrawRoomState(room)
+}
+
+function checkDrawPlayAgainCompletion(room) {
+  if (!room || room.phase !== 'GAME_RESULT') return false
+
+  const eligiblePlayers = room.players.filter(p => p.isConnected && !p.departed && !p.kicked)
+  if (eligiblePlayers.length === 0) return false
+
+  const allOptedIn = eligiblePlayers.every(p => p.playAgain)
+  if (allOptedIn) {
+    resetDrawRoomToLobby(room)
+    return true
+  }
+  return false
 }
 
 function removeDrawPlayer(sessionId, { isKick = false } = {}) {
@@ -1202,10 +1252,10 @@ function removeDrawPlayer(sessionId, { isKick = false } = {}) {
 
   clearDrawRateLimits(sessionId)
 
-  const realPlayers = foundRoom.players.filter(p => !p.isBot)
+  const remainingPlayers = foundRoom.players
 
   // Preserve existing empty-room cleanup.
-  if (realPlayers.length === 0) {
+  if (remainingPlayers.length === 0) {
     console.log('[ROOM] destroying empty draw room', {
       roomId: foundRoomId
     })
@@ -1297,9 +1347,7 @@ function removeDrawPlayer(sessionId, { isKick = false } = {}) {
 
   if (wasHost) {
     const nextHost =
-      foundRoom.players.find(p => p.isConnected && !p.isBot) ||
       foundRoom.players.find(p => p.isConnected) ||
-      foundRoom.players.find(p => !p.isBot) ||
       foundRoom.players[0]
 
     if (nextHost) {
@@ -1309,6 +1357,10 @@ function removeDrawPlayer(sessionId, { isKick = false } = {}) {
       foundRoom.hostId = nextHost.id
       io.to(nextHost.id).emit('draw:host-promoted')
     }
+  }
+
+  if (foundRoom.phase === 'GAME_RESULT') {
+    checkDrawPlayAgainCompletion(foundRoom)
   }
 
   return { roomId: foundRoomId, room: foundRoom }
@@ -2415,7 +2467,7 @@ io.on('connection', (socket) => {
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
-  socket.on('draw:join-room', ({ sessionId, resumeToken, roomId, playerName, isBot }, callback) => {
+  socket.on('draw:join-room', ({ sessionId, resumeToken, roomId, playerName }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -2443,6 +2495,9 @@ io.on('connection', (socket) => {
       existing.isConnected = true
       existing.name = existing.name || trimmed
       existing.disconnectedAt = null
+      if (existing.playAgain == null && room.playerRecords && room.playerRecords[sessionId]?.playAgain) {
+        existing.playAgain = room.playerRecords[sessionId].playAgain
+      }
       currentSessionId = sessionId
       reassignDrawHostIfNeeded(room)
       socket.join(`draw:${normalizedId}`)
@@ -2497,7 +2552,6 @@ io.on('connection', (socket) => {
       isHost: false,
       isConnected: true,
       spectator: false,
-      isBot: IS_DEV_BOTS_ENABLED ? !!isBot : false,
       score: record ? record.score : 0,
       resumeToken: record ? record.resumeToken : undefined
     }
@@ -2579,7 +2633,7 @@ io.on('connection', (socket) => {
         break
       }
     }
-    if (!room || room.status !== 'LOBBY') return
+    if (!room || (room.status !== 'LOBBY' && room.phase !== 'GAME_RESULT')) return
     
     if (config.drawTimeSec !== undefined) {
       room.configuration.drawTimeSec = Math.max(45, Math.min(120, parseInt(config.drawTimeSec) || 80))
@@ -3004,61 +3058,37 @@ io.on('connection', (socket) => {
   socket.on('draw:play-again', (callback) => {
     if (!isCurrentDrawSession(currentSessionId)) return callback?.({ success: false, error: 'NOT_IN_ROOM' })
     let room = null
-    for (const [rid, dr] of drawRooms) {
-      if (dr.hostId === currentSessionId) {
+    for (const [, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === currentSessionId)) {
         room = dr
         break
       }
     }
-    if (!room) return callback?.({ success: false, error: 'NOT_HOST_OR_ROOM_NOT_FOUND' })
-    if (room.phase !== 'GAME_RESULT') return callback?.({ success: false, error: 'GAME_NOT_ENDED' })
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
 
-    if (room.turnTimeout) clearTimeout(room.turnTimeout)
-    if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
-    if (room.hintTimer) clearInterval(room.hintTimer)
-
-    room.turnTimeout = null
-    room.wordChoiceTimeout = null
-    room.hintTimer = null
-
-    room.status = 'LOBBY'
-    room.phase = 'LOBBY'
-    room.round = 1
-    room.turnOrder = []
-    room.turnIndex = 0
-    room.currentDrawerId = null
-    room.selectedWord = null
-    room.wordChoices = []
-    room.strokes = []
-    room.chatMessages = []
-    room.guessedPlayerIds = []
-    room.turnScores = {}
-    room.reactions = {}
-    room.usedWords = []
-    room.turnSequence = 0
-    room.roundEndsAt = null
-    room.wordChoiceEndsAt = null
-    room.remainingMs = null
-    room.drawingRemainingMs = undefined
-    room.wordChoiceRemainingMs = undefined
-    room.hint = ''
-    room.hintRevealed = null
-    
-    room.players.forEach(p => {
-      p.spectator = false
-      p.score = 0
-    })
-
-    if (room.playerRecords) {
-      for (const rec of Object.values(room.playerRecords)) {
-        rec.score = 0
-      }
+    // Idempotent: if room has already transitioned to LOBBY, acknowledge success
+    if (room.phase === 'LOBBY') {
+      return callback?.({ success: true, phase: 'LOBBY' })
     }
 
-    io.to(`draw:${room.id}`).emit('draw:clear-canvas')
-    
-    broadcastDrawRoomState(room)
-    callback?.({ success: true })
+    if (room.phase !== 'GAME_RESULT') return callback?.({ success: false, error: 'GAME_NOT_ENDED' })
+
+    const player = room.players.find(p => p.id === currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+
+    player.playAgain = true
+    if (player.spectator) {
+      player.spectator = false
+    }
+    if (room.playerRecords && room.playerRecords[currentSessionId]) {
+      room.playerRecords[currentSessionId].playAgain = true
+    }
+
+    const completed = checkDrawPlayAgainCompletion(room)
+    if (!completed) {
+      broadcastDrawRoomState(room)
+    }
+    callback?.({ success: true, phase: room.phase })
   })
 
   socket.on('draw:make-host', ({ targetId }, callback) => {
@@ -3088,8 +3118,9 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:kick-player', ({ targetId }, callback) => {
-    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
-    if (targetId === currentSessionId) return callback?.({ error: 'CANNOT_TARGET_SELF' })
+    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    if (!targetId || typeof targetId !== 'string') return callback?.({ success: false, error: 'INVALID_TARGET' })
+    if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_TARGET_SELF' })
     
     let room = null
     let roomId = null
@@ -3100,11 +3131,12 @@ io.on('connection', (socket) => {
         break
       }
     }
-    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
-    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
     
-    const targetIndex = room.players.findIndex(p => p.id === targetId)
-    if (targetIndex === -1) return callback?.({ error: 'TARGET_NOT_FOUND' })
+    const targetPlayer = room.players.find(p => p.id === targetId)
+    if (!targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+    if (targetPlayer.isHost || targetId === room.hostId) return callback?.({ success: false, error: 'CANNOT_KICK_HOST' })
 
     io.to(targetId).emit('draw:kicked')
     
@@ -3127,53 +3159,6 @@ io.on('connection', (socket) => {
     if (removed.room) {
       broadcastDrawRoomState(removed.room)
     }
-    callback?.({ success: true })
-  })
-
-  socket.on('draw:add-dev-bots', (callback) => {
-    if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
-    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
-    let room = null
-    for (const [rid, dr] of drawRooms) {
-      if (dr.players.some(p => p.id === currentSessionId)) {
-        room = dr
-        break
-      }
-    }
-    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
-    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
-    if (room.phase !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
-
-    const botCount = room.players.filter(p => p.isBot).length
-    if (botCount >= 4) return callback?.({ error: '4 development bots are already in this room.' })
-    
-    const availableSlots = room.configuration.maxPlayers - room.players.length
-    if (availableSlots < 4) return callback?.({ error: `Only ${availableSlots} slots available. Cannot add 4 bots.` })
-    
-    addDrawBots(room.id, 4)
-    callback?.({ success: true })
-  })
-
-  socket.on('draw:remove-dev-bots', (callback) => {
-    if (!IS_DEV_BOTS_ENABLED) return callback?.({ error: 'DEV_BOTS_DISABLED' })
-    if (!isCurrentDrawSession(currentSessionId)) return callback?.({ error: 'PLAYER_NOT_FOUND' })
-    let room = null
-    for (const [rid, dr] of drawRooms) {
-      if (dr.players.some(p => p.id === currentSessionId)) {
-        room = dr
-        break
-      }
-    }
-    if (!room) return callback?.({ error: 'ROOM_NOT_FOUND' })
-    if (room.hostId !== currentSessionId) return callback?.({ error: 'NOT_HOST' })
-    if (room.phase !== 'LOBBY') return callback?.({ error: 'GAME_IN_PROGRESS' })
-
-    removeDrawBots(room.id)
-
-    // Remove bots from the room players array
-    room.players = room.players.filter(p => !p.isBot)
-
-    broadcastDrawRoomState(room)
     callback?.({ success: true })
   })
 

@@ -115,3 +115,57 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
   - Added safe bottom space to the guess dock (`.sk-guess-dock`) and drawer lower info section via `padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px))`, leaving a 10px breathing buffer above the viewport bottom or iPhone safe area.
   - Blended safe area background seamlessly with the input form background color (`var(--sk-surface, #ffffff)`) across `.sk-view--game` and `sk-pwa-background.css`.
   - When the software keyboard opens, reduced guess dock padding to `8px` so it rests directly on top of the keyboard without wasted gap.
+
+## Phase 19 — Dev Bots Removal & Host Long-Press Kick
+**Implemented:**
+- **Complete Development Bots Removal from Skribbl:**
+  - Removed dev bot controls (`ADD DEV BOTS`, `REMOVE DEV BOTS`) and handlers from `src/drawgame/components/Lobby.jsx`.
+  - Removed Skribbl-specific bot manager initialization, dynamic imports, and socket event listeners (`draw:add-dev-bots`, `draw:remove-dev-bots`) from `server/server.js`.
+  - Removed `isBot` parameters, flags, and branch logic across Skribbl `draw:join-room`, `reassignDrawHostIfNeeded`, `removeDrawPlayer`, and game loop handlers.
+  - Deleted obsolete `server/dev/drawBotManager.js` without touching Undercover or Codenames bot architectures.
+- **Host Active-Game Long-Press Player Kick:**
+  - Added host-only long-press interaction (~600ms) on non-self player cards in `src/drawgame/components/PlayerStrip.jsx` during active gameplay.
+  - Managed pointer events (`onPointerDown`, `onPointerMove`, `onPointerUp`, `onPointerCancel`, `onPointerLeave`) with movement cancellation (>10px) to prevent interfering with mobile touch scrolling or standard mouse interactions.
+  - Prevented browser native context menu during card long-press while preserving responsive card styling, ranking, and drawer pencil indicator.
+  - Provided a themed action sheet opening on long-press with `KICK PLAYER`, leading to a themed confirmation dialog clearly identifying the target player by name.
+  - Prevented duplicate submissions during pending requests, auto-closed dialog on target departure or successful kick, and displayed actionable error banners via `SkribblError` in `DrawingPhase.jsx` for all kick failure scenarios.
+  - Hardened `draw:kick-player` server handler in `server/server.js` with structured `{ success: true }` / `{ success: false, error: '...' }` acknowledgements, host authority validation, self-kick and host-kick protections, immediate target kick notification, safe socket room eviction, turn advancement, and authoritative room state broadcasting.
+
+## Phase 20 — Full-Width Guess Input & Bottom Safe Padding Removal
+**Implemented:**
+- **Removal of SEND Button & Clean Enter Submission:**
+  - Removed the visible `SEND` button from the guess dock form (`.sk-guess-dock`) in `src/drawgame/components/DrawingPhase.jsx`.
+  - Preserved standard `<form onSubmit={handleGuessSubmit}>` mechanics, enabling submission via the hardware Enter key or mobile keyboard "Send" action (`enterKeyHint="send"`).
+  - Maintained complete guess validation: non-empty input requirement, drawer exclusion, and `DRAWING` phase gating.
+  - Cleared input after submission and maintained input focus (`guessInputRef.current?.focus({ preventScroll: true })`).
+- **Full-Width & Enlarged Guess Input:**
+  - Expanded guess input to 100% of available width with `box-sizing: border-box; min-width: 0; width: 100%; margin: 0;`.
+  - Increased input touch height with `padding: 12px 16px;` and comfortable `font-size: 18px;` (with `text-align: left;` and `border-radius: 14px;`).
+  - Removed `.sk-guess-dock` inter-element gap and updated container to `width: 100%; box-sizing: border-box;`.
+  - Preserved input attributes: `disabled`, `maxLength={120}`, `autoComplete="on"`, `autoCorrect="on"`, `spellCheck={true}`, and `autoCapitalize="sentences"`.
+- **Bottom Safe-Area Padding Removal from Main Game Screen:**
+  - Removed redundant `padding-bottom: 20px;` from `.sk-guess-dock`, reducing it to standard `padding: 8px 12px;` so the dock reaches the bottom edge of the viewport.
+  - Removed `.sk-view--game > .sk-lower-info-section:last-child { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }`, eliminating the unwanted bottom gap when the user is drawer or spectator.
+  - Kept top safe area handling, top-bar layout, mobile keyboard visibility adaptation (`html.sk-kb-open .sk-guess-dock { padding-bottom: 8px; }`), and all other game modes completely unaffected.
+
+## Phase 21 — Individual Lobby Entry & Play Again Coordination
+**Implemented:**
+- **Universal Player Opt-In on `GAME_RESULT` (`src/drawgame/components/DrawingPhase.jsx`):**
+  - Replaced the host-only Play Again button and non-host waiting text with an interactive Play Again button available to every player on `GAME_RESULT`.
+  - Added per-player pending and acknowledged states: displays `"RETURNING TO LOBBY..."` while awaiting server acknowledgement and `"WAITING FOR OTHERS..."` once opted in, preventing duplicate clicks.
+  - Visualized player opt-in status in the game-over scoreboard with a green `READY` badge next to players whose `playAgain === true`.
+- **Immediate Individual Lobby Entry (`src/drawgame/SkribblApp.jsx`, `src/drawgame/components/DrawingPhase.jsx`):**
+  - Enabled individual players who opt in to transition immediately to their existing room's lobby view without waiting for other players or altering room ID.
+  - Hardened client routing in `SkribblApp.jsx` to render `Lobby` when `roomState.phase === 'LOBBY' || (roomState.phase === 'GAME_RESULT' && me?.playAgain)`.
+  - Added early lobby return in `DrawingPhase.jsx` if `room.phase === 'GAME_RESULT' && myPlayer?.playAgain`, seamlessly handing over configuration management via `onUpdateConfig`.
+  - Protected `updateRoomStateSafe` against stale intermediate `GAME_RESULT` broadcast packets overriding a local player's opted-in state.
+- **Server-Side Opt-In Coordination & Guarded Reset (`server/server.js`):**
+  - Updated `draw:play-again` socket handler to permit any authorized player in `GAME_RESULT` to opt in, recording `player.playAgain = true` and broadcasting safe transitional state.
+  - Implemented `checkDrawPlayAgainCompletion(room)`: counts active eligible players (`isConnected && !departed && !kicked`) and executes the authoritative shared reset only after every eligible player has opted in.
+  - Hooked completion checks into `disconnectDrawPlayer` and `removeDrawPlayer` so departed or disconnected players never block remaining players from resetting to lobby.
+  - Preserved `existing.playAgain` state during reconnects in `draw:join-room`.
+  - Factored a single guarded `resetDrawRoomToLobby(room)` that clears active timeouts/intervals, zeroes out player and record scores, resets round, turn, drawer, words, strokes, hints, reactions, and opt-in flags, clears the canvas, and broadcasts `LOBBY` state once.
+- **Host Privileges & Start Game Protection (`src/drawgame/components/Lobby.jsx`, `server/server.js`):**
+  - Allowed the host to update game configuration (`drawTimeSec`, `rounds`, `gameMode`, etc.) immediately upon entering the lobby, even while the room remains in transitional `GAME_RESULT`.
+  - Disabled the `START GAME` button and displayed `"WAITING FOR PLAYERS..."` whenever `room.phase !== 'LOBBY'`, preventing premature game starts while players remain on the result screen.
+  - Displayed `(In results)` next to players in the lobby player strip who have not yet opted in.

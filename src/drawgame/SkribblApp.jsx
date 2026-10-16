@@ -9,7 +9,7 @@ import SkribblNetworkStatus from './components/SkribblNetworkStatus.jsx'
 import SkribblError from './components/SkribblError.jsx'
 export { SkribblError }
 
-function getFriendlyError(errCode) {
+export function getFriendlyError(errCode) {
   const map = {
     'ROOM_NOT_FOUND': "We couldn't find that room.",
     'NAME_TAKEN': "That name is already being used.",
@@ -21,7 +21,13 @@ function getFriendlyError(errCode) {
     'NOT_ENOUGH_PLAYERS': "At least 2 players are required to start.",
     'NO_WORDS_AVAILABLE': "No unused words are available for this game.",
     'START_GAME_FAILED': "The game could not be started. Please reconnect and try again.",
-    'KICKED_FROM_ROOM': "You have been kicked from this room."
+    'KICKED_FROM_ROOM': "You have been kicked from this room.",
+    'NOT_HOST': "Only the host can kick players.",
+    'TARGET_NOT_FOUND': "That player is no longer in the room.",
+    'PLAYER_NOT_FOUND': "Player not found.",
+    'CANNOT_TARGET_SELF': "You cannot kick yourself.",
+    'CANNOT_KICK_HOST': "The host cannot be kicked.",
+    'INVALID_TARGET': "Invalid player selected."
   }
   return map[errCode] || errCode || 'Something went wrong.'
 }
@@ -118,6 +124,17 @@ export default function SkribblApp({ onExit }) {
         }
         if (nextVer === prevVer && prev.updatedAt && nextState.updatedAt && nextState.updatedAt < prev.updatedAt) {
           return prev
+        }
+
+        // Preserve local player's opt-in during GAME_RESULT transition if an intermediate update is missing it
+        const { sessionId } = ensureIdentity()
+        const prevMe = prev.players?.find(p => p.id === sessionId)
+        const nextMe = nextState.players?.find(p => p.id === sessionId)
+        if (prev.phase === 'GAME_RESULT' && nextState.phase === 'GAME_RESULT' && prevMe?.playAgain && nextMe && !nextMe.playAgain) {
+          return {
+            ...nextState,
+            players: nextState.players.map(p => p.id === sessionId ? { ...p, playAgain: true } : p)
+          }
         }
       }
       return nextState
@@ -459,7 +476,11 @@ export default function SkribblApp({ onExit }) {
   )
 
   if (view === 'lobby' && roomState) {
-    if (roomState.phase === 'LOBBY') {
+    const { sessionId } = ensureIdentity()
+    const me = roomState.players?.find(p => p.id === sessionId)
+    const isIndividualLobby = roomState.phase === 'GAME_RESULT' && Boolean(me?.playAgain)
+
+    if (roomState.phase === 'LOBBY' || isIndividualLobby) {
       return (
         <>
           {networkStatusElement}
@@ -477,6 +498,7 @@ export default function SkribblApp({ onExit }) {
         <DrawingPhase 
           room={roomState} 
           onLeave={handleLeaveRoom} 
+          onUpdateConfig={handleUpdateConfig}
           error={error} 
           connectionStatus={connectionStatus}
         />
