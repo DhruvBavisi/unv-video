@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 import assert from 'assert'
-import { getSkribblActiveComponent, shouldRenderIndividualLobby } from '../src/drawgame/skribblRouting.js'
+import { getSkribblActiveComponent, shouldRenderIndividualLobby, PlayAgainRequestController } from '../src/drawgame/skribblRouting.js'
 
 const URL = process.env.TEST_URL || 'http://localhost:3001'
 
@@ -246,73 +246,146 @@ async function run() {
   // Cleanup
   p1.socket.disconnect()
 
-  // 10. Test acknowledgement recovery, timeout, and stale callback protection contract
-  console.log('\nTesting acknowledgement timeout, connection recovery, and stale callback isolation...')
-  let isSubmitting = false
-  let errorMsg = null
-  let reqIdCounter = 0
-  let timeoutTimer = null
+  // 10. Test real PlayAgainRequestController implementation with deterministic timers
+  console.log('\nTesting PlayAgainRequestController with deterministic timers and actual recovery logic...')
 
-  function onDisconnect() {
-    if (timeoutTimer) {
-      clearTimeout(timeoutTimer)
-      timeoutTimer = null
+  let activeTimers = new Map()
+  let timerIdSeq = 0
+  const deterministicSetTimeout = (fn, delay) => {
+    const id = ++timerIdSeq
+    activeTimers.set(id, { fn, delay })
+    return id
+  }
+  const deterministicClearTimeout = (id) => {
+    activeTimers.delete(id)
+  }
+  const advanceTimer = (id) => {
+    const timer = activeTimers.get(id)
+    if (timer) {
+      activeTimers.delete(id)
+      timer.fn()
+      return true
     }
-    reqIdCounter++
-    isSubmitting = false
-    errorMsg = 'Connection lost. Please try again.'
+    return false
   }
 
-  function onTimeout(expectedReqId) {
-    if (reqIdCounter === expectedReqId) {
-      isSubmitting = false
-      errorMsg = 'Request timed out. Please try again.'
-    }
-  }
+  let submittingState = false
+  let errorState = null
+  let emitCalls = []
 
-  function handlePlayAgainMock(connected) {
-    if (isSubmitting) return 'PREVENTED_DUPLICATE'
-    if (!connected) {
-      errorMsg = 'Not connected to server.'
-      return 'OFFLINE'
-    }
-    isSubmitting = true
-    errorMsg = null
-    const currentReq = ++reqIdCounter
-    return { currentReq }
-  }
+  const controller = new PlayAgainRequestController({
+    onSubmittingChange: (val) => { submittingState = val },
+    onErrorChange: (err) => { errorState = err },
+    emit: (event, cb) => {
+      emitCalls.push({ event, cb })
+    },
+    getFriendlyError: (code) => code === 'CUSTOM_ERR' ? 'Custom error message.' : null,
+    timeoutMs: 7000,
+    setTimeoutFn: deterministicSetTimeout,
+    clearTimeoutFn: deterministicClearTimeout
+  })
 
-  // 1. Prevent duplicate requests while one is pending
-  const req1 = handlePlayAgainMock(true)
-  assert.strictEqual(isSubmitting, true)
-  assert.strictEqual(handlePlayAgainMock(true), 'PREVENTED_DUPLICATE')
+  // 10.1 Duplicate submission prevention
+  // Case A: Submit when offline
+  const offlineRes = controller.submit({ isConnected: false, isAlreadyOptedIn: false })
+  assert.strictEqual(offlineRes.ok, false)
+  assert.strictEqual(offlineRes.reason, 'NOT_CONNECTED')
+  assert.strictEqual(submittingState, false)
+  assert.strictEqual(errorState, 'Not connected to server.')
 
-  // 2. Disconnection during submit clears submitting state and sets error
-  onDisconnect()
-  assert.strictEqual(isSubmitting, false)
-  assert.strictEqual(errorMsg, 'Connection lost. Please try again.')
+  // Case B: Normal submit when connected
+  const sub1 = controller.submit({ isConnected: true, isAlreadyOptedIn: false })
+  assert.strictEqual(sub1.ok, true)
+  assert.strictEqual(submittingState, true)
+  assert.strictEqual(errorState, null)
+  assert.strictEqual(emitCalls.length, 1)
+  assert.strictEqual(emitCalls[0].event, 'draw:play-again')
+  assert.strictEqual(activeTimers.size, 1, 'Timeout timer should be scheduled')
 
-  // 3. Allows retry after reconnection
-  const req2 = handlePlayAgainMock(true)
-  assert.strictEqual(isSubmitting, true)
-  assert.strictEqual(errorMsg, null)
+  // Case C: Duplicate submit while isSubmitting is true
+  const dupSubmit = controller.submit({ isConnected: true, isAlreadyOptedIn: false })
+  assert.strictEqual(dupSubmit.ok, false)
+  assert.strictEqual(dupSubmit.reason, 'PREVENTED_DUPLICATE')
+  assert.strictEqual(emitCalls.length, 1, 'Duplicate submit must not emit socket event')
 
-  // 4. Timeout clears submitting state and sets error
-  onTimeout(req2.currentReq)
-  assert.strictEqual(isSubmitting, false)
-  assert.strictEqual(errorMsg, 'Request timed out. Please try again.')
+  // Case D: Submit when already opted in
+  controller.setSubmitting(false)
+  const optedInSubmit = controller.submit({ isConnected: true, isAlreadyOptedIn: true })
+  assert.strictEqual(optedInSubmit.ok, false)
+  assert.strictEqual(optedInSubmit.reason, 'PREVENTED_DUPLICATE')
+  assert.strictEqual(emitCalls.length, 1, 'Already opted-in submit must not emit socket event')
 
-  // 5. Stale callback isolation: callback from old request is ignored
-  let acceptedCallback = false
-  const staleReqId = req2.currentReq
-  const activeReqId = ++reqIdCounter
-  function simulateAckCallback(resReqId) {
-    if (resReqId !== activeReqId) return
-    acceptedCallback = true
-  }
-  simulateAckCallback(staleReqId)
-  assert.strictEqual(acceptedCallback, false, 'Stale callback must be ignored')
-  console.log('✓ Acknowledgement recovery, bounded timeout, and stale callback isolation verified')
+  // 10.2 Acknowledgement timeout and request ID invalidation
+  controller.clearTimeout()
+  activeTimers.clear()
+  emitCalls = []
+  const subTimeout = controller.submit({ isConnected: true, isAlreadyOptedIn: false })
+  assert.strictEqual(subTimeout.ok, true)
+  assert.strictEqual(submittingState, true)
+  assert.strictEqual(activeTimers.size, 1)
+  const timeoutTimerId = timerIdSeq
+  const timedOutReqId = subTimeout.reqId
+
+  // Advance deterministic timer to fire timeout
+  const timerFired = advanceTimer(timeoutTimerId)
+  assert.strictEqual(timerFired, true)
+  assert.strictEqual(submittingState, false, 'Timeout must clear submitting state')
+  assert.strictEqual(errorState, 'Request timed out. Please try again.', 'Timeout must set timeout error message')
+  assert.notStrictEqual(controller.activeReqId, timedOutReqId, 'Timed-out request ID must be invalidated')
+
+  // 10.3 Late acknowledgement after timeout must be ignored
+  // Late server response arrives after timeout occurred but before retry
+  const lateAckResult = controller.handleResponse(timedOutReqId, { success: true })
+  assert.strictEqual(lateAckResult, false, 'Late acknowledgement for timed-out request must return false / be ignored')
+  assert.strictEqual(submittingState, false, 'Late ack must not alter submitting state')
+  assert.strictEqual(errorState, 'Request timed out. Please try again.', 'Late ack must not overwrite timeout error')
+
+  // 10.4 Disconnect while pending
+  emitCalls = []
+  const subDisconnect = controller.submit({ isConnected: true, isAlreadyOptedIn: false })
+  assert.strictEqual(subDisconnect.ok, true)
+  assert.strictEqual(submittingState, true)
+  assert.strictEqual(errorState, null)
+  assert.strictEqual(activeTimers.size, 1)
+  const disconnectReqId = subDisconnect.reqId
+
+  // Disconnect occurs while request is in flight
+  controller.handleDisconnect()
+  assert.strictEqual(submittingState, false, 'Disconnect must clear submitting state')
+  assert.strictEqual(errorState, 'Connection lost. Please try again.', 'Disconnect must set connection lost error')
+  assert.strictEqual(activeTimers.size, 0, 'Disconnect must cancel pending timeout timer')
+  assert.notStrictEqual(controller.activeReqId, disconnectReqId, 'Disconnect must invalidate pending request ID')
+
+  // Late ack for disconnected request is also ignored
+  const disconnectedAckResult = controller.handleResponse(disconnectReqId, { success: true })
+  assert.strictEqual(disconnectedAckResult, false, 'Late acknowledgement after disconnect must be ignored')
+
+  // 10.5 Retry after recovery
+  emitCalls = []
+  const subRetry = controller.submit({ isConnected: true, isAlreadyOptedIn: false })
+  assert.strictEqual(subRetry.ok, true, 'Retry must succeed after recovery')
+  assert.strictEqual(submittingState, true, 'Retry must set submitting to true')
+  assert.strictEqual(errorState, null, 'Retry must clear prior error')
+  assert.strictEqual(activeTimers.size, 1, 'Retry must schedule fresh timeout timer')
+  const retryReqId = subRetry.reqId
+
+  // 10.6 Stale acknowledgement after a newer request starts
+  // Older timedOutReqId callback arrives while retry request is pending
+  const staleAckResult = controller.handleResponse(timedOutReqId, { success: false, error: 'OLD' })
+  assert.strictEqual(staleAckResult, false, 'Stale acknowledgement must be ignored when newer request is active')
+  assert.strictEqual(submittingState, true, 'Stale ack must not clear newer submitting state')
+  assert.strictEqual(errorState, null, 'Stale ack must not overwrite newer request error state')
+
+  // When newer request's own callback arrives, it is processed correctly
+  const validAckResult = controller.handleResponse(retryReqId, { success: true })
+  assert.strictEqual(validAckResult, true, 'Current request acknowledgement must be accepted')
+  assert.strictEqual(submittingState, false, 'Valid acknowledgement must clear submitting state')
+  assert.strictEqual(activeTimers.size, 0, 'Valid acknowledgement must clear timeout timer')
+
+  // Clean up
+  controller.cleanup()
+  assert.strictEqual(activeTimers.size, 0)
+  console.log('✓ Production PlayAgainRequestController verified: duplicate prevention, timeout invalidation, late/stale ack protection, and recovery')
 
   console.log('\n======================================================')
   console.log('ALL SKRIBBL PLAY AGAIN & INDIVIDUAL LOBBY ENTRY TESTS PASSED!')

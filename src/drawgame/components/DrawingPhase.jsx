@@ -11,7 +11,7 @@ import SkribblError from './SkribblError.jsx'
 import Lobby from './Lobby.jsx'
 import { useGuessKeyboard } from '../../hooks/useGuessKeyboard.js'
 import { getFriendlyError } from '../SkribblApp.jsx'
-import { shouldRenderIndividualLobby } from '../skribblRouting.js'
+import { shouldRenderIndividualLobby, PlayAgainRequestController } from '../skribblRouting.js'
 
 export { shouldRenderIndividualLobby }
 
@@ -46,15 +46,26 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
   const [isSubmittingPlayAgain, setIsSubmittingPlayAgain] = useState(false)
   const [playAgainError, setPlayAgainError] = useState(null)
-  const playAgainReqIdRef = useRef(0)
-  const playAgainTimeoutRef = useRef(null)
+
+  const playAgainControllerRef = useRef(null)
+  if (!playAgainControllerRef.current) {
+    playAgainControllerRef.current = new PlayAgainRequestController({
+      onSubmittingChange: setIsSubmittingPlayAgain,
+      onErrorChange: setPlayAgainError,
+      emit: (event, cb) => getSocket()?.emit(event, cb),
+      getFriendlyError,
+      timeoutMs: 7000
+    })
+  }
+
+  playAgainControllerRef.current.onSubmittingChange = setIsSubmittingPlayAgain
+  playAgainControllerRef.current.onErrorChange = setPlayAgainError
+  playAgainControllerRef.current.emit = (event, cb) => getSocket()?.emit(event, cb)
+  playAgainControllerRef.current.getFriendlyError = getFriendlyError
 
   // Clean up acknowledgement timeout on unmount
   useEffect(() => () => {
-    if (playAgainTimeoutRef.current) {
-      clearTimeout(playAgainTimeoutRef.current)
-      playAgainTimeoutRef.current = null
-    }
+    playAgainControllerRef.current?.cleanup()
   }, [])
 
   // Connection-aware recovery: reset submitting state if socket disconnects
@@ -63,13 +74,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     if (!socket) return
 
     const handleDisconnect = () => {
-      if (playAgainTimeoutRef.current) {
-        clearTimeout(playAgainTimeoutRef.current)
-        playAgainTimeoutRef.current = null
-      }
-      playAgainReqIdRef.current++
-      setIsSubmittingPlayAgain(false)
-      setPlayAgainError('Connection lost. Please try again.')
+      playAgainControllerRef.current?.handleDisconnect()
     }
 
     socket.on('disconnect', handleDisconnect)
@@ -81,62 +86,17 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   // Also monitor connectionStatus prop
   useEffect(() => {
     if (connectionStatus !== 'Connected' && isSubmittingPlayAgain) {
-      if (playAgainTimeoutRef.current) {
-        clearTimeout(playAgainTimeoutRef.current)
-        playAgainTimeoutRef.current = null
-      }
-      playAgainReqIdRef.current++
-      setIsSubmittingPlayAgain(false)
-      setPlayAgainError('Connection lost. Please try again.')
+      playAgainControllerRef.current?.handleDisconnect()
     }
   }, [connectionStatus, isSubmittingPlayAgain])
 
   const handlePlayAgain = useCallback(() => {
-    if (isSubmittingPlayAgain || myPlayer?.playAgain) return
-
     const socket = getSocket()
-    if (!socket?.connected) {
-      setIsSubmittingPlayAgain(false)
-      setPlayAgainError('Not connected to server.')
-      return
-    }
-
-    setIsSubmittingPlayAgain(true)
-    setPlayAgainError(null)
-
-    if (playAgainTimeoutRef.current) {
-      clearTimeout(playAgainTimeoutRef.current)
-      playAgainTimeoutRef.current = null
-    }
-
-    const currentReqId = ++playAgainReqIdRef.current
-
-    // Bounded timeout (7000ms) to prevent getting stuck if ack never arrives
-    playAgainTimeoutRef.current = setTimeout(() => {
-      if (playAgainReqIdRef.current === currentReqId) {
-        setIsSubmittingPlayAgain(false)
-        setPlayAgainError('Request timed out. Please try again.')
-        playAgainTimeoutRef.current = null
-      }
-    }, 7000)
-
-    socket.emit('draw:play-again', (res) => {
-      if (playAgainReqIdRef.current !== currentReqId) {
-        // Ignore stale callback
-        return
-      }
-
-      if (playAgainTimeoutRef.current) {
-        clearTimeout(playAgainTimeoutRef.current)
-        playAgainTimeoutRef.current = null
-      }
-
-      setIsSubmittingPlayAgain(false)
-      if (res && res.success === false) {
-        setPlayAgainError(res.error ? (getFriendlyError(res.error) || res.error) : 'Failed to return to lobby.')
-      }
+    playAgainControllerRef.current?.submit({
+      isConnected: Boolean(socket?.connected),
+      isAlreadyOptedIn: Boolean(myPlayer?.playAgain)
     })
-  }, [isSubmittingPlayAgain, myPlayer?.playAgain])
+  }, [myPlayer?.playAgain])
 
   const handleKickPlayer = useCallback((targetId, onComplete) => {
     if (isKicking) return
