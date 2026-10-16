@@ -184,6 +184,14 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
   const strokesRef = useRef([])
   const canvasRef = useRef(null)
+
+  // Clear visible canvas and local strokes when entering GAME_RESULT
+  useEffect(() => {
+    if (room.phase === 'GAME_RESULT') {
+      strokesRef.current = []
+      canvasRef.current?.clear()
+    }
+  }, [room.phase])
   
   // Handle timer sync (monotonic elapsed-time countdown, independent of device wall clock)
   const timerSyncRef = useRef({ initialRemainingMs: 0, startLocalTime: 0, roundEndsAt: null })
@@ -699,6 +707,19 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           </div>
         )}
 
+        {/* Game Result Overlay (Canvas Scope) */}
+        {room.phase === 'GAME_RESULT' && (
+          <FinalScores
+            players={room.players}
+            sessionId={sessionId}
+            isSubmitting={isSubmittingPlayAgain}
+            hasOptedIn={Boolean(myPlayer?.playAgain)}
+            error={playAgainError}
+            onPlayAgain={handlePlayAgain}
+            onOpenSettings={handleOpenSettings}
+          />
+        )}
+
         </div>
       </div>
 
@@ -773,18 +794,6 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             autoCapitalize="sentences"
           />
         </form>
-      )}
-
-      {room.phase === 'GAME_RESULT' && (
-        <FinalScores
-          players={room.players}
-          sessionId={sessionId}
-          isSubmitting={isSubmittingPlayAgain}
-          hasOptedIn={Boolean(myPlayer?.playAgain)}
-          error={playAgainError}
-          onPlayAgain={handlePlayAgain}
-          onOpenSettings={handleOpenSettings}
-        />
       )}
 
       {showSettings && (
