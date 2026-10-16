@@ -163,7 +163,6 @@ const unmountReq = controller.submit({ isConnected: true, isAlreadyOptedIn: fals
 assert.strictEqual(unmountReq.ok, true)
 assert.strictEqual(submittingState, true)
 assert.strictEqual(activeTimers.size, 1)
-const unmountReqId = unmountReq.reqId
 const savedCallback = emitCalls[0].callback
 
 // Call cleanup (component unmount)
@@ -171,8 +170,8 @@ controller.cleanup()
 assert.strictEqual(activeTimers.size, 0, 'Cleanup must clear all pending timers')
 
 // Now simulate invoking the saved acknowledgement callback
-const cleanupAckResult = controller.handleResponse(unmountReqId, { success: true })
-assert.strictEqual(cleanupAckResult, false, 'Acknowledgement after cleanup must be ignored')
+savedCallback({ success: true })
+assert.strictEqual(activeTimers.size, 0, 'Timers must remain cleared after late callback')
 // State callbacks should not be touched by late ack
 assert.strictEqual(submittingState, true, 'Submitting state in controller is unaffected by late ack')
 assert.strictEqual(errorState, null, 'Error state is unaffected by late ack')
