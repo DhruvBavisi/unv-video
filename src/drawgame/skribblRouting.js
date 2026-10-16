@@ -126,6 +126,8 @@ export class PlayAgainRequestController {
   }
 
   cleanup() {
+    // Invalidate every pending acknowledgement before component unmount.
+    this.activeReqId++
     this.clearTimeout()
   }
 }

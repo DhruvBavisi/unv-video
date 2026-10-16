@@ -12,7 +12,8 @@
     "start": "node server/server.js",
     "test": "node tests/test-runner.mjs",
     "test:phase14": "node tests/test-runner.mjs tests/phase14-clue-chat.test.mjs",
-    "test:phases25-27": "node tests/test-runner.mjs tests/phase25-27-qa.test.mjs"
+    "test:phases25-27": "node tests/test-runner.mjs tests/phase25-27-qa.test.mjs",
+    "test:skribbl-play-again-controller": "node tests/skribbl-play-again-controller.test.mjs"
   },
   "dependencies": {
     "@yudiel/react-qr-scanner": "^2.6.0",

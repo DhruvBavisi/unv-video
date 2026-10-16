@@ -173,4 +173,6 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
   - Added a 7000ms bounded acknowledgement timeout to `handlePlayAgain` to prevent the button from getting stuck if server acknowledgement drops.
   - Implemented connection-aware recovery: socket disconnects or `connectionStatus` drops automatically clear submitting state and display a clear error message, allowing retry upon reconnect.
   - Added monotonic request ID tracking to isolate stale callbacks so delayed or out-of-order responses cannot overwrite newer submission states.
-  - Extracted pure navigation routing helpers into `src/drawgame/skribblRouting.js` (`getSkribblActiveComponent`, `shouldRenderIndividualLobby`) with automated regression coverage in `tests/skribbl-play-again.test.mjs`.
+  - Extracted pure navigation routing helpers into `src/drawgame/skribblRouting.js` (`getSkribblActiveComponent`, `shouldRenderIndividualLobby`).
+  - Extracted `PlayAgainRequestController` state machine into `src/drawgame/skribblRouting.js` with unmount request invalidation (`cleanup()` increments `activeReqId` before clearing timers).
+  - Added standalone controller regression test script `npm run test:skribbl-play-again-controller` (`tests/skribbl-play-again-controller.test.mjs`) using deterministic timers and requiring no running server, alongside existing server integration test in `tests/skribbl-play-again.test.mjs`.
