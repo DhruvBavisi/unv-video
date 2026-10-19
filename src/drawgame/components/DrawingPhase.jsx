@@ -38,9 +38,9 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   }, [])
   const handleCloseSettings = useCallback(() => setShowSettings(false), [])
 
-  // Game ended: close the keyboard if the guess input was focused (the dock is covered by the results screen)
+  // Close keyboard if drawing phase ended (e.g. round reveal or game result)
   useEffect(() => {
-    if (room.phase === 'GAME_RESULT') document.activeElement?.blur?.()
+    if (room.phase !== 'DRAWING') document.activeElement?.blur?.()
   }, [room.phase])
 
   const [chatNotifications, setChatNotifications] = useState([])
