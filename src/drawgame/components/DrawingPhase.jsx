@@ -53,6 +53,58 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   const [isSubmittingPlayAgain, setIsSubmittingPlayAgain] = useState(false)
   const [playAgainError, setPlayAgainError] = useState(null)
 
+  // Retain outgoing overlay for 1000ms shutter-raise exit animation
+  const [prevPhase, setPrevPhase] = useState(room.phase)
+  const [exitingOverlay, setExitingOverlay] = useState(null)
+
+  if (prevPhase !== room.phase) {
+    setPrevPhase(room.phase)
+    const prefersReducedMotion = typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+
+    if (room.phase === 'GAME_RESULT' || prefersReducedMotion) {
+      setExitingOverlay(null)
+    } else if (prevPhase === 'WORD_CHOICE') {
+      const dp = room.players?.find(p => p.id === room.currentDrawerId)
+      setExitingOverlay({
+        type: 'WORD_CHOICE',
+        isDrawer,
+        drawerName: dp ? dp.name : 'Someone',
+        wordChoices: room.wordChoices || []
+      })
+    } else if (prevPhase === 'ROUND_REVEAL') {
+      const activePlayers = (room.players || []).filter(p => !p.spectator)
+      const sortedPlayers = [...activePlayers].sort((a, b) => {
+        const scoreA = room.turnScores?.[a.id] || 0
+        const scoreB = room.turnScores?.[b.id] || 0
+        return scoreB - scoreA
+      })
+      const eligibleGuessers = activePlayers.filter(p => p.id !== room.currentDrawerId)
+      const allGuessed = eligibleGuessers.length > 0 && eligibleGuessers.every(p => (room.turnScores?.[p.id] || 0) > 0 || room.guessedPlayerIds?.includes(p.id))
+
+      setExitingOverlay({
+        type: 'ROUND_REVEAL',
+        selectedWord: room.selectedWord || room.currentWord || '',
+        statusText: allGuessed ? 'Everyone guessed!' : 'Time is up!',
+        sortedPlayers: sortedPlayers.map(p => ({
+          id: p.id,
+          name: p.name,
+          pts: room.turnScores?.[p.id] || 0
+        }))
+      })
+    } else {
+      setExitingOverlay(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!exitingOverlay) return
+    const timer = setTimeout(() => {
+      setExitingOverlay(null)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [exitingOverlay])
+
   const playAgainControllerRef = useRef(null)
   if (!playAgainControllerRef.current) {
     playAgainControllerRef.current = new PlayAgainRequestController({
@@ -644,9 +696,36 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           })}
         </div>
 
-        {/* Word Choice Overlay */}
+        {/* Exiting Word Choice Overlay (Shutter Raise Out) */}
+        {exitingOverlay?.type === 'WORD_CHOICE' && (
+          <div key="exiting-word-choice" className={`sk-word-choice-overlay is-exiting ${!exitingOverlay.isDrawer ? 'is-waiting' : ''}`}>
+            {exitingOverlay.isDrawer ? (
+              <>
+                <h2 className="sk-word-choice-title">Choose a word</h2>
+                <div className="sk-word-choice-options">
+                  {(exitingOverlay.wordChoices || []).map((word, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="sk-word-choice-btn"
+                      disabled
+                    >
+                      {word}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="sk-word-choice-waiting">
+                <span className="sk-word-choice-waiting-name">{exitingOverlay.drawerName}</span> is choosing a word...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Active Word Choice Overlay (Shutter Drop In) */}
         {room.phase === 'WORD_CHOICE' && (
-          <div className={`sk-word-choice-overlay ${!isDrawer ? 'is-waiting' : ''}`}>
+          <div key={`active-wc-${room.turnSequence || 0}`} className={`sk-word-choice-overlay ${!isDrawer ? 'is-waiting' : ''}`}>
             {isDrawer ? (
               <>
                 <h2 className="sk-word-choice-title">Choose a word</h2>
@@ -672,7 +751,34 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           </div>
         )}
 
-        {/* Round Reveal Overlay */}
+        {/* Exiting Round Reveal Overlay (Shutter Raise Out) */}
+        {exitingOverlay?.type === 'ROUND_REVEAL' && (
+          <div key="exiting-round-reveal" className="sk-round-reveal-overlay is-exiting">
+            <div className="sk-round-reveal-header">
+              <div className="sk-round-reveal-word-line">
+                The word was <span className="sk-round-reveal-word-highlight">{exitingOverlay.selectedWord}</span>
+              </div>
+              <div className="sk-round-reveal-status">
+                {exitingOverlay.statusText}
+              </div>
+            </div>
+
+            <div className="sk-round-reveal-list" data-sk-scroll>
+              {exitingOverlay.sortedPlayers.map(p => (
+                <div key={p.id} className="sk-round-reveal-row">
+                  <span className="sk-round-reveal-name" title={p.name}>
+                    {p.name}
+                  </span>
+                  <span className={`sk-round-reveal-points ${p.pts > 0 ? 'sk-round-reveal-points--pos' : 'sk-round-reveal-points--zero'}`}>
+                    {p.pts > 0 ? `+${p.pts}` : '0'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active Round Reveal Overlay (Shutter Drop In) */}
         {room.phase === 'ROUND_REVEAL' && (() => {
           const activePlayers = (room.players || []).filter(p => !p.spectator)
           // Stable sort by round score descending
@@ -685,7 +791,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           const allGuessed = eligibleGuessers.length > 0 && eligibleGuessers.every(p => (room.turnScores?.[p.id] || 0) > 0 || room.guessedPlayerIds?.includes(p.id))
 
           return (
-            <div className="sk-round-reveal-overlay">
+            <div key={`active-rr-${room.turnSequence || 0}`} className="sk-round-reveal-overlay">
               <div className="sk-round-reveal-header">
                 <div className="sk-round-reveal-word-line">
                   The word was <span className="sk-round-reveal-word-highlight">{room.selectedWord || room.currentWord || ''}</span>

@@ -6913,6 +6913,15 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   }
 }
 
+@keyframes skShutterRaise {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sk-final {
     animation: none !important;
@@ -7261,25 +7270,29 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: clamp(20px, 6vw, 36px);
-  padding-left: clamp(12px, 3vw, 24px);
-  padding-right: clamp(12px, 3vw, 24px);
+  justify-content: center;
+  padding: clamp(12px, 3vw, 24px);
   background: rgba(30, 34, 48, 0.84); /* semi-transparent #1e2230 matching reference */
   color: #ffffff;
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
-  animation: skOverlayFadeIn 200ms ease forwards;
+  animation: skShutterDrop 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
 }
 
 .sk-word-choice-overlay.is-waiting {
   justify-content: center;
-  padding-top: clamp(12px, 3vw, 24px);
+}
+
+.sk-word-choice-overlay.is-exiting {
+  z-index: 19;
+  animation: skShutterRaise 1000ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none !important;
 }
 
 .sk-word-choice-title {
-  margin: 0 0 clamp(12px, 3vw, 18px);
+  margin: 0 0 clamp(10px, 2.5vw, 16px);
   font-family: var(--sk-font-body);
   font-size: clamp(1.2rem, 3.5vw, 1.5rem);
   font-weight: 600;
@@ -7287,6 +7300,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   text-align: center;
   letter-spacing: -0.01em;
   text-transform: none;
+  flex: none;
 }
 
 .sk-word-choice-options {
@@ -7298,6 +7312,7 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   gap: clamp(8px, 2vw, 14px);
   width: 100%;
   max-width: 480px;
+  flex: none;
 }
 
 .sk-word-choice-btn {
@@ -7358,7 +7373,14 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
-  animation: skOverlayFadeIn 200ms ease forwards;
+  animation: skShutterDrop 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+
+.sk-round-reveal-overlay.is-exiting {
+  z-index: 19;
+  animation: skShutterRaise 1000ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none !important;
 }
 
 .sk-round-reveal-header {
@@ -7455,19 +7477,13 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   color: #ef4444;
 }
 
-@keyframes skOverlayFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .sk-word-choice-overlay,
-  .sk-round-reveal-overlay {
+  .sk-round-reveal-overlay,
+  .sk-word-choice-overlay.is-exiting,
+  .sk-round-reveal-overlay.is-exiting {
     animation: none !important;
+    transform: none !important;
   }
 }
 
