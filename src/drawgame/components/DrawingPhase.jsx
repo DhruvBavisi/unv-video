@@ -587,6 +587,9 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         <div className="sk-bg-shape sk-bg-shape-3" />
       </div>
 
+      {/* GAME BODY: everything above the guess dock. Never scrolls while the keyboard is closed; while it is open it is the only scrollable area (user-driven). */}
+      <div className="sk-game-body" data-sk-scroll>
+
       {/* TOP BAR */}
       <DrawingTopBar 
         room={room}
@@ -868,6 +871,8 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           <ChatBox room={room} />
         </div>
       </div>
+      </div>
+      {/* /GAME BODY */}
 
       {/* GUESS DOCK: last child of the shell (like a chat composer). Guessers only. */}
       {!isDrawer && (
