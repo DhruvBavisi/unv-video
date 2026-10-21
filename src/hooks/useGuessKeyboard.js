@@ -167,7 +167,10 @@ export function useGuessKeyboard(inputRef, enabled) {
       if (!active || e.touches.length !== 1) return
       const target = e.target instanceof Element ? e.target : null
       if (!target || target.closest('input, textarea')) return
-      const dy = e.touches[0].clientY - lastTouchY // > 0: finger moves down, content scrolls up
+      const currentY = e.touches[0].clientY
+      const dy = currentY - lastTouchY // > 0: finger moves down, content scrolls up; < 0: finger moves up, content scrolls down
+      lastTouchY = currentY
+      if (Math.abs(dy) < 0.5) return
       for (let el = target.closest('[data-sk-scroll]'); el; el = el.parentElement && el.parentElement.closest('[data-sk-scroll]')) {
         if (el.scrollHeight <= el.clientHeight + 1) continue // nothing to scroll here
         const atTop = el.scrollTop <= 0

@@ -6533,7 +6533,22 @@ html.sk-kb-open .sk-view--game {
   background: var(--sk-surface);
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
-  transition: padding 150ms ease;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  transition: padding 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Inner animation wrapper: isolates entrance/exit animation from dock positioning */
+.sk-guess-dock-inner {
+  width: 100%;
+  display: flex;
+  transform: translateY(var(--sk-dock-anim-y, 3px)) scale(var(--sk-dock-anim-scale, 0.985));
+  opacity: var(--sk-dock-anim-opacity, 0.92);
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 .sk-guess-dock .sk-input {
@@ -6545,7 +6560,12 @@ html.sk-kb-open .sk-view--game {
   font-size: 18px;
   text-align: center;
   border-radius: 0;
-  transition: padding 150ms ease, border-radius 150ms ease;
+  border: 1.5px solid transparent;
+  transition: padding 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sk-guess-dock .sk-input::placeholder,
@@ -6556,14 +6576,35 @@ html.sk-kb-open .sk-view--game {
 /* When the guess input is active, focused, or keyboard is open */
 .sk-guess-dock:focus-within,
 html.sk-kb-open .sk-guess-dock {
-  padding: 6px 10px 0px;
+  padding: 6px 10px 4px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  border-top-color: rgba(97, 116, 244, 0.2);
+}
+
+.sk-guess-dock:focus-within .sk-guess-dock-inner,
+html.sk-kb-open .sk-guess-dock-inner {
+  --sk-dock-anim-y: 0px;
+  --sk-dock-anim-scale: 1;
+  --sk-dock-anim-opacity: 1;
 }
 
 .sk-guess-dock .sk-input:focus,
 .sk-guess-dock .sk-input:active,
 html.sk-kb-open .sk-guess-dock .sk-input {
-  padding: 12px 16px;
-  border-radius: 14px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border-color: rgba(97, 116, 244, 0.45);
+  box-shadow: 0 0 0 3px rgba(97, 116, 244, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-guess-dock,
+  .sk-guess-dock-inner,
+  .sk-guess-dock .sk-input {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
 }
 
 /* Game body: everything above the guess dock */
@@ -6572,7 +6613,9 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;              /* nothing scrolls while the keyboard is closed */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 

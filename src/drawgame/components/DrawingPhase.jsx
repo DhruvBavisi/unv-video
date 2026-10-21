@@ -677,10 +677,18 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       `}</style>
       <div 
         className="sk-drawing-surface-wrapper" 
-        style={{ cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default' }}
+        style={{ 
+          cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default',
+          touchAction: (isDrawer && room.phase === 'DRAWING') ? 'none' : 'pan-y'
+        }}
       >
         <div className="sk-drawing-surface">
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: (room.phase === 'WORD_CHOICE' || room.phase === 'ROUND_REVEAL' || room.phase === 'GAME_RESULT') ? 'none' : 'auto' }}>
+          <div style={{ 
+            position: 'absolute', 
+            inset: 0, 
+            pointerEvents: (!isDrawer || room.phase !== 'DRAWING') ? 'none' : 'auto',
+            touchAction: (isDrawer && room.phase === 'DRAWING') ? 'none' : 'pan-y'
+          }}>
           <DrawingCanvas 
             ref={canvasRef}
             color={color}
@@ -877,31 +885,33 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       {/* GUESS DOCK: last child of the shell (like a chat composer). Guessers only. */}
       {!isDrawer && (
         <form className="sk-guess-dock" onSubmit={handleGuessSubmit}>
-          <input
-            ref={guessInputRef}
-            type="text"
-            id="sk-guess-input"
-            name="guess"
-            placeholder="Type your guess..."
-            className="sk-input"
-            style={{ 
-              margin: 0, 
-              fontSize: '18px', 
-              width: '100%', 
-              minWidth: 0, 
-              boxSizing: 'border-box',
-              textAlign: 'center'
-            }}
-            value={guessInput}
-            onChange={e => setGuessInput(e.target.value)}
-            disabled={room.phase === 'GAME_RESULT' || room.guessedPlayerIds?.includes(sessionId)}
-            maxLength={120}
-            enterKeyHint="send"
-            autoComplete="on"
-            autoCorrect="on"
-            spellCheck={true}
-            autoCapitalize="sentences"
-          />
+          <div className="sk-guess-dock-inner">
+            <input
+              ref={guessInputRef}
+              type="text"
+              id="sk-guess-input"
+              name="guess"
+              placeholder="Type your guess..."
+              className="sk-input"
+              style={{ 
+                margin: 0, 
+                fontSize: '18px', 
+                width: '100%', 
+                minWidth: 0, 
+                boxSizing: 'border-box',
+                textAlign: 'center'
+              }}
+              value={guessInput}
+              onChange={e => setGuessInput(e.target.value)}
+              disabled={room.phase === 'GAME_RESULT' || room.guessedPlayerIds?.includes(sessionId)}
+              maxLength={120}
+              enterKeyHint="send"
+              autoComplete="on"
+              autoCorrect="on"
+              spellCheck={true}
+              autoCapitalize="sentences"
+            />
+          </div>
         </form>
       )}
 
