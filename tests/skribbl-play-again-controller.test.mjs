@@ -175,7 +175,36 @@ assert.strictEqual(activeTimers.size, 0, 'Timers must remain cleared after late 
 // State callbacks should not be touched by late ack
 assert.strictEqual(submittingState, true, 'Submitting state in controller is unaffected by late ack')
 assert.strictEqual(errorState, null, 'Error state is unaffected by late ack')
-console.log('✓ Unmount cleanup invalidates pending request, clears timers, and ignores late callback')
+// 9. Strict receiver context test: functions that require global receiver (like browser window.setTimeout)
+// must not throw Illegal invocation.
+const strictReceiverController = new PlayAgainRequestController({
+  onSubmittingChange: () => {},
+  onErrorChange: () => {},
+  emit: () => {},
+  setTimeoutFn: function(fn, delay) {
+    if (this !== globalThis) throw new TypeError('Illegal invocation')
+    return setTimeout(fn, delay)
+  },
+  clearTimeoutFn: function(id) {
+    if (this !== globalThis) throw new TypeError('Illegal invocation')
+    return clearTimeout(id)
+  }
+})
+const strictRes = strictReceiverController.submit({ isConnected: true, isAlreadyOptedIn: false })
+assert.strictEqual(strictRes.ok, true, 'Strict receiver submit should succeed')
+strictReceiverController.cleanup()
+console.log('✓ Strict receiver binding does not throw Illegal invocation')
+
+// 10. Default constructor: without setTimeoutFn/clearTimeoutFn provided, default timers work cleanly.
+const defaultTimerController = new PlayAgainRequestController({
+  onSubmittingChange: () => {},
+  onErrorChange: () => {},
+  emit: () => {}
+})
+const defaultRes = defaultTimerController.submit({ isConnected: true, isAlreadyOptedIn: false })
+assert.strictEqual(defaultRes.ok, true, 'Default timers submit should succeed')
+defaultTimerController.cleanup()
+console.log('✓ Default constructor uses safe timer functions without error')
 
 console.log('\n======================================================')
 console.log('ALL PLAYAGAIN REQUEST CONTROLLER TESTS PASSED!')

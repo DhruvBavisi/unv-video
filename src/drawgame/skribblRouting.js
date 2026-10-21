@@ -28,16 +28,20 @@ export class PlayAgainRequestController {
     emit,
     getFriendlyError,
     timeoutMs = 7000,
-    setTimeoutFn = setTimeout,
-    clearTimeoutFn = clearTimeout
+    setTimeoutFn,
+    clearTimeoutFn
   } = {}) {
     this.onSubmittingChange = onSubmittingChange
     this.onErrorChange = onErrorChange
     this.emit = emit
     this.getFriendlyError = getFriendlyError
     this.timeoutMs = timeoutMs
-    this.setTimeoutFn = setTimeoutFn
-    this.clearTimeoutFn = clearTimeoutFn
+    this.setTimeoutFn = typeof setTimeoutFn === 'function'
+      ? (fn, delay) => setTimeoutFn.call(globalThis, fn, delay)
+      : (fn, delay) => globalThis.setTimeout(fn, delay)
+    this.clearTimeoutFn = typeof clearTimeoutFn === 'function'
+      ? (id) => clearTimeoutFn.call(globalThis, id)
+      : (id) => globalThis.clearTimeout(id)
 
     this.isSubmitting = false
     this.error = null
