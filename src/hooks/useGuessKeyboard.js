@@ -8,30 +8,15 @@ import { useEffect } from 'react'
 //    exactly on the keyboard; the top bar and canvas never move or shrink (see globals.css).
 // 3. The document never scrolls. Only [data-sk-scroll] areas scroll, and only by user touch.
 
-const MIN_KB = 120            // px: a smaller visual-viewport shrink is not a software keyboard
+const MIN_KB = 8             // px: filter micro-jitters, but track the keyboard throughout its opening and closing animation
 const SETTLE_MS = 1200        // sample every frame this long after focus/blur/viewport events (iOS reports late)
-const ESTIMATE_MS = 900       // drop the keyboard-height estimate if the browser never reports a keyboard
 const STICKY_MS = 3000        // iOS 26: visualViewport.offsetTop can stay > 0 after the keyboard closes
-const DEFAULT_KB_RATIO = 0.38 // first-ever focus: typical phone keyboard = ~38% of the screen height
 const HIDE_PX = -2000         // iOS never scrolls to an input it believes is far above the screen
-const KB_KEY = 'sk-last-kb-by-orientation'
 
 const isIOS = () =>
   typeof navigator !== 'undefined' &&
   (/iP(hone|ad|od)/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
-
-const orientation = () => (window.innerWidth > window.innerHeight ? 'l' : 'p')
-const readKb = () => {
-  try { return Number(JSON.parse(sessionStorage.getItem(KB_KEY) || '{}')[orientation()]) || 0 } catch { return 0 }
-}
-const writeKb = (px) => {
-  try {
-    const all = JSON.parse(sessionStorage.getItem(KB_KEY) || '{}')
-    all[orientation()] = px
-    sessionStorage.setItem(KB_KEY, JSON.stringify(all))
-  } catch { /* storage unavailable */ }
-}
 
 export function useGuessKeyboard(inputRef, enabled) {
   // The whole drawing screen is locked: the document never scrolls.
@@ -52,9 +37,6 @@ export function useGuessKeyboard(inputRef, enabled) {
     let baseH = window.innerHeight // keyboard-free layout height
     let baseW = window.innerWidth
     let active = false
-    let estimating = false
-    let estimateKb = 0
-    let estimateUntil = 0
     let stickyUntil = 0
     let raf = 0
     let until = 0
@@ -72,7 +54,6 @@ export function useGuessKeyboard(inputRef, enabled) {
       root.style.removeProperty('--sk-vvtop')
       root.classList.remove('sk-kb-open')
       active = false
-      estimating = false
     }
 
     const write = () => {
@@ -94,13 +75,8 @@ export function useGuessKeyboard(inputRef, enabled) {
 
       // iOS may PAN instead of shrinking, so offsetTop is NOT subtracted when deciding if a keyboard is up
       const kb = baseH - vv.height
-      if (kb > MIN_KB && (focused || active)) {
-        estimating = false
-        if (focused) writeKb(Math.round(kb))
+      if ((kb > MIN_KB || (vv.offsetTop > 8 && active)) && (focused || active)) {
         apply(vv.height, vv.offsetTop)
-      } else if (estimating && focused && now < estimateUntil) {
-        // Keyboard is animating in but the browser has not reported it yet: lift the dock with the last known height
-        apply(baseH - estimateKb, 0)
       } else if (active && vv.offsetTop > 1 && now < stickyUntil) {
         // iOS 26 bug: offsetTop is not reset after dismissal. Keep the shell on the visible area until it is.
         apply(vv.height, vv.offsetTop)
@@ -131,14 +107,10 @@ export function useGuessKeyboard(inputRef, enabled) {
       requestAnimationFrame(() => { input.style.transform = '' })
     }
     const onInputFocus = () => {
-      estimating = true
-      estimateKb = readKb() || Math.round(baseH * DEFAULT_KB_RATIO)
-      estimateUntil = performance.now() + ESTIMATE_MS
       if (ios) hideFromScroll() // covers focus that did not come from our touch path (e.g. refocus after send)
       onChange()
     }
     const onInputBlur = () => {
-      estimating = false
       stickyUntil = performance.now() + STICKY_MS
       kick(STICKY_MS)
       onChange()
