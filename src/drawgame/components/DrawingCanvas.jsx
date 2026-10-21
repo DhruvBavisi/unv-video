@@ -6,6 +6,7 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
   
   const isDrawing = useRef(false)
   const lastPos = useRef(null)
+  const currentStrokeRef = useRef(null)
 
   const hexToRgba = (hex) => {
     const r = parseInt(hex.slice(1, 3), 16)
@@ -140,6 +141,7 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
         start = end
       }
     }
+    ctx.globalCompositeOperation = 'source-over'
   }
 
   const redrawAll = (strokesToRender) => {
@@ -154,28 +156,37 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     ctx.clearRect(0, 0, cvs.width, cvs.height)
     ctx.scale(dpr, dpr)
 
-    if (strokesToRender) {
-      strokesToRender.forEach(stroke => {
-        if (!stroke.points || stroke.points.length === 0) return
-        
-        if (stroke.tool === 'fill') {
-          performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
-          return
+    const renderStroke = (stroke) => {
+      if (!stroke || !stroke.points || stroke.points.length === 0) return
+      
+      if (stroke.tool === 'fill') {
+        performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
+        return
+      }
+      const w = isMobile ? 800 : rect.width
+      const h = isMobile ? 600 : rect.height
+      let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
+      if (stroke.points.length === 1) {
+        drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
+      } else {
+        for (let i = 1; i < stroke.points.length; i++) {
+          let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
+          drawSegment(ctx, start, end, stroke.color, stroke.size, stroke.tool)
+          start = end
         }
-        const w = isMobile ? 800 : rect.width
-        const h = isMobile ? 600 : rect.height
-        let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
-        if (stroke.points.length === 1) {
-          drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
-        } else {
-          for (let i = 1; i < stroke.points.length; i++) {
-            let end = { x: stroke.points[i].x * w, y: stroke.points[i].y * h }
-            drawSegment(ctx, start, end, stroke.color, stroke.size, stroke.tool)
-            start = end
-          }
-        }
-      })
+      }
     }
+
+    if (strokesToRender) {
+      strokesToRender.forEach(renderStroke)
+    }
+
+    // Preserve active in-progress local stroke on redraw
+    if (currentStrokeRef.current && currentStrokeRef.current.points?.length) {
+      renderStroke(currentStrokeRef.current)
+    }
+
+    ctx.globalCompositeOperation = 'source-over'
   }
 
   useImperativeHandle(ref, () => ({
@@ -183,10 +194,13 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     liveDraw,
     clear: () => {
       const cvs = canvasRef.current
+      currentStrokeRef.current = null
+      isDrawing.current = false
       if (!cvs) return
       const ctx = cvs.getContext('2d')
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, cvs.width, cvs.height)
+      ctx.globalCompositeOperation = 'source-over'
     }
   }))
 
@@ -199,19 +213,41 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       const rect = container.getBoundingClientRect()
       const isMobile = window.innerWidth <= 768
       
+      let sizeChanged = false
       if (isMobile) {
-        if (cvs.width !== 800) cvs.width = 800
-        if (cvs.height !== 600) cvs.height = 600
-        cvs.style.width = '100%'
-        cvs.style.height = '100%'
-        cvs.style.objectFit = 'fill'
+        if (cvs.width !== 800) {
+          cvs.width = 800
+          sizeChanged = true
+        }
+        if (cvs.height !== 600) {
+          cvs.height = 600
+          sizeChanged = true
+        }
+        if (cvs.style.width !== '100%') cvs.style.width = '100%'
+        if (cvs.style.height !== '100%') cvs.style.height = '100%'
+        if (cvs.style.objectFit !== 'fill') cvs.style.objectFit = 'fill'
       } else {
         const dpr = window.devicePixelRatio || 1
-        cvs.width = rect.width * dpr
-        cvs.height = rect.height * dpr
-        cvs.style.width = `${rect.width}px`
-        cvs.style.height = `${rect.height}px`
-        cvs.style.objectFit = 'fill'
+        const targetW = Math.round(rect.width * dpr)
+        const targetH = Math.round(rect.height * dpr)
+        // Only update bitmap dimensions if they genuinely change to prevent clearing canvas bitmap
+        if (targetW > 0 && targetH > 0 && (cvs.width !== targetW || cvs.height !== targetH)) {
+          cvs.width = targetW
+          cvs.height = targetH
+          sizeChanged = true
+        }
+        const styleW = `${rect.width}px`
+        const styleH = `${rect.height}px`
+        if (cvs.style.width !== styleW) cvs.style.width = styleW
+        if (cvs.style.height !== styleH) cvs.style.height = styleH
+        if (cvs.style.objectFit !== 'fill') cvs.style.objectFit = 'fill'
+      }
+
+      if (sizeChanged) {
+        const ctx = cvs.getContext('2d')
+        const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.scale(dpr, dpr)
       }
     }
     window.addEventListener('resize', resizeCanvas)
@@ -227,8 +263,6 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       y: (e.clientY - rect.top)
     }
   }
-
-  const currentStrokeRef = useRef(null)
 
   const handleStart = (e) => {
     if (!isDrawer) return

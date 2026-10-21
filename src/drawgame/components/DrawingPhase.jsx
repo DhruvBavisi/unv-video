@@ -230,15 +230,62 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   // -----------------------------
 
   const strokesRef = useRef([])
+  const activeRemoteStrokeRef = useRef(null)
   const canvasRef = useRef(null)
+  const lowerInfoRef = useRef(null)
+  const canvasWrapperRef = useRef(null)
 
   // Clear visible canvas and local strokes when entering GAME_RESULT
   useEffect(() => {
     if (room.phase === 'GAME_RESULT') {
       strokesRef.current = []
+      activeRemoteStrokeRef.current = null
       canvasRef.current?.clear()
     }
   }, [room.phase])
+
+  // Track pre-keyboard layout dimensions so player/chat and canvas sizes are preserved when keyboard opens
+  useEffect(() => {
+    const measurePreKeyboard = () => {
+      if (document.documentElement.classList.contains('sk-kb-open')) return
+      if (lowerInfoRef.current) {
+        const h = lowerInfoRef.current.offsetHeight
+        if (h > 0) {
+          document.documentElement.style.setProperty('--sk-lower-panel-h', `${h}px`)
+        }
+      }
+      if (canvasWrapperRef.current) {
+        const ch = canvasWrapperRef.current.offsetHeight
+        if (ch > 0) {
+          document.documentElement.style.setProperty('--sk-canvas-pre-kb-h', `${ch}px`)
+        }
+      }
+    }
+
+    measurePreKeyboard()
+    window.addEventListener('resize', measurePreKeyboard)
+    return () => {
+      window.removeEventListener('resize', measurePreKeyboard)
+      document.documentElement.style.removeProperty('--sk-lower-panel-h')
+      document.documentElement.style.removeProperty('--sk-canvas-pre-kb-h')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (document.documentElement.classList.contains('sk-kb-open')) return
+    if (lowerInfoRef.current) {
+      const h = lowerInfoRef.current.offsetHeight
+      if (h > 0) {
+        document.documentElement.style.setProperty('--sk-lower-panel-h', `${h}px`)
+      }
+    }
+    if (canvasWrapperRef.current) {
+      const ch = canvasWrapperRef.current.offsetHeight
+      if (ch > 0) {
+        document.documentElement.style.setProperty('--sk-canvas-pre-kb-h', `${ch}px`)
+      }
+    }
+  })
   
   // Handle timer sync (monotonic elapsed-time countdown, independent of device wall clock)
   const timerSyncRef = useRef({ initialRemainingMs: 0, startLocalTime: 0, roundEndsAt: null })
@@ -296,6 +343,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       socket.emit('draw:request-strokes', (res) => {
         if (res && res.strokes) {
           strokesRef.current = res.strokes
+          activeRemoteStrokeRef.current = null
           canvasRef.current?.redrawAll(strokesRef.current)
         }
       })
@@ -306,20 +354,40 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
     const handleIncomingStroke = (stroke) => {
       if (stroke.isComplete) {
+        activeRemoteStrokeRef.current = null
         strokesRef.current.push(stroke)
         // Redraw to ensure pixel-perfect rendering of the full stroke
         canvasRef.current?.redrawAll(strokesRef.current)
       } else {
+        const active = activeRemoteStrokeRef.current
+        if (!active || active.color !== stroke.color || active.tool !== stroke.tool || active.size !== stroke.size) {
+          activeRemoteStrokeRef.current = {
+            color: stroke.color,
+            size: stroke.size,
+            tool: stroke.tool,
+            points: [...(stroke.points || [])],
+          }
+        } else if (stroke.points?.length) {
+          const lastPoint = active.points[active.points.length - 1]
+          const firstNew = stroke.points[0]
+          if (lastPoint && firstNew && lastPoint.x === firstNew.x && lastPoint.y === firstNew.y) {
+            active.points.push(...stroke.points.slice(1))
+          } else {
+            active.points.push(...stroke.points)
+          }
+        }
         canvasRef.current?.liveDraw(stroke)
       }
     }
 
     const handleClear = () => {
       strokesRef.current = []
+      activeRemoteStrokeRef.current = null
       canvasRef.current?.clear()
     }
 
     const handleIncomingUndo = () => {
+      activeRemoteStrokeRef.current = null
       if (strokesRef.current.length > 0) {
         strokesRef.current.pop()
         canvasRef.current?.redrawAll(strokesRef.current)
@@ -332,7 +400,9 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
     const handleResize = () => {
       setTimeout(() => {
-        canvasRef.current?.redrawAll(strokesRef.current)
+        const active = activeRemoteStrokeRef.current
+        const strokes = active ? [...strokesRef.current, active] : strokesRef.current
+        canvasRef.current?.redrawAll(strokes)
       }, 0)
     }
     window.addEventListener('resize', handleResize)
@@ -351,6 +421,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   useEffect(() => {
     if (room.phase === 'WORD_CHOICE') {
       strokesRef.current = []
+      activeRemoteStrokeRef.current = null
       canvasRef.current?.clear()
     }
   }, [currentTurnKey, room.phase])
@@ -668,6 +739,18 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             min-height: 120px !important;
           }
         }
+        html.sk-kb-open .sk-drawing-surface-wrapper {
+          flex-shrink: 0 !important;
+          height: var(--sk-canvas-pre-kb-h, auto) !important;
+          transition: none !important;
+        }
+        html.sk-kb-open .sk-lower-info-section {
+          flex: none !important;
+          flex-shrink: 0 !important;
+          height: var(--sk-lower-panel-h, auto) !important;
+          min-height: 120px !important;
+          transition: none !important;
+        }
         @media (prefers-reduced-motion: reduce) {
           .sk-drawing-surface-wrapper,
           .sk-lower-info-section {
@@ -676,6 +759,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         }
       `}</style>
       <div 
+        ref={canvasWrapperRef}
         className="sk-drawing-surface-wrapper" 
         style={{ 
           cursor: (isDrawer && room.phase === 'DRAWING') ? 'crosshair' : 'default',
@@ -855,7 +939,9 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       </div>
 
       {/* LOWER INFO SECTION: Players & Chat */}
-      <div className="sk-lower-info-section" style={{ 
+      <div 
+        ref={lowerInfoRef}
+        className="sk-lower-info-section" style={{ 
         display: 'flex', 
         minHeight: 0,
         background: '#ffffff',
