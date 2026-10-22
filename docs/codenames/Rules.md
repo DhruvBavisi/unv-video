@@ -21,10 +21,10 @@
 
 ## Teams / Roles
 - Exactly two teams: Red and Blue.
-- One Spymaster maximum per team.
+- One Spymaster maximum per team. A player cannot take an already-occupied Spymaster slot.
 - Other team members are Operatives.
-- A player can belong to only one team.
-- Role/team changes are restricted to the lobby.
+- A player can belong to only one team and occupy only one role.
+- Role/team changes are permitted during `LOBBY` and `WAITING_FOR_PLAYERS`, but strictly forbidden once in `PLAYING` or `FINISHED`.
 
 ## Information Privacy
 Spymasters may see the complete hidden key.
@@ -72,11 +72,15 @@ The exact implementation must keep these transitions atomic on the server.
 - Final board is shown after game end.
 
 ## Lifecycle
+- Room creation starts in `LOBBY`.
+- Single-player start: The host can start the room with 1+ real player into `WAITING_FOR_PLAYERS`, generating the board once.
+- Late joining: Permitted during `LOBBY` and `WAITING_FOR_PLAYERS` (up to 20-player room capacity). New players join with `team: null, role: null`. Late joins into active `PLAYING` are blocked.
+- Gameplay readiness: Active gameplay (`PLAYING`, `BOARD_READY`) requires at least 4 real players, 1 Spymaster and at least 1 Operative on each team, and no unassigned players. Transition is server-authoritative and does not regenerate the board.
+- Action gating: Clue submission and card reveal actions are strictly rejected until the room enters `PLAYING`.
 - Socket disconnect is not Leave Game.
-- Explicit Leave Game or host kick removes a player.
+- Explicit Leave Game or host kick removes a player and recalculates readiness.
 - Reconnect requires the existing resume token.
-- Reconnect restores the same player identity/team/role/game state.
-- Never create a duplicate player for reconnect.
+- Reconnect restores the same player identity/team/role/game state without creating duplicate players or regenerating the board.
 - Never reset a live game because a player temporarily disconnects.
 
 ## Shared Infrastructure Rule

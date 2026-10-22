@@ -13,23 +13,30 @@ All phases below are planned. Do not mark a phase complete until the correspondi
 - [x] Dedicated Codenames room state.
 - [x] Create/join/leave.
 - [x] Host handling.
+- [x] Single-player room start into `WAITING_FOR_PLAYERS` phase.
+- [x] Late joining allowed during `LOBBY` and `WAITING_FOR_PLAYERS`.
+- [x] Late joining locked once in `PLAYING`.
 - [x] Explicit removal only.
 - [x] Stable session identity.
 - [x] Resume-token authentication.
-- [x] Reconnect without duplicate players.
+- [x] Reconnect without duplicate players or resetting the board.
 
 ## Phase 3 — Teams & Roles
 - [x] Red/Blue teams.
-- [x] One Spymaster per team.
+- [x] One Spymaster per team (overwriting occupied Spymaster slot prevented).
 - [x] Operatives.
-- [x] Server-authoritative assignments.
+- [x] Role selection permitted in `LOBBY` and `WAITING_FOR_PLAYERS` (locked in `PLAYING`).
+- [x] Server-authoritative assignments and synchronization.
+- [x] Server-authoritative readiness recalculation (4+ real players, 1 Spymaster + 1+ Operative each team).
 - [x] Private role state.
 
 ## Phase 4 — Board Generation
 - Generate 25 unique words.
 - Generate hidden Red/Blue/Neutral/Assassin key.
 - Select starting team.
+- Initialize board once on room start and preserve through waiting phase.
 - Validate board distribution server-side.
+- Board preview in lobby during waiting phase.
 - Never send the complete key to Operatives.
 
 ## Phase 5 — Private/Public State

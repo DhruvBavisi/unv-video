@@ -99,10 +99,10 @@ Do not rely on CSS hiding or client-side filtering of a fully-received board key
 ## State Machine
 ```
 LOBBY
-  ↓
-TEAM/ROLE SETUP
-  ↓
-GAME_START
+  ↓ (Host starts with 1+ real players)
+WAITING_FOR_PLAYERS (board initialized; late joins & role selection allowed)
+  ↓ (Authoritative readiness satisfied: 4+ real players, 1 Spymaster + 1+ Operative per team)
+PLAYING / BOARD_READY (board preserved, gameplay begins, role changes locked)
   ↓
 CLUE
   ↓
@@ -115,6 +115,16 @@ GUESS
   ↓
 GAME_RESULT
 ```
+
+## Room Initialization vs. Gameplay Readiness
+- **Room Initialization (`canStartRoom`)**: Host can initialize a Codenames room with at least one real, non-bot player. Board generation and hidden keys are generated once on the server and preserved.
+- **Waiting Phase (`WAITING_FOR_PLAYERS`)**: Allows new players to join late (up to 20 room capacity) and players to select or change their team and role. Spymaster slots are protected against overwriting. Gameplay actions (clue submission, guessing) are strictly blocked.
+- **Readiness (`canPlay`)**: Authoritatively verified on the server after every join, leave, kick, and role change. Requires:
+  - At least 4 real (non-bot) players.
+  - Exactly 1 Red Spymaster and 1 Blue Spymaster.
+  - At least 1 Red Operative and 1 Blue Operative.
+  - All room players assigned to valid teams and roles (no invalid/conflicting assignments).
+  Once readiness is satisfied, the server transitions the room from `WAITING_FOR_PLAYERS` to `PLAYING` (`BOARD_READY`) without regenerating the board.
 
 ## Reconnection
 Reconnect must restore:

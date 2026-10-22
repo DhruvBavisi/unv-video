@@ -17,7 +17,8 @@ export default function CodenamesApp({ onExit }) {
 
   const { sessionId } = ensureIdentity()
 
-  const isCodenamesGame = !!room && room.status !== 'LOBBY' && room.status !== 'SETUP'
+  const isPlaying = !!room && (room.status === 'PLAYING' || room.status === 'FINISHED')
+  const isCodenamesGame = isPlaying
   usePageBackground(isCodenamesGame ? '#040309' : '#111111')
   
   useEffect(() => {
@@ -226,8 +227,8 @@ export default function CodenamesApp({ onExit }) {
   }
 
   return (
-    <div className={(room.status === 'LOBBY' || room.status === 'SETUP') ? 'codenames-app' : 'codenames-app codenames-app--game'}>
-      {(room.status === 'LOBBY' || room.status === 'SETUP') ? (
+    <div className={!isPlaying ? 'codenames-app' : 'codenames-app codenames-app--game'}>
+      {!isPlaying ? (
         <CodenamesLobby 
           room={room} 
           playerId={sessionId}

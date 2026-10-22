@@ -17,8 +17,12 @@ Planned:
 - 5×5 board = 25 words.
 - Two teams: Red and Blue.
 - Each team has one Spymaster and one or more Operatives.
-- Spymasters know the hidden board key.
-- Operatives do not.
+- Spymasters know the hidden board key; Operatives do not.
+- Single-player start: Host can start room with 1+ real player into `WAITING_FOR_PLAYERS`, generating the board once.
+- Late joining: Permitted during `LOBBY` and `WAITING_FOR_PLAYERS` (up to 20 players), added with `team: null, role: null`. Blocked once game transitions to `PLAYING`.
+- Role selection: Permitted during `LOBBY` and `WAITING_FOR_PLAYERS`. Spymaster slots cannot be overwritten by another player.
+- Gameplay readiness: Authoritative server check requires at least 4 real players, 1 Spymaster + 1+ Operative per team, and no unassigned players before entering `PLAYING` (`BOARD_READY`).
+- Gameplay actions (clue giving, guessing) are gated until readiness is satisfied.
 - One team gives a clue and number each turn.
 - Operatives reveal cards until they stop, hit a neutral/opponent card, or hit the assassin.
 - Assassin causes immediate loss for the guessing team.

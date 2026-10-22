@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../game/socket.js'
 import QRModal from '../../game/QRModal.jsx'
+import CodenamesCard from './CodenamesCard.jsx'
 
 const PlayerIcon = () => (
   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -32,7 +33,15 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   
   const handleSelectTeam = (team, role) => {
     const socket = connectSocket(playerId)
-    socket.emit('codenames:join-team-role', { team, role })
+    socket.emit('codenames:join-team-role', { team, role }, (res) => {
+      if (res && res.error) {
+        if (res.error === 'SPYMASTER_SLOT_TAKEN') {
+          alert('This Spymaster slot is already taken.')
+        } else if (res.error === 'GAME_IN_PROGRESS') {
+          alert('Cannot change teams while game is in progress.')
+        }
+      }
+    })
   }
 
   const handleStartGame = () => {
@@ -89,13 +98,36 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   }
 
   // Spectators (unassigned)
-  const unassignedPlayers = room.players.filter(p => !p.team)
+  const unassignedPlayers = room.players.filter(p => !p.team || !p.role)
+  const realPlayers = room.players.filter(p => !p.isBot)
 
-  const canStart = room.teams?.red?.length > 0 && 
-                   room.teams?.blue?.length > 0 &&
-                   room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER') &&
-                   room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER') &&
-                   unassignedPlayers.length === 0
+  const isInitialized = (room.status !== 'LOBBY' && room.status !== 'SETUP') ||
+                        room.phase === 'WAITING_FOR_PLAYERS' ||
+                        (room.board && room.board.length > 0)
+
+  const canStartRoom = isHost && realPlayers.length >= 1 && !isInitialized
+
+  const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
+  const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
+  const redOperatives = room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE')
+  const blueOperatives = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE')
+  const hasInvalidAssignment = room.players.some(p => 
+    (p.team && !p.role) || 
+    (!p.team && p.role) || 
+    (p.team && p.team !== 'red' && p.team !== 'blue') || 
+    (p.role && p.role !== 'SPYMASTER' && p.role !== 'OPERATIVE')
+  )
+
+  const canPlay = realPlayers.length >= 4 &&
+                  redSpymasters.length === 1 &&
+                  blueSpymasters.length === 1 &&
+                  redOperatives.length >= 1 &&
+                  blueOperatives.length >= 1 &&
+                  !hasInvalidAssignment &&
+                  unassignedPlayers.length === 0
+
+  const isBlueSpyTaken = room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER' && p.id !== playerId)
+  const isRedSpyTaken = room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER' && p.id !== playerId)
 
   // Team counts for display
   const blueOpCount = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').length
@@ -222,8 +254,9 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('blue', 'SPYMASTER')}
+            disabled={isBlueSpyTaken}
           >
-            JOIN TEAM
+            {isBlueSpyTaken ? 'SLOT TAKEN' : 'JOIN TEAM'}
           </button>
         </div>
 
@@ -235,23 +268,53 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('red', 'SPYMASTER')}
+            disabled={isRedSpyTaken}
           >
-            JOIN TEAM
+            {isRedSpyTaken ? 'SLOT TAKEN' : 'JOIN TEAM'}
           </button>
         </div>
       </div>
 
-      {isHost && (
-        <button 
-          className="cn-start-game-btn" 
-          onClick={handleStartGame}
-          disabled={!canStart}
-        >
-          START GAME
-        </button>
+      {!isInitialized ? (
+        <>
+          {isHost && (
+            <button 
+              className="cn-start-game-btn" 
+              onClick={handleStartGame}
+              disabled={!canStartRoom}
+            >
+              START GAME
+            </button>
+          )}
+          {!isHost && (
+            <div className="cn-waiting-text">Waiting for host to start...</div>
+          )}
+        </>
+      ) : (
+        <>
+          {isHost && (
+            <button 
+              className="cn-start-game-btn" 
+              disabled
+            >
+              ROOM STARTED
+            </button>
+          )}
+          <div className="cn-waiting-text">
+            Room started! Waiting for players and required roles...
+          </div>
+        </>
       )}
-      {!isHost && (
-        <div className="cn-waiting-text">Waiting for host to start...</div>
+
+      {isInitialized && room.board && room.board.length === 25 && (
+        <div className="cn-lobby-board-preview">
+          <div className="cn-settings-header" style={{ marginTop: '15px', marginBottom: '10px' }}>INITIALIZED BOARD</div>
+          <div className="cn-board-grid">
+            {room.board.map(card => (
+              <CodenamesCard key={card.id} card={card} />
+            ))}
+          </div>
+        </div>
       )}
 
       {showQR && (

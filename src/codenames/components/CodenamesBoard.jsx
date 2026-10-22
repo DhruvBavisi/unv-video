@@ -98,14 +98,16 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
 
   const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
-  const clueStage = room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE'
-  const isActive = (team, kind) => room.status === 'PLAYING' && team === room.currentTeam && kind === (clueStage ? 'spy' : 'ops')
+  const isWaiting = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+  const clueStage = (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE') && !isWaiting
+  const isActive = (team, kind) => room.status === 'PLAYING' && !isWaiting && team === room.currentTeam && kind === (clueStage ? 'spy' : 'ops')
   const myPlayer = room.players.find(p => p.id === playerId)
   const canSeeBoardColors = myPlayer?.role === 'SPYMASTER'
-  const isMyClueTurn = room.status === 'PLAYING' && canSeeBoardColors && myPlayer?.team === room.currentTeam && clueStage
+  const isMyClueTurn = room.status === 'PLAYING' && !isWaiting && canSeeBoardColors && myPlayer?.team === room.currentTeam && clueStage
 
   let statusMessage = 'GAME STARTED'
-  if (room.status === 'FINISHED') statusMessage = room.winner ? `${room.winner.toUpperCase()} TEAM WINS` : 'GAME OVER'
+  if (isWaiting) statusMessage = 'ROOM STARTED — WAITING FOR PLAYERS'
+  else if (room.status === 'FINISHED') statusMessage = room.winner ? `${room.winner.toUpperCase()} TEAM WINS` : 'GAME OVER'
   else if (isMyClueTurn) statusMessage = 'GIVE YOUR OPERATIVES A CLUE'
   else if (room.phase === 'GUESS_PHASE' && room.currentClue) statusMessage = `${room.currentTeam.toUpperCase()} CLUE: ${room.currentClue.word} ${room.currentClue.number}`
   else if (room.currentTeam) statusMessage = `${room.currentTeam.toUpperCase()} TEAM'S TURN`

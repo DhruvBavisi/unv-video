@@ -407,6 +407,40 @@ function findDrawRoomByPlayer(sessionId) {
 }
 
 
+function checkCodenamesReadiness(room) {
+  if (!room || !Array.isArray(room.players)) return false
+  const realPlayers = room.players.filter(p => !p.isBot)
+  if (realPlayers.length < 4) return false
+
+  const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
+  const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
+  const redOperatives = room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE')
+  const blueOperatives = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE')
+
+  if (redSpymasters.length !== 1 || blueSpymasters.length !== 1) return false
+  if (redOperatives.length < 1 || blueOperatives.length < 1) return false
+
+  for (const p of room.players) {
+    if (!p.team || !p.role) return false
+    if (p.team !== 'red' && p.team !== 'blue') return false
+    if (p.role !== 'SPYMASTER' && p.role !== 'OPERATIVE') return false
+  }
+
+  return true
+}
+
+function checkAndApplyCodenamesTransition(room) {
+  if (!room || !room.board || room.board.length !== 25) return false
+  if (room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS') {
+    if (checkCodenamesReadiness(room)) {
+      room.status = 'PLAYING'
+      room.phase = 'BOARD_READY'
+      return true
+    }
+  }
+  return false
+}
+
 function getCodenamesPublicState(room) {
   return {
     id: room.id,
@@ -414,6 +448,7 @@ function getCodenamesPublicState(room) {
     phase: room.phase,
     hostId: room.hostId,
     teams: room.teams,
+    isReady: checkCodenamesReadiness(room),
     spymasterSlots: {
       redTaken: room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER'),
       blueTaken: room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER')
@@ -1511,8 +1546,9 @@ function removeCodenamesPlayer(sessionId) {
       room.hostId = nextHost.id
     }
     syncCodenamesSpymasters(room)
-  checkCodenamesAbandonment(room)
-  broadcastCodenamesRoomState(room)
+    checkAndApplyCodenamesTransition(room)
+    checkCodenamesAbandonment(room)
+    broadcastCodenamesRoomState(room)
   }
   return { roomId, room }
 }
@@ -4544,7 +4580,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!room) {
       return callback?.({ error: 'ROOM_NOT_FOUND' })
     }
-    if (room.status !== 'LOBBY') {
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) {
       const playerExists = room.players.some(p => p.id === reqSessionId)
       if (!playerExists) {
         return callback?.({ error: 'GAME_IN_PROGRESS' })
@@ -4584,6 +4621,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     socket.join(`codenames:${roomId}`)
     
     socket.emit('session-token', { resumeToken: player.resumeToken, roomId, playerName: player.name, gameMode: 'codenames' })
+    checkAndApplyCodenamesTransition(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -4594,7 +4632,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
     if (targetId === currentSessionId) return callback?.({ success: false, error: 'CANNOT_MAKE_SELF_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
     
     const targetPlayer = room.players.find(p => p.id === targetId)
     if (!targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
@@ -4647,6 +4686,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     }
 
     syncCodenamesSpymasters(room)
+    checkAndApplyCodenamesTransition(room)
     checkCodenamesAbandonment(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
@@ -4664,14 +4704,24 @@ ELIMINATION RESULT=`, room.eliminationResult)
     if (!currentSessionId || !currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
     if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
     if (role !== 'SPYMASTER' && role !== 'OPERATIVE' && role !== null) return callback?.({ success: false, error: 'INVALID_ROLE' })
 
     const player = room.players.find(p => p.id === currentSessionId)
     if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
 
+    const targetTeam = (team && role) ? team : null
+    const targetRole = (team && role) ? role : null
 
+    // Prevent overwriting an existing Spymaster slot
+    if (targetRole === 'SPYMASTER') {
+      const existingSpy = room.players.find(p => p.id !== currentSessionId && p.team === targetTeam && p.role === 'SPYMASTER')
+      if (existingSpy || (room.spymasters?.[targetTeam] && room.spymasters[targetTeam] !== currentSessionId)) {
+        return callback?.({ success: false, error: 'SPYMASTER_SLOT_TAKEN' })
+      }
+    }
 
     if (player.team && room.teams[player.team]) {
       room.teams[player.team] = room.teams[player.team].filter(id => id !== currentSessionId)
@@ -4680,15 +4730,19 @@ ELIMINATION RESULT=`, room.eliminationResult)
       }
     }
 
-    player.team = team
-    player.role = role
-    if (team) {
-      room.teams[team].push(currentSessionId)
-      if (role === 'SPYMASTER') {
-        room.spymasters[team] = currentSessionId
+    player.team = targetTeam
+    player.role = targetRole
+    if (targetTeam) {
+      if (!room.teams[targetTeam].includes(currentSessionId)) {
+        room.teams[targetTeam].push(currentSessionId)
+      }
+      if (targetRole === 'SPYMASTER') {
+        room.spymasters[targetTeam] = currentSessionId
       }
     }
 
+    syncCodenamesSpymasters(room)
+    checkAndApplyCodenamesTransition(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -4698,7 +4752,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     room.players.forEach(p => {
       p.team = null
@@ -4707,6 +4762,7 @@ ELIMINATION RESULT=`, room.eliminationResult)
     room.teams = { red: [], blue: [] }
     room.spymasters = { red: null, blue: null }
 
+    checkAndApplyCodenamesTransition(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -4716,7 +4772,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     const allPlayers = [...room.players]
     if (allPlayers.length < 2) return callback?.({ success: false, error: 'NOT_ENOUGH_PLAYERS' })
@@ -4751,6 +4808,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
       if (p.role === 'SPYMASTER') room.spymasters.blue = p.id
     })
 
+    syncCodenamesSpymasters(room)
+    checkAndApplyCodenamesTransition(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -4760,7 +4819,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     if (!settings || typeof settings !== 'object') return callback?.({ success: false, error: 'INVALID_SETTINGS' })
     if (settings.timer !== undefined) {
@@ -4787,7 +4847,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     const totalPlayers = room.players.length
     if (totalPlayers + count > 19) return callback?.({ success: false, error: 'ROOM_FULL' })
@@ -4819,7 +4880,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
     const botIds = room.players.filter(p => p.isBot).map(p => p.id)
     room.players = room.players.filter(p => !p.isBot)
@@ -4832,6 +4894,8 @@ ELIMINATION RESULT=`, room.eliminationResult)
       if (room.spymasters.blue === botId) room.spymasters.blue = null
     })
 
+    syncCodenamesSpymasters(room)
+    checkAndApplyCodenamesTransition(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -4841,18 +4905,16 @@ ELIMINATION RESULT=`, room.eliminationResult)
     const room = codenamesRooms.get(currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
-    if (room.status !== 'LOBBY') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    
+    // Prevent starting if already initialized or not in LOBBY
+    if (room.status !== 'LOBBY' || (room.board && room.board.length > 0)) {
+      return callback?.({ success: false, error: 'ALREADY_INITIALIZED' })
+    }
 
-    if (!room.teams.red || room.teams.red.length === 0) return callback?.({ success: false, error: 'RED_TEAM_EMPTY' })
-    if (!room.teams.blue || room.teams.blue.length === 0) return callback?.({ success: false, error: 'BLUE_TEAM_EMPTY' })
-
-    if (!room.players.some(p => p.team === 'red' && p.role === 'SPYMASTER')) return callback?.({ success: false, error: 'RED_SPYMASTER_MISSING' })
-    if (!room.players.some(p => p.team === 'blue' && p.role === 'SPYMASTER')) return callback?.({ success: false, error: 'BLUE_SPYMASTER_MISSING' })
-    if (!room.players.some(p => p.team === 'red' && p.role === 'OPERATIVE')) return callback?.({ success: false, error: 'RED_OPERATIVES_MISSING' })
-    if (!room.players.some(p => p.team === 'blue' && p.role === 'OPERATIVE')) return callback?.({ success: false, error: 'BLUE_OPERATIVES_MISSING' })
-
-    const unassigned = room.players.find(p => !p.team || !p.role)
-    if (unassigned) return callback?.({ success: false, error: 'UNASSIGNED_PLAYERS' })
+    const realPlayers = room.players.filter(p => !p.isBot)
+    if (realPlayers.length < 1) {
+      return callback?.({ success: false, error: 'NO_REAL_PLAYERS' })
+    }
 
     room.startingTeam = Math.random() < 0.5 ? 'red' : 'blue'
     room.currentTeam = room.startingTeam
@@ -4862,8 +4924,13 @@ ELIMINATION RESULT=`, room.eliminationResult)
     room.winner = null
     room.endReason = null
 
-    room.status = 'PLAYING'
-    room.phase = 'BOARD_READY'
+    if (checkCodenamesReadiness(room)) {
+      room.status = 'PLAYING'
+      room.phase = 'BOARD_READY'
+    } else {
+      room.status = 'WAITING_FOR_PLAYERS'
+      room.phase = 'WAITING_FOR_PLAYERS'
+    }
 
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
@@ -4878,8 +4945,10 @@ ELIMINATION RESULT=`, room.eliminationResult)
     
     if (player.role !== 'SPYMASTER') return callback?.({ success: false, error: 'NOT_SPYMASTER' })
     if (player.team !== room.currentTeam) return callback?.({ success: false, error: 'NOT_YOUR_TURN' })
-    if (room.status !== 'PLAYING') return callback?.({ success: false, error: 'INVALID_PHASE' })
+    if (room.status !== 'PLAYING' || room.phase === 'WAITING_FOR_PLAYERS') return callback?.({ success: false, error: 'INVALID_PHASE' })
     if (room.phase !== 'BOARD_READY' && room.phase !== 'CLUE_PHASE') return callback?.({ success: false, error: 'INVALID_PHASE' })
+    if (!room.board || room.board.length !== 25) return callback?.({ success: false, error: 'BOARD_NOT_INITIALIZED' })
+    if (!checkCodenamesReadiness(room)) return callback?.({ success: false, error: 'ROOM_NOT_READY' })
 
     const clueStr = typeof payload?.clue === 'string' ? payload.clue.trim() : ''
     const num = Number(payload?.number)

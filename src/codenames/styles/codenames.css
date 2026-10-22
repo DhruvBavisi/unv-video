@@ -584,7 +584,20 @@
   height: 100%;
 }
 
+.cn-lobby-board-preview {
+  --u: min(1vw, 4.8px);
+  --cn-board-card-ratio: 1.1 / 1;
+  width: 100%;
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.cn-lobby-board-preview .cn-board-grid {
+  width: 100%;
+  padding: 0;
+}
 
 /* =========================================================
    CND GAME LAYOUT — MANUAL SIZING CONTROLS
