@@ -166,11 +166,60 @@ function checkDrawRateLimit(sessionId, eventType, maxEvents, windowMs) {
 
 function clearDrawRateLimits(sessionId) {
   if (!sessionId) return
+  drawStrokeRateLimiters.delete(sessionId)
   for (const key of drawRateLimiters.keys()) {
     if (key.startsWith(`${sessionId}:`)) {
       drawRateLimiters.delete(key)
     }
   }
+}
+
+// Dedicated stroke rate limiter: tracks points and packets over sliding window
+const drawStrokeRateLimiters = new Map()
+
+function checkDrawStrokeRateLimit(sessionId, isComplete, pointCount) {
+  if (!sessionId) return false
+  const now = Date.now()
+  const windowMs = 2000
+  const maxPackets = 250 // 125 packets/sec is plenty for 60Hz live streaming + bursts
+  const maxPoints = 10000 // 5000 pts/sec is far above human stylus/mouse capability
+
+  let limiter = drawStrokeRateLimiters.get(sessionId)
+  if (!limiter) {
+    limiter = { packets: [], totalPoints: 0 }
+    drawStrokeRateLimiters.set(sessionId, limiter)
+  }
+
+  // Prune expired entries
+  const cutoff = now - windowMs
+  while (limiter.packets.length > 0 && limiter.packets[0].time <= cutoff) {
+    const expired = limiter.packets.shift()
+    limiter.totalPoints -= expired.points
+  }
+  if (limiter.totalPoints < 0) limiter.totalPoints = 0
+
+  // Completed strokes must never be discarded just because preceding live chunks used budget
+  if (isComplete) {
+    limiter.packets.push({ time: now, points: pointCount })
+    limiter.totalPoints += pointCount
+    return true
+  }
+
+  // Check packet budget
+  if (limiter.packets.length >= maxPackets) {
+    console.warn(`[Skribbl RateLimit] Session ${sessionId} exceeded packet limit (${limiter.packets.length}/${maxPackets} in ${windowMs}ms)`)
+    return false
+  }
+
+  // Check point budget
+  if (limiter.totalPoints + pointCount > maxPoints) {
+    console.warn(`[Skribbl RateLimit] Session ${sessionId} exceeded point limit (${limiter.totalPoints + pointCount}/${maxPoints} in ${windowMs}ms)`)
+    return false
+  }
+
+  limiter.packets.push({ time: now, points: pointCount })
+  limiter.totalPoints += pointCount
+  return true
 }
 
 setInterval(() => {
@@ -181,6 +230,15 @@ setInterval(() => {
     }
     if (timestamps.length === 0) {
       drawRateLimiters.delete(key)
+    }
+  }
+  for (const [sId, limiter] of drawStrokeRateLimiters.entries()) {
+    while (limiter.packets.length > 0 && limiter.packets[0].time <= now - 10000) {
+      const expired = limiter.packets.shift()
+      limiter.totalPoints -= expired.points
+    }
+    if (limiter.packets.length === 0) {
+      drawStrokeRateLimiters.delete(sId)
     }
   }
 }, 30000).unref?.()
@@ -2809,7 +2867,10 @@ io.on('connection', (socket) => {
   })
 
   socket.on('draw:stroke', (strokeData) => {
-    if (!isCurrentDrawSession(currentSessionId)) return
+    if (!isCurrentDrawSession(currentSessionId)) {
+      console.warn(`[draw:stroke] Rejected: session ${currentSessionId} is not active`)
+      return
+    }
     let room = null
     for (const [rid, dr] of drawRooms) {
       if (dr.currentDrawerId === currentSessionId && dr.phase === 'DRAWING') {
@@ -2817,28 +2878,69 @@ io.on('connection', (socket) => {
         break
       }
     }
-    if (!room) return
+    if (!room) {
+      console.warn(`[draw:stroke] Rejected: room not found or session ${currentSessionId} not current drawer in DRAWING phase`)
+      return
+    }
 
-    if (!checkDrawRateLimit(currentSessionId, 'stroke', 50, 2000)) return
+    if (!strokeData || typeof strokeData !== 'object') {
+      console.warn('[draw:stroke] Rejected: malformed payload object')
+      return
+    }
+
+    const pointCount = Array.isArray(strokeData.points) ? strokeData.points.length : 0
+    const isComplete = strokeData.isComplete !== false
+
+    if (!checkDrawStrokeRateLimit(currentSessionId, isComplete, pointCount)) {
+      return
+    }
 
     // Stroke Validation
-    if (!strokeData || typeof strokeData !== 'object') return
-    if (typeof strokeData.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(strokeData.color)) return
-    if (typeof strokeData.size !== 'number' || strokeData.size < 1 || strokeData.size > 100) return
-    if (!Array.isArray(strokeData.points) || strokeData.points.length > 500) return
-    if (strokeData.tool && strokeData.tool !== 'brush' && strokeData.tool !== 'eraser' && strokeData.tool !== 'fill') return
+    if (typeof strokeData.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(strokeData.color)) {
+      console.warn('[draw:stroke] Rejected: invalid color', strokeData.color)
+      return
+    }
+    if (typeof strokeData.size !== 'number' || strokeData.size < 1 || strokeData.size > 100) {
+      console.warn('[draw:stroke] Rejected: invalid size', strokeData.size)
+      return
+    }
+    if (!Array.isArray(strokeData.points) || strokeData.points.length > 500) {
+      console.warn('[draw:stroke] Rejected: points array length out of bounds', pointCount)
+      return
+    }
+    if (strokeData.tool && strokeData.tool !== 'brush' && strokeData.tool !== 'eraser' && strokeData.tool !== 'fill') {
+      console.warn('[draw:stroke] Rejected: invalid tool', strokeData.tool)
+      return
+    }
     
     for (const pt of strokeData.points) {
       if (typeof pt.x !== 'number' || typeof pt.y !== 'number' || pt.x < -0.2 || pt.x > 1.2 || pt.y < -0.2 || pt.y > 1.2) {
+        console.warn('[draw:stroke] Rejected: point coordinates out of bounds', pt)
         return // Reject malformed stroke entirely
       }
     }
 
-    if (strokeData.isComplete !== false) {
-      room.strokes.push(strokeData)
-      io.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
+    const strokeId = typeof strokeData.strokeId === 'string' && strokeData.strokeId.length > 0
+      ? strokeData.strokeId
+      : `${currentSessionId}-${Date.now()}`
+
+    const validatedStroke = {
+      ...strokeData,
+      strokeId,
+      drawerId: currentSessionId,
+    }
+
+    if (isComplete) {
+      if (!room.strokes) room.strokes = []
+      const existingIdx = room.strokes.findIndex(s => s.strokeId === strokeId)
+      if (existingIdx !== -1) {
+        room.strokes[existingIdx] = validatedStroke
+      } else {
+        room.strokes.push(validatedStroke)
+      }
+      io.to(`draw:${room.id}`).emit('draw:stroke', validatedStroke)
     } else {
-      socket.to(`draw:${room.id}`).emit('draw:stroke', strokeData)
+      socket.to(`draw:${room.id}`).emit('draw:stroke', validatedStroke)
     }
   })
 

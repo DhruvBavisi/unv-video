@@ -230,7 +230,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   // -----------------------------
 
   const strokesRef = useRef([])
-  const activeRemoteStrokeRef = useRef(null)
+  const activeRemoteStrokesRef = useRef(new Map())
   const canvasRef = useRef(null)
   const lowerInfoRef = useRef(null)
   const canvasWrapperRef = useRef(null)
@@ -239,7 +239,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   useEffect(() => {
     if (room.phase === 'GAME_RESULT') {
       strokesRef.current = []
-      activeRemoteStrokeRef.current = null
+      activeRemoteStrokesRef.current.clear()
       canvasRef.current?.clear()
     }
   }, [room.phase])
@@ -334,6 +334,12 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     return () => clearInterval(interval)
   }, [room.phase, room.roundEndsAt, room.round, room.turnIndex, room.remainingMs])
 
+  // Handle canvas resize callback (from DrawingCanvas ResizeObserver)
+  const handleCanvasResize = useCallback(() => {
+    const activeStrokes = Array.from(activeRemoteStrokesRef.current.values())
+    canvasRef.current?.redrawAll([...strokesRef.current, ...activeStrokes])
+  }, [])
+
   // Networking for strokes
   useEffect(() => {
     const socket = getSocket()
@@ -343,7 +349,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       socket.emit('draw:request-strokes', (res) => {
         if (res && res.strokes) {
           strokesRef.current = res.strokes
-          activeRemoteStrokeRef.current = null
+          activeRemoteStrokesRef.current.clear()
           canvasRef.current?.redrawAll(strokesRef.current)
         }
       })
@@ -353,27 +359,57 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     socket.on('connect', fetchStrokes)
 
     const handleIncomingStroke = (stroke) => {
+      if (!stroke) return
+
       if (stroke.isComplete) {
-        activeRemoteStrokeRef.current = null
-        strokesRef.current.push(stroke)
-        // Redraw to ensure pixel-perfect rendering of the full stroke
-        canvasRef.current?.redrawAll(strokesRef.current)
+        if (stroke.strokeId) {
+          activeRemoteStrokesRef.current.delete(stroke.strokeId)
+        }
+        
+        // Deduplicate completed strokes in strokesRef
+        const existingIdx = stroke.strokeId 
+          ? strokesRef.current.findIndex(s => s.strokeId === stroke.strokeId)
+          : -1
+
+        if (existingIdx !== -1) {
+          strokesRef.current[existingIdx] = stroke
+        } else {
+          strokesRef.current.push(stroke)
+        }
+
+        // If this client is the current drawer and this was our stroke, we already drew it locally.
+        // Redrawing would wipe the canvas and could erase the next stroke in progress.
+        // Remote guessers must redraw all completed strokes + remaining active remote strokes.
+        if (!isDrawer) {
+          const activeStrokes = Array.from(activeRemoteStrokesRef.current.values())
+          canvasRef.current?.redrawAll([...strokesRef.current, ...activeStrokes])
+        }
       } else {
-        const active = activeRemoteStrokeRef.current
-        if (!active || active.color !== stroke.color || active.tool !== stroke.tool || active.size !== stroke.size) {
-          activeRemoteStrokeRef.current = {
+        // Live partial chunk
+        const strokeId = stroke.strokeId || `${stroke.color}-${stroke.tool}-${stroke.size}`
+        let active = activeRemoteStrokesRef.current.get(strokeId)
+        if (!active) {
+          active = {
+            strokeId,
             color: stroke.color,
             size: stroke.size,
             tool: stroke.tool,
             points: [...(stroke.points || [])],
+            lastSeq: stroke.seq != null ? stroke.seq : 0
           }
-        } else if (stroke.points?.length) {
-          const lastPoint = active.points[active.points.length - 1]
-          const firstNew = stroke.points[0]
-          if (lastPoint && firstNew && lastPoint.x === firstNew.x && lastPoint.y === firstNew.y) {
-            active.points.push(...stroke.points.slice(1))
-          } else {
-            active.points.push(...stroke.points)
+          activeRemoteStrokesRef.current.set(strokeId, active)
+        } else {
+          if (stroke.seq == null || stroke.seq > active.lastSeq) {
+            if (stroke.seq != null) active.lastSeq = stroke.seq
+            if (stroke.points?.length) {
+              const lastPoint = active.points[active.points.length - 1]
+              const firstNew = stroke.points[0]
+              if (lastPoint && firstNew && lastPoint.x === firstNew.x && lastPoint.y === firstNew.y) {
+                active.points.push(...stroke.points.slice(1))
+              } else {
+                active.points.push(...stroke.points)
+              }
+            }
           }
         }
         canvasRef.current?.liveDraw(stroke)
@@ -382,12 +418,12 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
     const handleClear = () => {
       strokesRef.current = []
-      activeRemoteStrokeRef.current = null
+      activeRemoteStrokesRef.current.clear()
       canvasRef.current?.clear()
     }
 
     const handleIncomingUndo = () => {
-      activeRemoteStrokeRef.current = null
+      activeRemoteStrokesRef.current.clear()
       if (strokesRef.current.length > 0) {
         strokesRef.current.pop()
         canvasRef.current?.redrawAll(strokesRef.current)
@@ -398,37 +434,27 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     socket.on('draw:clear-canvas', handleClear)
     socket.on('draw:undo', handleIncomingUndo)
 
-    const handleResize = () => {
-      setTimeout(() => {
-        const active = activeRemoteStrokeRef.current
-        const strokes = active ? [...strokesRef.current, active] : strokesRef.current
-        canvasRef.current?.redrawAll(strokes)
-      }, 0)
-    }
-    window.addEventListener('resize', handleResize)
-
     return () => {
       socket.off('connect', fetchStrokes)
       socket.off('draw:stroke', handleIncomingStroke)
       socket.off('draw:clear-canvas', handleClear)
       socket.off('draw:undo', handleIncomingUndo)
-      window.removeEventListener('resize', handleResize)
     }
-  }, [])
+  }, [isDrawer])
 
   // Sync strokes on turn change
   const currentTurnKey = `${room.round}-${room.turnIndex}-${room.currentDrawerId}`
   useEffect(() => {
     if (room.phase === 'WORD_CHOICE') {
       strokesRef.current = []
-      activeRemoteStrokeRef.current = null
+      activeRemoteStrokesRef.current.clear()
       canvasRef.current?.clear()
     }
   }, [currentTurnKey, room.phase])
 
   // Batch rapid pointer events into short ordered packets. Sending one Socket.IO
   // message per pointer event can overwhelm the realtime stream when drawing fast.
-  const pendingLivePointsRef = useRef([])
+  const pendingLivePointsRef = useRef(null)
   const liveFlushTimerRef = useRef(null)
 
   const flushLiveStroke = useCallback(() => {
@@ -437,45 +463,60 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       liveFlushTimerRef.current = null
     }
 
-    const points = pendingLivePointsRef.current
-    if (points.length === 0) return
-    pendingLivePointsRef.current = []
+    const pending = pendingLivePointsRef.current
+    if (!pending || !pending.points || pending.points.length === 0) return
+    pendingLivePointsRef.current = null
 
     const socket = getSocket()
+    if (!socket?.connected) return
+
     socket.emit('draw:stroke', {
-      color: points.color,
-      size: points.size,
-      tool: points.tool,
-      points: points.points,
+      strokeId: pending.strokeId,
+      color: pending.color,
+      size: pending.size,
+      tool: pending.tool,
+      points: pending.points,
+      seq: pending.seq,
       isComplete: false,
     })
   }, [])
 
   const handleStroke = useCallback((strokeData, isComplete = true) => {
     const socket = getSocket()
+    if (!socket?.connected) return
 
     if (isComplete) {
       // Preserve ordering: all pending live points must reach the server before
       // the persisted complete stroke is sent.
-      flushLiveStroke()
+      if (pendingLivePointsRef.current) {
+        flushLiveStroke()
+      }
       socket.emit('draw:stroke', { ...strokeData, isComplete: true })
       return
     }
 
     if (!strokeData?.points?.length) return
 
+    // If starting a different strokeId, flush previous pending points immediately
+    if (pendingLivePointsRef.current && pendingLivePointsRef.current.strokeId !== strokeData.strokeId) {
+      flushLiveStroke()
+    }
+
     const pending = pendingLivePointsRef.current
-    if (pending.length === 0) {
+    if (!pending) {
       pendingLivePointsRef.current = {
+        strokeId: strokeData.strokeId,
         color: strokeData.color,
         size: strokeData.size,
         tool: strokeData.tool,
         points: [...strokeData.points],
+        seq: strokeData.seq != null ? strokeData.seq : 0
       }
     } else {
       // Pointer deltas are already ordered. Keep the complete point sequence in
       // one packet so the remote canvas can draw it without gaps.
       pending.points.push(...strokeData.points.slice(1))
+      if (strokeData.seq != null) pending.seq = strokeData.seq
     }
 
     // Keep packets small enough for smooth realtime rendering while greatly
@@ -496,8 +537,10 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
   useEffect(() => () => {
     if (liveFlushTimerRef.current) clearTimeout(liveFlushTimerRef.current)
     liveFlushTimerRef.current = null
-    pendingLivePointsRef.current = []
-  }, [])
+    if (pendingLivePointsRef.current) {
+      flushLiveStroke()
+    }
+  }, [flushLiveStroke])
 
   const handleClearCanvas = () => {
     const socket = getSocket()
@@ -780,6 +823,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             tool={tool}
             isDrawer={isDrawer && room.phase === 'DRAWING'}
             onStroke={handleStroke}
+            onResize={handleCanvasResize}
           />
         </div>
         

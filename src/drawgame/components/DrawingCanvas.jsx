@@ -1,12 +1,15 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, memo } from 'react'
 
-const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStroke }, ref) => {
+const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStroke, onResize }, ref) => {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
   
   const isDrawing = useRef(false)
   const lastPos = useRef(null)
   const currentStrokeRef = useRef(null)
+  const strokeBaseIdRef = useRef(null)
+  const chunkIndexRef = useRef(0)
+  const strokeSeqRef = useRef(0)
 
   const hexToRgba = (hex) => {
     const r = parseInt(hex.slice(1, 3), 16)
@@ -121,6 +124,7 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     
     if (stroke.tool === 'fill') {
       performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
+      ctx.globalCompositeOperation = 'source-over'
       return
     }
     const isMobile = window.innerWidth <= 768
@@ -160,7 +164,9 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       if (!stroke || !stroke.points || stroke.points.length === 0) return
       
       if (stroke.tool === 'fill') {
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
         performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
+        ctx.scale(dpr, dpr)
         return
       }
       const w = isMobile ? 800 : rect.width
@@ -248,12 +254,26 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
         const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.scale(dpr, dpr)
+        ctx.globalCompositeOperation = 'source-over'
+        onResize?.()
       }
     }
+
+    let ro = null
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(() => {
+        resizeCanvas()
+      })
+      ro.observe(containerRef.current)
+    }
+
     window.addEventListener('resize', resizeCanvas)
     resizeCanvas()
-    return () => window.removeEventListener('resize', resizeCanvas)
-  }, [])
+    return () => {
+      if (ro) ro.disconnect()
+      window.removeEventListener('resize', resizeCanvas)
+    }
+  }, [onResize])
 
   const getPos = (e) => {
     const cvs = canvasRef.current
@@ -273,7 +293,8 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const ny = pos.y / rect.height
     
     if (tool === 'fill') {
-      const stroke = { color, size, tool, points: [{ x: nx, y: ny }] }
+      const strokeId = `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const stroke = { strokeId, color, size, tool, points: [{ x: nx, y: ny }], isComplete: true }
       liveDraw(stroke)
       if (onStroke) onStroke(stroke, true)
       return
@@ -283,10 +304,15 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     isDrawing.current = true
     lastPos.current = pos
     
-    const stroke = { color, size, tool, points: [{ x: nx, y: ny }] }
+    strokeBaseIdRef.current = `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    chunkIndexRef.current = 0
+    strokeSeqRef.current = 0
+    const strokeId = `${strokeBaseIdRef.current}-c0`
+
+    const stroke = { strokeId, color, size, tool, points: [{ x: nx, y: ny }] }
     currentStrokeRef.current = stroke
     liveDraw(stroke)
-    if (onStroke) onStroke(stroke, false)
+    if (onStroke) onStroke({ ...stroke, seq: strokeSeqRef.current++ }, false)
   }
 
   const handleMove = (e) => {
@@ -304,14 +330,24 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const point = { x: nx, y: ny }
     currentStrokeRef.current.points.push(point)
     
-    const deltaStroke = { color, size, tool, points: [{ x: prevNx, y: prevNy }, point] }
+    const deltaStroke = {
+      strokeId: currentStrokeRef.current.strokeId,
+      color,
+      size,
+      tool,
+      points: [{ x: prevNx, y: prevNy }, point],
+      seq: strokeSeqRef.current++
+    }
     liveDraw(deltaStroke)
     lastPos.current = pos
     if (onStroke) onStroke(deltaStroke, false)
 
     if (currentStrokeRef.current.points.length >= 500) {
-      if (onStroke) onStroke(currentStrokeRef.current, true)
-      currentStrokeRef.current = { color, size, tool, points: [point] }
+      if (onStroke) onStroke({ ...currentStrokeRef.current, isComplete: true }, true)
+      chunkIndexRef.current += 1
+      const nextStrokeId = `${strokeBaseIdRef.current}-c${chunkIndexRef.current}`
+      currentStrokeRef.current = { strokeId: nextStrokeId, color, size, tool, points: [point] }
+      if (onStroke) onStroke({ ...currentStrokeRef.current, seq: strokeSeqRef.current++ }, false)
     }
   }
 
@@ -322,7 +358,7 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     }
     isDrawing.current = false
     if (onStroke && currentStrokeRef.current) {
-      onStroke(currentStrokeRef.current, true)
+      onStroke({ ...currentStrokeRef.current, isComplete: true }, true)
     }
     currentStrokeRef.current = null
   }

@@ -6507,19 +6507,13 @@ html.sk-screen-lock body {
   position: fixed;               /* anchored to the real screen edges, covers the home-indicator area */
   left: 0;
   right: 0;
-  top: var(--sk-vvtop, 0px);     /* 0 unless the keyboard is open */
-  bottom: 0;
+  top: var(--sk-pan, 0px);               /* follows a leftover iOS pan so nothing visibly scrolls */
+  bottom: calc(var(--sk-pan, 0px) * -1); /* keeps the shell full height while shifted */
   height: auto;
   min-height: 0;
   overflow: hidden;
   overflow: clip;
   background-color: var(--sk-surface); /* blends with the input form bg at the bottom safe area */
-}
-
-/* Keyboard open: glue the shell to the visible area above the keyboard */
-html.sk-kb-open .sk-view--game {
-  bottom: auto;
-  height: var(--sk-vvh);
 }
 
 /* Guess dock: last child of the shell, sits directly on the keyboard */
@@ -6619,25 +6613,14 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   overscroll-behavior: contain;
 }
 
-/* Keyboard open: top bar, canvas, and players/chat panel preserve their pre-keyboard dimensions without shrinking.
-   The body scrolls vertically when content exceeds the viewport, driven by the user only. */
-html.sk-kb-open .sk-game-body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-html.sk-kb-open .sk-drawing-surface-wrapper,
-html.sk-kb-open .sk-lower-info-section {
-  transition: none !important;   /* no slow 1000ms shrink while the keyboard animates */
-}
-html.sk-kb-open .sk-drawing-surface-wrapper {
-  flex-shrink: 0 !important;
-  height: var(--sk-canvas-pre-kb-h, auto) !important;
+/* Keyboard open: the lifted dock overlays the bottom of the players/chat panel, so cap the height of the
+   panel's inner columns to keep their content (and the newest chat line) above the dock.
+   A cap can never make the panel taller, so there is no layout feedback loop. */
+.sk-lower-info-section > div {
+  max-height: calc(100% - var(--sk-kb-lift, 0px));
 }
 html.sk-kb-open .sk-lower-info-section {
-  flex: none !important;
-  flex-shrink: 0 !important;
-  height: var(--sk-lower-panel-h, auto) !important;
-  min-height: 120px !important;
+  transition: none !important;
 }
 
 /* --- SKRIBBL SETTINGS PANEL (reuses the Undercover players-panel fly-in/out animation) --- */
