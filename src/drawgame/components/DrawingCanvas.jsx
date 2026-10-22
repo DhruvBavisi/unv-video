@@ -127,13 +127,13 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       ctx.globalCompositeOperation = 'source-over'
       return
     }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const isMobile = window.innerWidth <= 768
+    const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.scale(dpr, dpr)
-    ctx.imageSmoothingEnabled = true
     
-    const w = rect.width
-    const h = rect.height
+    const w = isMobile ? 800 : rect.width
+    const h = isMobile ? 600 : rect.height
     let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
     
     if (stroke.points.length === 1) {
@@ -154,11 +154,11 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
     const ctx = cvs.getContext('2d')
     const rect = cvs.getBoundingClientRect()
     
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const isMobile = window.innerWidth <= 768
+    const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvs.width, cvs.height)
     ctx.scale(dpr, dpr)
-    ctx.imageSmoothingEnabled = true
 
     const renderStroke = (stroke) => {
       if (!stroke || !stroke.points || stroke.points.length === 0) return
@@ -167,11 +167,10 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         performFloodFill(ctx, stroke.points[0].x * cvs.width, stroke.points[0].y * cvs.height, cvs.width, cvs.height, stroke.color)
         ctx.scale(dpr, dpr)
-        ctx.imageSmoothingEnabled = true
         return
       }
-      const w = rect.width
-      const h = rect.height
+      const w = isMobile ? 800 : rect.width
+      const h = isMobile ? 600 : rect.height
       let start = { x: stroke.points[0].x * w, y: stroke.points[0].y * h }
       if (stroke.points.length === 1) {
         drawSegment(ctx, start, start, stroke.color, stroke.size, stroke.tool)
@@ -218,27 +217,43 @@ const DrawingCanvas = forwardRef(({ color, size, tool = 'brush', isDrawer, onStr
       if (!cvs || !container) return
       
       const rect = container.getBoundingClientRect()
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const targetW = Math.round(rect.width * dpr)
-      const targetH = Math.round(rect.height * dpr)
+      const isMobile = window.innerWidth <= 768
       
       let sizeChanged = false
-      // Only update bitmap dimensions if they genuinely change to prevent clearing canvas bitmap
-      if (targetW > 0 && targetH > 0 && (cvs.width !== targetW || cvs.height !== targetH)) {
-        cvs.width = targetW
-        cvs.height = targetH
-        sizeChanged = true
+      if (isMobile) {
+        if (cvs.width !== 800) {
+          cvs.width = 800
+          sizeChanged = true
+        }
+        if (cvs.height !== 600) {
+          cvs.height = 600
+          sizeChanged = true
+        }
+        if (cvs.style.width !== '100%') cvs.style.width = '100%'
+        if (cvs.style.height !== '100%') cvs.style.height = '100%'
+        if (cvs.style.objectFit !== 'fill') cvs.style.objectFit = 'fill'
+      } else {
+        const dpr = window.devicePixelRatio || 1
+        const targetW = Math.round(rect.width * dpr)
+        const targetH = Math.round(rect.height * dpr)
+        // Only update bitmap dimensions if they genuinely change to prevent clearing canvas bitmap
+        if (targetW > 0 && targetH > 0 && (cvs.width !== targetW || cvs.height !== targetH)) {
+          cvs.width = targetW
+          cvs.height = targetH
+          sizeChanged = true
+        }
+        const styleW = `${rect.width}px`
+        const styleH = `${rect.height}px`
+        if (cvs.style.width !== styleW) cvs.style.width = styleW
+        if (cvs.style.height !== styleH) cvs.style.height = styleH
+        if (cvs.style.objectFit !== 'fill') cvs.style.objectFit = 'fill'
       }
-      const styleW = `${rect.width}px`
-      const styleH = `${rect.height}px`
-      if (cvs.style.width !== styleW) cvs.style.width = styleW
-      if (cvs.style.height !== styleH) cvs.style.height = styleH
 
       if (sizeChanged) {
         const ctx = cvs.getContext('2d')
+        const dpr = isMobile ? 1 : (window.devicePixelRatio || 1)
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.scale(dpr, dpr)
-        ctx.imageSmoothingEnabled = true
         ctx.globalCompositeOperation = 'source-over'
         onResize?.()
       }

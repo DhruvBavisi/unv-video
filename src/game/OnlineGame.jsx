@@ -25,7 +25,6 @@ import GameMenu from './GameMenu.jsx'
 import QRModal from './QRModal.jsx'
 import QRScannerModal from './QRScannerModal.jsx'
 import { readIdentity } from './identity.js'
-import { usePageBackground } from '../hooks/usePageBackground.js'
 
 function ErrorState({ children }) {
   return children ? <p className="online-error" role="alert">{children}</p> : null
@@ -1124,7 +1123,6 @@ function PlayerList({ players, settings, host, onActionRequest }) {
 }
 
 export default function OnlineGame({ onExit }) {
-  usePageBackground('#0b0c0d')
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState)
   const [loading, setLoading] = useState(false)
   const [joining, setJoining] = useState(false)
