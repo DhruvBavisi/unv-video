@@ -313,7 +313,7 @@ A reconnect is a restoration of the existing game, not a new join. The UI should
 For special-role decision phases, Revenger and Goddess timers resume from their stored remaining duration after automatic reconnect.
 
 ### Draw & Guess Design
-Draw & Guess is a second playable mode sharing the project's Socket.IO infrastructure. Its UI is isolated from Undercover under `src/drawgame/`.
+Draw & Guess is a second playable mode sharing the project's Socket.IO infrastructure. Its UI is isolated from Undercover under `src/games/skribbl/`.
 
 Core visual requirements:
 - cheerful/premium game styling rather than the Undercover black-and-gold investigation palette

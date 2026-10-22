@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 import assert from 'assert'
-import { getSkribblActiveComponent, shouldRenderIndividualLobby } from '../src/drawgame/skribblRouting.js'
+import { getSkribblActiveComponent, shouldRenderIndividualLobby } from '../src/games/skribbl/skribblRouting.js'
 
 const URL = process.env.TEST_URL || 'http://localhost:3001'
 

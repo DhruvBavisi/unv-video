@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { rankPlayers } from '../src/drawgame/finalScoresRanking.js'
+import { rankPlayers } from '../src/games/skribbl/finalScoresRanking.js'
 
 const ranked = rankPlayers([
   { id: 'a', name: 'Ann', score: 100 },

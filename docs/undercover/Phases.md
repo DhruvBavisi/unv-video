@@ -565,9 +565,22 @@ The current implementation also includes:
 
 Do not reintroduce stale-player auto-removal, 60-second disconnect eviction, or "disconnect means leave" behavior.
 
-## Draw & Guess
-Draw & Guess is implemented and uses shared Socket.IO infrastructure with `draw:` event names and isolated draw-room state.
+## Draw & Guess / Skribbl
+Draw & Guess is implemented and uses shared Socket.IO infrastructure with `draw:` event names and isolated `drawRooms` state.
 
-## Next Planned Game
-Codenames is the next planned game mode. Its specification is maintained separately in `docs/codenames/`. Codenames implementation must not modify working Undercover or Draw & Guess state machines unnecessarily.
+## Codenames
+Codenames is implemented and uses shared Socket.IO infrastructure with `codenames:` event names and isolated `codenamesRooms` state, supporting single-player start into a waiting room, late joining during lobby/waiting phases, and classic board game rules.
+
+## Mobile LAN Stability & Insecure Context Hardening
+- **Cross-Platform UUID Generation Fallback (`src/shared/session/identity.js`):**
+  - Standard RFC4122 v4 UUID generator with graceful 3-tier fallback (`crypto.randomUUID()` → `crypto.getRandomValues()` → pseudorandom RFC4122 template) preventing runtime crashes over mobile LAN HTTP (`http://<ip>:5173`).
+  - Wrapped `localStorage` in resilient try/catch wrappers with in-memory storage fallback.
+- **Client Render Error Boundary (`src/App.jsx`):**
+  - Wrapped game mode views (`Undercover`, `Skribbl`, `Codenames`) and session resolver in `GameErrorBoundary` with user recovery options ("Return to Mode Selection" and "Reload Page").
+  - Added 5-second automatic timeout and manual Cancel escape hatch to `SessionResolver`.
+- **Defensive Rendering & Clipboard Fallbacks:**
+  - `src/games/undercover/OnlineGame.jsx`: Safeguarded `state.connectionState` string conversion, added fallback UI if `activePhase` is unrecognized, added Cancel button during session restoration, and implemented textarea fallback for room ID and invite URL copying when `navigator.clipboard` is restricted.
+  - `src/games/undercover/components/PlayersPanel.jsx`: Added textarea fallback for room code copying under insecure HTTP contexts.
+- **Socket.IO Connection Resilience (`src/shared/realtime/socket.js`):**
+  - Ensured `connectSocket()` properly invokes `socket.connect()` when an existing disconnected socket instance is reused or newly initialized.
 

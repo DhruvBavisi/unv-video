@@ -11,7 +11,8 @@ import assert from 'node:assert/strict'
 import {
   makeClient, emitAck, waitForRoomState, waitForEvent, connectClients, disconnectClients
 } from './helpers.mjs'
-import { onElimination } from '../server/specialRolesHooks.js'
+import { onElimination } from '../server/games/undercover/specialRolesHooks.js'
+
 
 /* ──────────────── shared utilities ──────────────── */
 

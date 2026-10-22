@@ -1,36 +1,34 @@
 # CODENAMES — Architecture
 
 ## Status
-**Phase 4 implemented. Codenames foundational module and routing added.**
+**Implemented.** Codenames is an active playable game mode within the shared Socket.IO infrastructure, using isolated `codenamesRooms` state and `codenames:*` socket events.
 
-Codenames is a planned third playable mode inside the existing Vite + React project. It must reuse the existing Socket.IO connection/session infrastructure while keeping its game state isolated from Undercover and Draw & Guess.
-
-## Module Boundary
-Recommended structure:
+## Module Structure
+Active frontend structure:
 ```
-src/codenames/
+src/games/codenames/
   CodenamesApp.jsx
   components/
     CodenamesBoard.jsx
     CodenamesCard.jsx
-    TeamPanel.jsx
-    CluePanel.jsx
-    TurnIndicator.jsx
-    PlayerRoster.jsx
-    ResultOverlay.jsx
-  hooks/
+    CodenamesLobby.jsx
   styles/
+    codenames.css
 ```
 
-Server:
+Server structure:
 ```
 server/
-  server.js
-  codenames/
-    ...optional helpers as implementation grows
+  server.js (Socket.IO/HTTP bootstrap, delegation to games)
+  games/codenames/
+    codenamesState.js (codenamesRooms map, public/private state projections)
+    codenamesHandlers.js (codenames:* event handlers)
+    boardGenerator.js (25-word board generator with team assignment)
+    words.js (curated Codenames word dictionary)
 ```
 
 Do not create a second Socket.IO server.
+
 
 ## Shared Connection
 Reuse the existing socket connection and identity system:

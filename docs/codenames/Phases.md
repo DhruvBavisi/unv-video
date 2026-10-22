@@ -1,25 +1,26 @@
 # CODENAMES — Development Phases
 
 ## Status
-All phases below are planned. Do not mark a phase complete until the corresponding code actually exists.
+Foundational mode integration, room lifecycle, teams & roles, server board generation, and clue giving are implemented.
 
 ## Phase 1 — Mode Integration
 - [x] Add Codenames to the existing mode selector.
-- [x] Add isolated `src/codenames/` module.
+- [x] Add isolated `src/games/codenames/` module.
 - [x] Reuse shared Socket.IO connection.
 - [x] Preserve existing Undercover/Draw & Guess behavior.
 
 ## Phase 2 — Codenames Room Lifecycle
-- [x] Dedicated Codenames room state.
-- [x] Create/join/leave.
-- [x] Host handling.
+- [x] Dedicated Codenames room state (`codenamesRooms`).
+- [x] Create/join/leave handlers.
+- [x] Host handling and host transfer.
 - [x] Single-player room start into `WAITING_FOR_PLAYERS` phase.
 - [x] Late joining allowed during `LOBBY` and `WAITING_FOR_PLAYERS`.
 - [x] Late joining locked once in `PLAYING`.
 - [x] Explicit removal only.
-- [x] Stable session identity.
-- [x] Resume-token authentication.
+- [x] Stable session identity with `localStorage['unv_identity']`.
+- [x] Resume-token authentication (`codenames:join-room`).
 - [x] Reconnect without duplicate players or resetting the board.
+- [x] Mobile LAN HTTP resiliency: Back to Game Modes cancel button on session restoration screen (`src/games/codenames/CodenamesApp.jsx`).
 
 ## Phase 3 — Teams & Roles
 - [x] Red/Blue teams.
@@ -31,13 +32,13 @@ All phases below are planned. Do not mark a phase complete until the correspondi
 - [x] Private role state.
 
 ## Phase 4 — Board Generation
-- Generate 25 unique words.
-- Generate hidden Red/Blue/Neutral/Assassin key.
-- Select starting team.
-- Initialize board once on room start and preserve through waiting phase.
-- Validate board distribution server-side.
-- Board preview in lobby during waiting phase.
-- Never send the complete key to Operatives.
+- [x] Generate 25 unique words (`server/games/codenames/words.js`).
+- [x] Generate hidden Red/Blue/Neutral/Assassin key (`server/games/codenames/boardGenerator.js`).
+- [x] Select starting team (9 cards for starting team, 8 for second team, 7 neutrals, 1 assassin).
+- [x] Initialize board once on room start and preserve through waiting phase.
+- [x] Validate board distribution server-side.
+- [x] Board preview in lobby during waiting phase.
+- [x] Never send the complete key to Operatives (sanitized in `getCodenamesPublicState`).
 
 ## Phase 5 — Private/Public State
 Implement:

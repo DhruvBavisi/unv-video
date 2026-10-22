@@ -5,16 +5,20 @@ Implemented playable online mode.
 
 ## Module Boundary
 Client:
-- `src/drawgame/SkribblApp.jsx`
-- `src/drawgame/components/`
-- shared socket: `src/game/socket.js`
-- shared identity: `src/game/identity.js`
+- `src/games/skribbl/SkribblApp.jsx`
+- `src/games/skribbl/components/`
+- `src/games/skribbl/hooks/`
+- shared socket: `src/shared/realtime/socket.js`
+- shared identity: `src/shared/session/identity.js`
 
 Server:
-- `server/server.js`
-- dedicated `drawRooms` map
+- `server/server.js` (Socket.IO/HTTP bootstrap, delegation to games)
+- `server/games/skribbl/skribblState.js` (dedicated `drawRooms` map, timers, rate limiters)
+- `server/games/skribbl/skribblHandlers.js` (`draw:*` socket events)
+- `server/games/skribbl/drawWords.json` (word list catalog)
 
 Do not create a second Socket.IO server.
+
 
 ## Shared Connection
 Reuse the existing Socket.IO connection and `register` lifecycle. Draw-specific events use the `draw:` prefix:

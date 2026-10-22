@@ -41,7 +41,7 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 
 ## Phase 12 — Mobile LAN Stability & Insecure Context Hardening
 **Implemented:**
-- Resilient identity generation in `src/game/identity.js` preventing runtime crashes when accessing the app over LAN HTTP where `crypto.randomUUID` is unavailable.
+- Resilient identity generation in `src/shared/session/identity.js` preventing runtime crashes when accessing the app over LAN HTTP where `crypto.randomUUID` is unavailable.
 - Added timeout and cancel action to Skribbl session restoration screen so users are not trapped if the server is offline or reconnecting.
 - Root error boundary in `App.jsx` preventing blank screen on unexpected exceptions.
 
@@ -82,20 +82,20 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 
 ## Phase 17 — Native Autofill & Keyboard Suggestions Consistency
 **Implemented:**
-- **Name Input Autofill & Suggestions (`src/drawgame/SkribblApp.jsx`):**
+- **Name Input Autofill & Suggestions (`src/games/skribbl/SkribblApp.jsx`):**
   - Added native name autofill and input assistance to both create-room (`#sk-create-name`) and join-room (`#sk-join-name`) name fields using `name="name"`, `autoComplete="name"`, `autoCapitalize="words"`, `autoCorrect="on"`, and `spellCheck={true}`.
   - Enabled mobile browsers to suggest stored user names and capitalize words automatically without obstructing custom styling.
-- **Room Code Input Security & Formatting (`src/drawgame/SkribblApp.jsx`):**
+- **Room Code Input Security & Formatting (`src/games/skribbl/SkribblApp.jsx`):**
   - Configured room-code field (`#sk-join-id`) with `name="roomCode"`, `autoCapitalize="characters"`, `autoCorrect="off"`, `autoComplete="off"`, and `spellCheck={false}`.
   - Preserved uppercase formatting, character spacing, 6-character limit, and camera QR scanning modal integration.
-- **Guess Input Suggestions & Word Confidentiality (`src/drawgame/components/DrawingPhase.jsx`):**
+- **Guess Input Suggestions & Word Confidentiality (`src/games/skribbl/components/DrawingPhase.jsx`):**
   - Maintained native predictive text, autocorrect, and spellcheck on the guess input (`#sk-guess-input`) via `autoComplete="on"`, `autoCorrect="on"`, `spellCheck={true}`, and `autoCapitalize="sentences"`.
   - Strictly prevented secret-word leakage: drawer's word is never injected into placeholders, values, autocomplete history, or autofill attributes.
   - Preserved mobile keyboard viewport resizing, focus retention, and Enter-to-submit behavior without introducing custom keyboards or suggestion bars.
 
 ## Phase 18 — Connection Status Polish & Consistent Reaction Colors
 **Implemented:**
-- **Network Status Indicator Placement & Settings Menu Integration (`src/styles/globals.css`, `src/drawgame/components/SkribblNetworkStatus.jsx`, `src/drawgame/components/SettingsPanel.jsx`):**
+- **Network Status Indicator Placement & Settings Menu Integration (`src/shared/styles/globals.css`, `src/games/skribbl/components/SkribblNetworkStatus.jsx`, `src/games/skribbl/components/SettingsPanel.jsx`):**
   - Removed connection status from the in-game top bar entirely, keeping the top bar uncluttered and returning topbar spacing to `--sk-topbar-extra: 8px` for maximum canvas drawing area.
   - Shifted in-game connection status inside the settings menu (`SettingsPanel.jsx`) as a dedicated, native `.sk-settings-status-row` matching the panel's rounded border, card background, uppercase typography, and pill badge aesthetics.
   - Supported `inline` rendering in `SkribblNetworkStatus.jsx` with `.sk-settings-status-badge--connected/connecting/disconnected` modifier classes.
@@ -106,12 +106,12 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
     - **Connected:** Emerald dot (`#10B981`) with `#065F46` label (> 7:1 WCAG AAA contrast).
     - **Connecting:** Amber dot (`#F59E0B`) with subtle pulse animation and `#92400E` label (> 5.8:1 contrast).
     - **Disconnected:** Red dot (`#EF4444`) with `#DC2626` failure red label (> 4.5:1 contrast).
-- **Reaction Colors Consistency (`src/drawgame/components/DrawingPhase.jsx`, `src/drawgame/components/ChatBox.jsx`):**
+- **Reaction Colors Consistency (`src/games/skribbl/components/DrawingPhase.jsx`, `src/games/skribbl/components/ChatBox.jsx`):**
   - Updated both temporary canvas notification capsules and persistent ChatBox reaction messages to check `msg.reaction` / `notif.reaction` directly (`'LIKE'` vs `'DISLIKE'`) with robust fallback to text matching.
   - When a drawing is disliked, rendered notification text and chat message text in clear failure red (`#DC2626`) on `#FEE2E2` background, strictly eliminating confusing success green or non-standard orange colors.
   - Preserved success green (`#359b35`) on `#CFFFBD` background for liked drawings.
   - Preserved notification timing (4000ms expiration), server-side single reaction limit per turn, and all existing system and chat message styles.
-- **Main Game Page Safe Bottom Spacing (`src/styles/globals.css`, `src/styles/sk-pwa-background.css`):**
+- **Main Game Page Safe Bottom Spacing (`src/shared/styles/globals.css`, `src/styles/sk-pwa-background.css`):**
   - Added safe bottom space to the guess dock (`.sk-guess-dock`) and drawer lower info section via `padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px))`, leaving a 10px breathing buffer above the viewport bottom or iPhone safe area.
   - Blended safe area background seamlessly with the input form background color (`var(--sk-surface, #ffffff)`) across `.sk-view--game` and `sk-pwa-background.css`.
   - When the software keyboard opens, reduced guess dock padding to `8px` so it rests directly on top of the keyboard without wasted gap.
@@ -119,12 +119,12 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 ## Phase 19 — Dev Bots Removal & Host Long-Press Kick
 **Implemented:**
 - **Complete Development Bots Removal from Skribbl:**
-  - Removed dev bot controls (`ADD DEV BOTS`, `REMOVE DEV BOTS`) and handlers from `src/drawgame/components/Lobby.jsx`.
+  - Removed dev bot controls (`ADD DEV BOTS`, `REMOVE DEV BOTS`) and handlers from `src/games/skribbl/components/Lobby.jsx`.
   - Removed Skribbl-specific bot manager initialization, dynamic imports, and socket event listeners (`draw:add-dev-bots`, `draw:remove-dev-bots`) from `server/server.js`.
   - Removed `isBot` parameters, flags, and branch logic across Skribbl `draw:join-room`, `reassignDrawHostIfNeeded`, `removeDrawPlayer`, and game loop handlers.
   - Deleted obsolete `server/dev/drawBotManager.js` without touching Undercover or Codenames bot architectures.
 - **Host Active-Game Long-Press Player Kick:**
-  - Added host-only long-press interaction (~600ms) on non-self player cards in `src/drawgame/components/PlayerStrip.jsx` during active gameplay.
+  - Added host-only long-press interaction (~600ms) on non-self player cards in `src/games/skribbl/components/PlayerStrip.jsx` during active gameplay.
   - Managed pointer events (`onPointerDown`, `onPointerMove`, `onPointerUp`, `onPointerCancel`, `onPointerLeave`) with movement cancellation (>10px) to prevent interfering with mobile touch scrolling or standard mouse interactions.
   - Prevented browser native context menu during card long-press while preserving responsive card styling, ranking, and drawer pencil indicator.
   - Provided a themed action sheet opening on long-press with `KICK PLAYER`, leading to a themed confirmation dialog clearly identifying the target player by name.
@@ -134,7 +134,7 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 ## Phase 20 — Full-Width Guess Input & Bottom Safe Padding Removal
 **Implemented:**
 - **Removal of SEND Button & Clean Enter Submission:**
-  - Removed the visible `SEND` button from the guess dock form (`.sk-guess-dock`) in `src/drawgame/components/DrawingPhase.jsx`.
+  - Removed the visible `SEND` button from the guess dock form (`.sk-guess-dock`) in `src/games/skribbl/components/DrawingPhase.jsx`.
   - Preserved standard `<form onSubmit={handleGuessSubmit}>` mechanics, enabling submission via the hardware Enter key or mobile keyboard "Send" action (`enterKeyHint="send"`).
   - Maintained complete guess validation: non-empty input requirement, drawer exclusion, and `DRAWING` phase gating.
   - Cleared input after submission and maintained input focus (`guessInputRef.current?.focus({ preventScroll: true })`).
@@ -150,11 +150,11 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
 
 ## Phase 21 — Individual Lobby Entry & Play Again Coordination
 **Implemented:**
-- **Universal Player Opt-In on `GAME_RESULT` (`src/drawgame/components/DrawingPhase.jsx`):**
+- **Universal Player Opt-In on `GAME_RESULT` (`src/games/skribbl/components/DrawingPhase.jsx`):**
   - Replaced the host-only Play Again button and non-host waiting text with an interactive Play Again button available to every player on `GAME_RESULT`.
   - Added per-player pending and acknowledged states: displays `"RETURNING TO LOBBY..."` while awaiting server acknowledgement and `"WAITING FOR OTHERS..."` once opted in, preventing duplicate clicks.
   - Visualized player opt-in status in the game-over scoreboard with a green `READY` badge next to players whose `playAgain === true`.
-- **Immediate Individual Lobby Entry (`src/drawgame/SkribblApp.jsx`, `src/drawgame/components/DrawingPhase.jsx`):**
+- **Immediate Individual Lobby Entry (`src/games/skribbl/SkribblApp.jsx`, `src/games/skribbl/components/DrawingPhase.jsx`):**
   - Enabled individual players who opt in to transition immediately to their existing room's lobby view without waiting for other players or altering room ID.
   - Hardened client routing in `SkribblApp.jsx` to render `Lobby` when `roomState.phase === 'LOBBY' || (roomState.phase === 'GAME_RESULT' && me?.playAgain)`.
   - Added early lobby return in `DrawingPhase.jsx` if `room.phase === 'GAME_RESULT' && myPlayer?.playAgain`, seamlessly handing over configuration management via `onUpdateConfig`.
@@ -165,14 +165,14 @@ Preserve word privacy, server authority, timer correctness, stale-turn protectio
   - Hooked completion checks into `disconnectDrawPlayer` and `removeDrawPlayer` so departed or disconnected players never block remaining players from resetting to lobby.
   - Preserved `existing.playAgain` state during reconnects in `draw:join-room`.
   - Factored a single guarded `resetDrawRoomToLobby(room)` that clears active timeouts/intervals, zeroes out player and record scores, resets round, turn, drawer, words, strokes, hints, reactions, and opt-in flags, clears the canvas, and broadcasts `LOBBY` state once.
-- **Host Privileges & Start Game Protection (`src/drawgame/components/Lobby.jsx`, `server/server.js`):**
+- **Host Privileges & Start Game Protection (`src/games/skribbl/components/Lobby.jsx`, `server/server.js`):**
   - Allowed the host to update game configuration (`drawTimeSec`, `rounds`, `gameMode`, etc.) immediately upon entering the lobby, even while the room remains in transitional `GAME_RESULT`.
   - Disabled the `START GAME` button and displayed `"WAITING FOR PLAYERS..."` whenever `room.phase !== 'LOBBY'`, preventing premature game starts while players remain on the result screen.
   - Displayed `(In results)` next to players in the lobby player strip who have not yet opted in.
-- **Acknowledgement Recovery & Timeout Hardening (`src/drawgame/components/DrawingPhase.jsx`, `src/drawgame/skribblRouting.js`):**
+- **Acknowledgement Recovery & Timeout Hardening (`src/games/skribbl/components/DrawingPhase.jsx`, `src/games/skribbl/skribblRouting.js`):**
   - Added a 7000ms bounded acknowledgement timeout to `handlePlayAgain` to prevent the button from getting stuck if server acknowledgement drops.
   - Implemented connection-aware recovery: socket disconnects or `connectionStatus` drops automatically clear submitting state and display a clear error message, allowing retry upon reconnect.
   - Added monotonic request ID tracking to isolate stale callbacks so delayed or out-of-order responses cannot overwrite newer submission states.
-  - Extracted pure navigation routing helpers into `src/drawgame/skribblRouting.js` (`getSkribblActiveComponent`, `shouldRenderIndividualLobby`).
-  - Extracted `PlayAgainRequestController` state machine into `src/drawgame/skribblRouting.js` with unmount request invalidation (`cleanup()` increments `activeReqId` before clearing timers).
+  - Extracted pure navigation routing helpers into `src/games/skribbl/skribblRouting.js` (`getSkribblActiveComponent`, `shouldRenderIndividualLobby`).
+  - Extracted `PlayAgainRequestController` state machine into `src/games/skribbl/skribblRouting.js` with unmount request invalidation (`cleanup()` increments `activeReqId` before clearing timers).
   - Added standalone controller regression test script `npm run test:skribbl-play-again-controller` (`tests/skribbl-play-again-controller.test.mjs`) using deterministic timers and requiring no running server, alongside existing server integration test in `tests/skribbl-play-again.test.mjs`.

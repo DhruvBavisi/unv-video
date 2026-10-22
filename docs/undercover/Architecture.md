@@ -34,11 +34,11 @@ The original 3D characters exist in the user's Blender project. The web applicat
 The landing page uses a 480-frame image sequence extracted from the supplied cinematic MP4 as its primary visual renderer. The MP4 is a fallback only.
 
 Current assets:
-- `public/images/cinematic/frame_0001.jpg` … `frame_0480.jpg`
-- `public/videos/uncercover-cinematic.mp4` — fallback only
-- `public/images/investigation-room/hero-frame.png`
-- `public/images/investigation-room/end-frame.png`
-- legacy placeholder character frames remain unused
+- `public/images/cinematic/frame-0001.webp` … `frame-0480.webp` (primary WebP frame sequence)
+- `public/videos/Undercover_cinematic_30fps.mp4` — active 30fps fallback video
+- `public/images/investigation-room-30fps/frame-0001.webp` … `frame-0300.webp` (investigation sequence)
+- `public/images/characters/` (27 character portraits)
+- `public/videos/uncercover-cinematic.mp4` — legacy file with filename typo; unreferenced in active code
 
 Do not create fake character assets or replacement characters.
 
@@ -109,49 +109,29 @@ Suggested structure:
 
 ```
 src/
-├── game/
-│   ├── GameApp.jsx
-│   ├── gameState.js
-│   ├── gameReducer.js
-│   ├── gamePhases.js
-│   ├── gameRules.js
-│   ├── roleAssignment.js
-│   ├── wordPairs.js
-│   ├── clueRules.js
-│   ├── votingRules.js
-│   ├── winConditions.js
-│   ├── roomState.js
-│   └── reconnect.js
-├── sections/
-│   ├── Hero.jsx
-│   ├── CinematicSequence.jsx
-│   ├── Investigation.jsx
-│   └── FinalCTA.jsx
-├── components/
-│   ├── ...existing landing components
-│   └── game/
-│       ├── OnlineLobby.jsx
-│       ├── HostControls.jsx
-│       ├── PlayerRoster.jsx
-│       ├── PrivateRoleReveal.jsx
-│       ├── PrivateWordReveal.jsx
-│       ├── ClueChat.jsx
-│       ├── ClueInput.jsx
-│       ├── ClueHistory.jsx
-│       ├── RoundOrder.jsx
-│       ├── VotingPanel.jsx
-│       ├── TieVote.jsx
-│       ├── Elimination.jsx
-│       ├── MrWhiteGuess.jsx
-│       ├── SpectatorView.jsx
-│       ├── ReconnectState.jsx
-│       ├── GameResult.jsx
-│       └── PlayAgain.jsx
-└── data/
-    ├── characters.js
-    ├── evidence.js
-    └── wordPairs.js
+├── app/
+│   └── App.jsx                     # Application shell, mode routing & GameErrorBoundary
+├── games/
+│   └── undercover/
+│       ├── OnlineGame.jsx          # Undercover game container
+│       ├── components/             # CluePhase, VotePhase, ResultPhase, EliminationOverlay, etc.
+│       ├── data/                   # specialRoles.js, wordCategories.js
+│       ├── gamePhases.js           # Authoritative phase definitions & transitions
+│       ├── gameState.js            # Client-side state derivation
+│       ├── roleBalance.js          # Role configuration validation
+│       └── roleImages.js           # Role badges & portrait asset mappings
+├── landing/
+│   ├── sections/                   # Hero.jsx, CinematicSequence.jsx, Investigation.jsx, FinalCTA.jsx
+│   ├── components/                 # CharacterRole.jsx, EvidenceCard.jsx, Navbar.jsx, etc.
+│   ├── data/                       # characters.js, evidence.js
+│   └── lib/                        # cinematicScroll.js, cinematicTimeline.js, frameSequence.js
+└── shared/
+    ├── realtime/socket.js          # Shared Socket.IO singleton
+    ├── session/identity.js         # Unified player identity & localStorage
+    ├── components/                 # Button.jsx, QRModal.jsx, QRScannerModal.jsx, ModeSelect.jsx
+    └── styles/globals.css          # Design system, CSS variables & typography
 ```
+
 
 Adapt to the existing project rather than blindly creating duplicates.
 
@@ -384,7 +364,7 @@ Implemented roles currently include:
 Special-role identity/data remains private unless that role's rules explicitly define a reveal moment. Public room state is sanitized accordingly.
 
 ### Draw & Guess Architecture
-Draw & Guess is a separate game mode under `src/drawgame/` with shared Socket.IO infrastructure. Server state includes drawer, turn order, word choice, drawing timer, strokes, guesses, hints, scoring and round transitions.
+Draw & Guess (Skribbl) is an implemented online game mode located under `src/games/skribbl/` and `server/games/skribbl/` with shared Socket.IO infrastructure. Server state includes drawer, turn order, word choice, drawing timer, strokes, guesses, hints, scoring and round transitions.
 
 Reconnect preserves:
 - drawer identity
@@ -401,8 +381,6 @@ Explicit leave/kick is separate from socket disconnect.
 ### PWA / Mobile Constraints
 The installed web app uses standalone display mode and must respect mobile safe-area insets. Text inputs remain at least 16px and focused inputs use the visual viewport behavior documented in the Design document.
 
-### Future Game Modes
-Codenames is now documented as a planned third playable mode. It is **documentation/specification only** at this point; no Codenames runtime code is claimed to exist in this commit.
+### Codenames Architecture
+Codenames is an implemented online game mode located under `src/games/codenames/` and `server/games/codenames/`, utilizing the shared Socket.IO connection and player identity infrastructure, with an isolated server-side `codenamesRooms` store and `codenames:`-prefixed socket events. Codenames private board projections are sanitized per player: Spymasters see team key assignments while Operatives see revealed/unrevealed neutral cards.
 
-The intended architecture is:
-`src/codenames/` for React UI, shared Socket.IO connection/session infrastructure, and a server-side Codenames room map with `codenames:`-prefixed events. Codenames private board identities must be delivered per player because Spymasters can see the key while Operatives cannot.

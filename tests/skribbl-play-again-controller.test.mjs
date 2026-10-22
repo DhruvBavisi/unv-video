@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { PlayAgainRequestController } from '../src/drawgame/skribblRouting.js'
+import { PlayAgainRequestController } from '../src/games/skribbl/skribblRouting.js'
 
 let activeTimers
 let timerIdSeq
