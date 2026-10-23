@@ -657,6 +657,25 @@
   color: #fff; font-size: 16px; cursor: pointer; position: relative;
 }
 .cn-nav-btn.players-btn { padding: 0 calc(var(--u) * 2.2); }
+.cn-nav-btn.lobby-btn {
+  padding: 0 calc(var(--u) * 2.2);
+  font-size: calc(var(--u) * 2.8);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.cn-waiting-banner {
+  margin: 0 auto calc(var(--u) * 1.5);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4);
+  background: rgba(235, 179, 56, 0.15);
+  border: 1px solid rgba(235, 179, 56, 0.4);
+  border-radius: calc(var(--u) * 1.6);
+  color: #f7d070;
+  font-size: calc(var(--u) * 2.6);
+  font-weight: 600;
+  text-align: center;
+  max-width: 90%;
+  box-sizing: border-box;
+}
 .cn-nav-btn svg { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); stroke-width: 1.8; }
 .cn-players-badge { margin: 0; font-size: calc(var(--u) * 4); font-weight: 400; line-height: 1; }
 

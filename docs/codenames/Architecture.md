@@ -124,6 +124,12 @@ GAME_RESULT
   - All room players assigned to valid teams and roles (no invalid/conflicting assignments).
   Once readiness is satisfied, the server transitions the room from `WAITING_FOR_PLAYERS` to `PLAYING` (`BOARD_READY`) without regenerating the board.
 
+## View Architecture (Lobby vs. Game View Separation)
+- **Separate Full-Page Views**: The lobby and main game board are rendered as distinct full-page views, eliminating vertical stacking of team panels and the 5×5 board.
+- **Lobby View (`CodenamesLobby`)**: Displays mobile-first team panels, spectator strip, game settings, and player cards. The board is never rendered underneath the lobby.
+- **Main Game View (`CodenamesBoard`)**: Renders the complete 5×5 board, status bar, team roster/score counters, and clue/guess controls in active play, or a clean waiting state during initialization. Includes a top navigation button (`← LOBBY`) and settings modal action to return to the lobby.
+- **Join Team Navigation**: Clicking "Join Team" submits `codenames:join-team-role`. Upon server acknowledgement (`{ success: true }`), the client navigates directly to the main game view, while preserving authoritative room state and waiting until server readiness is satisfied before unlocking gameplay actions.
+
 ## Reconnection
 Reconnect must restore:
 - same player identity

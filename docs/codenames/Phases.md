@@ -37,7 +37,7 @@ Foundational mode integration, room lifecycle, teams & roles, server board gener
 - [x] Select starting team (9 cards for starting team, 8 for second team, 7 neutrals, 1 assassin).
 - [x] Initialize board once on room start and preserve through waiting phase.
 - [x] Validate board distribution server-side.
-- [x] Board preview in lobby during waiting phase.
+- [x] Separate full-page views: dedicated lobby view and main game view (stacked preview removed).
 - [x] Never send the complete key to Operatives (sanitized in `getCodenamesPublicState`).
 
 ## Phase 5 — Private/Public State

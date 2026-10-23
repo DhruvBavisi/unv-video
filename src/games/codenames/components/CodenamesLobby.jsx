@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../../shared/realtime/socket.js'
 import QRModal from '../../../shared/components/QRModal.jsx'
-import CodenamesCard from './CodenamesCard.jsx'
 
 const PlayerIcon = () => (
   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,7 +18,7 @@ const SettingsIcon = () => (
   </svg>
 )
 
-export default function CodenamesLobby({ room, playerId, onLeave }) {
+export default function CodenamesLobby({ room, playerId, onLeave, onNavigateToGame }) {
   const [showQR, setShowQR] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [showPlayerMenu, setShowPlayerMenu] = useState(false)
@@ -39,6 +38,14 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           alert('This Spymaster slot is already taken.')
         } else if (res.error === 'GAME_IN_PROGRESS') {
           alert('Cannot change teams while game is in progress.')
+        } else {
+          alert(res.error)
+        }
+        return
+      }
+      if (res && res.success) {
+        if (team && role) {
+          onNavigateToGame?.()
         }
       }
     })
@@ -47,7 +54,13 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   const handleStartGame = () => {
     const socket = connectSocket(playerId)
     socket.emit('codenames:start-game', (res) => {
-      if (res && res.error) alert(res.error)
+      if (res && res.error) {
+        alert(res.error)
+      } else if (res && res.success) {
+        if (player.team && player.role) {
+          onNavigateToGame?.()
+        }
+      }
     })
   }
   
@@ -292,29 +305,16 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         </>
       ) : (
         <>
-          {isHost && (
-            <button 
-              className="cn-start-game-btn" 
-              disabled
-            >
-              ROOM STARTED
-            </button>
-          )}
+          <button 
+            className="cn-start-game-btn" 
+            onClick={onNavigateToGame}
+          >
+            VIEW GAME BOARD
+          </button>
           <div className="cn-waiting-text">
             Room started! Waiting for players and required roles...
           </div>
         </>
-      )}
-
-      {isInitialized && room.board && room.board.length === 25 && (
-        <div className="cn-lobby-board-preview">
-          <div className="cn-settings-header" style={{ marginTop: '15px', marginBottom: '10px' }}>INITIALIZED BOARD</div>
-          <div className="cn-board-grid">
-            {room.board.map(card => (
-              <CodenamesCard key={card.id} card={card} />
-            ))}
-          </div>
-        </div>
       )}
 
       {showQR && (
