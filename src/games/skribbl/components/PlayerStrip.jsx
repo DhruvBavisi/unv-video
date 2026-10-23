@@ -194,7 +194,7 @@ export default function PlayerStrip({
 
       {/* Host Kick Action / Confirmation Modal */}
       {actionTarget && (
-        <div
+        <div className="sk-edge-overlay"
           style={{
             position: 'fixed',
             inset: 0,

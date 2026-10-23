@@ -7536,5 +7536,17 @@ html.sk-kb-open .sk-lower-info-section {
   }
 }
 
+/* iOS PWA: backdrop blur lightens the viewport edges, leaving a bright status-bar strip behind modals. Dim only. */
+@media (display-mode: standalone) {
+  .players-panel-overlay,
+  .sk-settings-overlay,
+  .special-role-modal-overlay,
+  .elimination-overlay,
+  .sk-edge-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
 
 
