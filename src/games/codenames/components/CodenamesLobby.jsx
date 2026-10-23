@@ -1,25 +1,9 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../../shared/realtime/socket.js'
-import QRModal from '../../../shared/components/QRModal.jsx'
-
-const PlayerIcon = () => (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="9" cy="7" r="4"></circle>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-  </svg>
-)
-
-const SettingsIcon = () => (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"></circle>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-  </svg>
-)
+import { TopBar, SettingsModal, PlayersModal } from './CodenamesShared.jsx'
 
 export default function CodenamesLobby({ room, playerId, onLeave }) {
-  const [showQR, setShowQR] = useState(false)
+
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [showPlayerMenu, setShowPlayerMenu] = useState(false)
   
@@ -81,20 +65,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
     setShowTimerMenu(false)
   }
 
-  const handleMakeHost = (targetId) => {
-    const socket = connectSocket(playerId)
-    socket.emit('codenames:host-make-host', { targetId })
-  }
 
-  const handleKickPlayer = (targetId) => {
-    const socket = connectSocket(playerId)
-    socket.emit('codenames:host-kick-player', { targetId })
-  }
-
-  const getJoinUrl = () => {
-    const origin = window.location.origin
-    return `${origin}/?mode=codenames&room=${room.id}`
-  }
 
   // Spectators (unassigned)
   const unassignedPlayers = room.players.filter(p => !p.team || !p.role)
@@ -148,20 +119,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
   return (
     <div className="cn-lobby-fullscreen">
-      <div className="cn-top-bar">
-        <div className="cn-top-left">
-          <button className="cn-icon-button" onClick={() => setShowPlayerMenu(true)} title="Room Info / Players">
-            <PlayerIcon />
-            <span className="cn-player-count">{room.players.length}</span>
-          </button>
-        </div>
-        <div className="cn-top-center"></div>
-        <div className="cn-top-right">
-          <button className="cn-icon-button" onClick={() => setShowSettingsMenu(true)} title="Settings / Leave">
-            <SettingsIcon />
-          </button>
-        </div>
-      </div>
+      <TopBar count={room.players.length} onPlayers={() => setShowPlayerMenu(true)} onSettings={() => setShowSettingsMenu(true)} />
+      <div className="cn-lobby-body">
 
       <div className="cn-spectator-strip">
         <div className="cn-spectator-content">
@@ -280,54 +239,10 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         <div className="cn-waiting-text">Waiting for host to start...</div>
       )}
 
-      {showQR && (
-        <QRModal 
-          joinUrl={getJoinUrl()} 
-          roomId={room.id} 
-          onClose={() => setShowQR(false)} 
-          mode="codenames" 
-        />
-      )}
+      </div>
 
-      {/* MODALS */}
-      {showSettingsMenu && (
-        <div className="cn-modal-overlay" onClick={() => setShowSettingsMenu(false)}>
-          <div className="cn-modal" onClick={e => e.stopPropagation()}>
-            <div className="cn-modal-header">Settings</div>
-            <div className="cn-modal-content">
-              <button className="cn-modal-btn danger" onClick={onLeave}>Leave Game</button>
-              <button className="cn-modal-btn" onClick={() => setShowSettingsMenu(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPlayerMenu && (
-        <div className="cn-modal-overlay" onClick={() => setShowPlayerMenu(false)}>
-          <div className="cn-modal" onClick={e => e.stopPropagation()}>
-            <div className="cn-modal-header">Room Players</div>
-            <div className="cn-modal-content">
-              <button className="cn-modal-btn" onClick={() => { setShowPlayerMenu(false); setShowQR(true); }}>Show QR Join</button>
-              <div className="cn-player-list">
-                {room.players.map(p => (
-                  <div key={p.id} className="cn-player-list-item">
-                    <div style={{ transform: 'scale(0.8)', transformOrigin: 'left center' }}>
-                      {renderAvatar(p)}
-                    </div>
-                    {isHost && p.id !== playerId && (
-                      <div className="cn-player-actions">
-                        <button onClick={() => handleMakeHost(p.id)}>Make Host</button>
-                        <button onClick={() => handleKickPlayer(p.id)}>Kick</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button className="cn-modal-btn" onClick={() => setShowPlayerMenu(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showSettingsMenu && <SettingsModal onClose={() => setShowSettingsMenu(false)} onLeave={onLeave} />}
+      {showPlayerMenu && <PlayersModal room={room} playerId={playerId} onClose={() => setShowPlayerMenu(false)} />}
 
       {showTimerMenu && (
         <div className="cn-modal-overlay" onClick={() => setShowTimerMenu(false)}>

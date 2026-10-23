@@ -230,7 +230,7 @@ export default function CodenamesApp({ onExit }) {
   }
 
   return (
-    <div className={!isGameView ? 'codenames-app' : 'codenames-app codenames-app--game'}>
+    <div className={!isGameView ? 'codenames-app codenames-app--lobby' : 'codenames-app codenames-app--game'}>
       {!isGameView ? (
         <CodenamesLobby 
           room={room} 

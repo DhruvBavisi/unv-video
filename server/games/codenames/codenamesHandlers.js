@@ -138,8 +138,8 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
     if (room.hostId !== socketState.currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
     if (targetId === socketState.currentSessionId) return callback?.({ success: false, error: 'CANNOT_MAKE_SELF_HOST' })
-    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
-    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+
+
     
     const targetPlayer = room.players.find(p => p.id === targetId)
     if (!targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
