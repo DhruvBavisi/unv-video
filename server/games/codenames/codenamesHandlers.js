@@ -1,5 +1,5 @@
 import { makeRoomId } from "../../shared/utils.js";
-import { ensureResumeToken, connectPlayer } from "../../shared/sessionRegistry.js";
+import { ensureResumeToken, connectPlayer, sessionSockets } from "../../shared/sessionRegistry.js";
 import { generateCodenamesBoard } from "./boardGenerator.js";
 import {
   codenamesRooms,
@@ -84,13 +84,15 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!room) {
       return callback?.({ error: 'ROOM_NOT_FOUND' })
     }
-    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
-    if (room.status !== 'LOBBY' && !isWaitingPhase) {
-      const playerExists = room.players.some(p => p.id === reqSessionId)
-      if (!playerExists) {
-        return callback?.({ error: 'GAME_IN_PROGRESS' })
-      }
+    if (room.status === 'FINISHED' && !room.players.some(p => p.id === reqSessionId)) {
+      return callback?.({ error: 'GAME_IN_PROGRESS' })
     }
+
+
+
+
+
+
     
     let sessionId = reqSessionId
     socketState.currentSessionId = sessionId
@@ -191,7 +193,7 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
 
     syncCodenamesSpymasters(room)
     checkAndApplyCodenamesTransition(room)
-    checkCodenamesAbandonment(room)
+
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })
@@ -208,8 +210,8 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(socketState.currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
-    const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
-    if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
+    if (room.status === 'FINISHED') return callback?.({ success: false, error: 'GAME_FINISHED' })
+
     if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
     if (role !== 'SPYMASTER' && role !== 'OPERATIVE' && role !== null) return callback?.({ success: false, error: 'INVALID_ROLE' })
 

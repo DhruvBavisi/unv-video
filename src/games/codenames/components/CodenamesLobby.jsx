@@ -18,7 +18,7 @@ const SettingsIcon = () => (
   </svg>
 )
 
-export default function CodenamesLobby({ room, playerId, onLeave, onNavigateToGame }) {
+export default function CodenamesLobby({ room, playerId, onLeave }) {
   const [showQR, setShowQR] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [showPlayerMenu, setShowPlayerMenu] = useState(false)
@@ -43,25 +43,11 @@ export default function CodenamesLobby({ room, playerId, onLeave, onNavigateToGa
         }
         return
       }
-      if (res && res.success) {
-        if (team && role) {
-          onNavigateToGame?.()
-        }
-      }
     })
   }
 
   const handleStartGame = () => {
-    const socket = connectSocket(playerId)
-    socket.emit('codenames:start-game', (res) => {
-      if (res && res.error) {
-        alert(res.error)
-      } else if (res && res.success) {
-        if (player.team && player.role) {
-          onNavigateToGame?.()
-        }
-      }
-    })
+    connectSocket(playerId).emit('codenames:start-game', (res) => { if (res && res.error) alert(res.error) })
   }
   
   const handleResetTeams = () => {
@@ -288,33 +274,10 @@ export default function CodenamesLobby({ room, playerId, onLeave, onNavigateToGa
         </div>
       </div>
 
-      {!isInitialized ? (
-        <>
-          {isHost && (
-            <button 
-              className="cn-start-game-btn" 
-              onClick={handleStartGame}
-              disabled={!canStartRoom}
-            >
-              START GAME
-            </button>
-          )}
-          {!isHost && (
-            <div className="cn-waiting-text">Waiting for host to start...</div>
-          )}
-        </>
+      {isHost ? (
+        <button className="cn-start-game-btn" onClick={handleStartGame} disabled={!canStartRoom}>START GAME</button>
       ) : (
-        <>
-          <button 
-            className="cn-start-game-btn" 
-            onClick={onNavigateToGame}
-          >
-            VIEW GAME BOARD
-          </button>
-          <div className="cn-waiting-text">
-            Room started! Waiting for players and required roles...
-          </div>
-        </>
+        <div className="cn-waiting-text">Waiting for host to start...</div>
       )}
 
       {showQR && (

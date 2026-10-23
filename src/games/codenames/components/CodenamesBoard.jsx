@@ -59,7 +59,7 @@ const CLUE_ERRORS = {
   INVALID_PHASE: 'A clue was already given.'
 }
 
-export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby }) {
+export default function CodenamesBoard({ room, playerId, onLeave }) {
   const [clueWord, setClueWord] = useState('')
   const [clueNum, setClueNum] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -67,84 +67,14 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
   const [showSettings, setShowSettings] = useState(false)
 
   const myPlayer = room.players.find(p => p.id === playerId)
-  const isHost = room.hostId === playerId
 
-  const handleStartGame = () => {
-    const socket = connectSocket(playerId)
-    socket.emit('codenames:start-game', (res) => {
-      if (res && res.error) alert(res.error)
+  const handleJoinTeam = (team, role) => {
+    connectSocket(playerId).emit('codenames:join-team-role', { team, role }, (res) => {
+      if (res?.error) alert(res.error === 'SPYMASTER_SLOT_TAKEN' ? 'This Spymaster slot is already taken.' : res.error)
     })
   }
 
   const board = room.board
-  if (!board || board.length !== 25) {
-    return (
-      <div className="cn-game-page">
-        <div className="cn-game-nav">
-          <div className="cn-nav-left">
-            <button className="cn-nav-btn lobby-btn" onClick={onBackToLobby} aria-label="Back to Lobby">
-              <span>← LOBBY</span>
-            </button>
-            <div className="cn-nav-btn players-btn" role="status" aria-label={`${room.players.length} players`}>
-              <Icon type="users" />
-              <span className="cn-players-badge">{room.players.length}</span>
-            </div>
-          </div>
-          <div className="cn-nav-right">
-            <button className="cn-nav-btn settings-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
-              <Icon type="settings" />
-            </button>
-          </div>
-        </div>
-        <div className="cn-game-main" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '40px 20px' }}>
-          <div className="cn-status-text" style={{ fontSize: '1.2rem', marginBottom: '16px', color: '#fff' }}>
-            WAITING FOR HOST TO START
-          </div>
-          <p style={{ color: '#aaa', fontSize: '0.9rem', maxWidth: '320px', lineHeight: 1.5, margin: '0 auto 24px' }}>
-            {myPlayer?.team ? `You joined ${myPlayer.team.toUpperCase()} ${myPlayer.role}.` : 'You have joined the room.'} The 5×5 word board will appear once the host starts the room.
-          </p>
-          {isHost && (
-            <button className="cn-btn primary" onClick={handleStartGame} style={{ maxWidth: '240px', marginBottom: '14px' }}>
-              START GAME
-            </button>
-          )}
-          <button className="cn-btn" onClick={onBackToLobby} style={{ maxWidth: '240px' }}>
-            RETURN TO LOBBY
-          </button>
-        </div>
-        {showSettings && (
-          <div className="cn-settings-modal" onClick={() => setShowSettings(false)}>
-            <div className="cn-settings-content" onClick={e => e.stopPropagation()}>
-              <div className="cn-settings-header">
-                <h3>SETTINGS</h3>
-                <button className="cn-settings-close" onClick={() => setShowSettings(false)}>✕</button>
-              </div>
-              <div className="cn-settings-body">
-                <button 
-                  className="cn-btn" 
-                  onClick={() => {
-                    setShowSettings(false)
-                    if (onBackToLobby) onBackToLobby()
-                  }} 
-                  style={{ marginBottom: '12px' }}
-                >
-                  LOBBY / TEAMS
-                </button>
-                <button 
-                  className="cn-btn danger" 
-                  onClick={() => {
-                    if (onLeave) onLeave()
-                  }}
-                >
-                  LEAVE GAME
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
 
   const handleClueSubmit = (e) => {
     e.preventDefault()
@@ -181,14 +111,17 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
   const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
   const isWaiting = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
+  const roleNeeded = (t) => !room.players.some(p => p.team === t && p.role === 'SPYMASTER') ? `${t.toUpperCase()} TEAM NEEDS A SPYMASTER` : !room.players.some(p => p.team === t && p.role === 'OPERATIVE') ? `${t.toUpperCase()} TEAM NEEDS AN OPERATIVE` : null
+  const needMsg = room.status === 'FINISHED' ? null : (roleNeeded('red') || roleNeeded('blue'))
   const clueStage = (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE') && !isWaiting
   const isActive = (team, kind) => room.status === 'PLAYING' && !isWaiting && team === room.currentTeam && kind === (clueStage ? 'spy' : 'ops')
   const canSeeBoardColors = myPlayer?.role === 'SPYMASTER'
-  const isMyClueTurn = room.status === 'PLAYING' && !isWaiting && canSeeBoardColors && myPlayer?.team === room.currentTeam && clueStage
+  const isMyClueTurn = room.status === 'PLAYING' && !isWaiting && canSeeBoardColors && myPlayer?.team === room.currentTeam && clueStage && !needMsg
 
   let statusMessage = 'GAME STARTED'
-  if (isWaiting) statusMessage = 'ROOM STARTED — WAITING FOR PLAYERS'
-  else if (room.status === 'FINISHED') statusMessage = room.winner ? `${room.winner.toUpperCase()} TEAM WINS` : 'GAME OVER'
+  if (room.status === 'FINISHED') statusMessage = room.winner ? `${room.winner.toUpperCase()} TEAM WINS` : 'GAME OVER'
+  else if (needMsg) statusMessage = needMsg
+  else if (isWaiting) statusMessage = 'ROOM STARTED — WAITING FOR PLAYERS'
   else if (isMyClueTurn) statusMessage = 'GIVE YOUR OPERATIVES A CLUE'
   else if (room.phase === 'GUESS_PHASE' && room.currentClue) statusMessage = `${room.currentTeam.toUpperCase()} CLUE: ${room.currentClue.word} ${room.currentClue.number}`
   else if (room.currentTeam) statusMessage = `${room.currentTeam.toUpperCase()} TEAM'S TURN`
@@ -201,13 +134,27 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
     </div>
   )
 
+  const renderSlot = (team, role) => {
+    const members = room.players.filter(p => p.team === team && p.role === role)
+    const isMine = myPlayer?.team === team && myPlayer?.role === role
+    const spyTaken = role === 'SPYMASTER' && members.length > 0
+    const canJoin = !isMine && !spyTaken && room.status !== 'FINISHED'
+    return (
+      <div className="cn-panel-content cn-panel-content--join">
+        <div className="cn-panel-avatars">{members.map(renderAvatar)}</div>
+        {canJoin && (
+          <button className="cn-spy-join-btn" onClick={() => handleJoinTeam(team, role)}>
+            <span>JOIN TEAM</span>
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="cn-game-page">
       <div className="cn-game-nav">
         <div className="cn-nav-left">
-          <button className="cn-nav-btn lobby-btn" onClick={onBackToLobby} aria-label="Back to Lobby" title="Back to Lobby">
-            <span>← LOBBY</span>
-          </button>
           <div className="cn-nav-btn players-btn" role="status" aria-label={`${room.players.length} players`}>
             <Icon type="users" />
             <span className="cn-players-badge">{room.players.length}</span>
@@ -226,12 +173,6 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
           <button className="cn-help-btn" aria-label="Help"><span>?</span></button>
         </div>
 
-        {isWaiting && (
-          <div className="cn-waiting-banner">
-            Waiting for players to join teams and fill required roles (4+ players needed).
-          </div>
-        )}
-
         <div className="cn-board-grid">
           {board.map(card => (
             <CodenamesCard key={card.id} card={card} />
@@ -242,9 +183,7 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
           <div className="cn-team-col blue-col">
             <div className={`cn-top-panel blue-panel${isActive('blue','ops') ? ' is-active' : ''}`}>
               <div className="cn-panel-header">OPERATIVES</div>
-              <div className="cn-panel-content">
-                {room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE').map(renderAvatar)}
-              </div>
+              {renderSlot('blue','OPERATIVE')}
             </div>
             <div className="cn-score-section blue-score">
               <div className="cn-score-number">{blueScore}</div>
@@ -252,9 +191,7 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
             </div>
             <div className={`cn-bottom-panel blue-spy${isActive('blue','spy') ? ' is-active' : ''}`}>
               <div className="cn-panel-header">SPYMASTERS</div>
-              <div className="cn-panel-content">
-                {blueSpymasters.map(renderAvatar)}
-              </div>
+              {renderSlot('blue','SPYMASTER')}
             </div>
           </div>
 
@@ -268,9 +205,7 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
           <div className="cn-team-col red-col">
             <div className={`cn-top-panel red-panel${isActive('red','ops') ? ' is-active' : ''}`}>
               <div className="cn-panel-header">OPERATIVES</div>
-              <div className="cn-panel-content">
-                {room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE').map(renderAvatar)}
-              </div>
+              {renderSlot('red','OPERATIVE')}
             </div>
             <div className="cn-score-section red-score">
               <div className="cn-score-number">{redScore}</div>
@@ -278,9 +213,7 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
             </div>
             <div className={`cn-bottom-panel red-spy${isActive('red','spy') ? ' is-active' : ''}`}>
               <div className="cn-panel-header">SPYMASTERS</div>
-              <div className="cn-panel-content">
-                {redSpymasters.map(renderAvatar)}
-              </div>
+              {renderSlot('red','SPYMASTER')}
             </div>
           </div>
         </div>
@@ -317,16 +250,6 @@ export default function CodenamesBoard({ room, playerId, onLeave, onBackToLobby 
               <button className="cn-settings-close" onClick={() => setShowSettings(false)}>✕</button>
             </div>
             <div className="cn-settings-body">
-              <button 
-                className="cn-btn" 
-                onClick={() => {
-                  setShowSettings(false)
-                  if (onBackToLobby) onBackToLobby()
-                }}
-                style={{ marginBottom: '12px' }}
-              >
-                LOBBY / TEAMS
-              </button>
               <button 
                 className="cn-btn danger" 
                 onClick={() => {

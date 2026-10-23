@@ -6705,8 +6705,8 @@ html.sk-kb-open .sk-lower-info-section {
   box-sizing: border-box;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+
+
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   font-family: var(--sk-font-display);

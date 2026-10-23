@@ -17,11 +17,11 @@ export function checkCodenamesReadiness(room) {
   if (redSpymasters.length !== 1 || blueSpymasters.length !== 1) return false
   if (redOperatives.length < 1 || blueOperatives.length < 1) return false
 
-  for (const p of room.players) {
-    if (!p.team || !p.role) return false
-    if (p.team !== 'red' && p.team !== 'blue') return false
-    if (p.role !== 'SPYMASTER' && p.role !== 'OPERATIVE') return false
-  }
+
+
+
+
+
 
   return true
 }
@@ -141,18 +141,18 @@ export function syncCodenamesSpymasters(room) {
 }
 
 export function checkCodenamesAbandonment(room) {
-  if (room.status !== 'PLAYING') return
-  for (const team of ['red', 'blue']) {
-    const hasSpy = room.players.some(p => p.team === team && p.role === 'SPYMASTER')
-    const hasOp = room.players.some(p => p.team === team && p.role === 'OPERATIVE')
-    if (!hasSpy || !hasOp) {
-      room.status = 'FINISHED'
-      room.phase = 'GAME_OVER'
-      room.winner = team === 'red' ? 'blue' : 'red'
-      room.endReason = 'TEAM_ABANDONED'
-      return
-    }
-  }
+  // Roles can be refilled from the board via JOIN TEAM; never auto-finish the game.
+
+
+
+
+
+
+
+
+
+
+
 }
 
 export function disconnectCodenamesPlayer(sessionId, socketId) {

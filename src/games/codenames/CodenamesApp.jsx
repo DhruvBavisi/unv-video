@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { connectSocket } from '../../shared/realtime/socket.js'
 import { readIdentity, ensureIdentity, clearSession, setResumeToken } from '../../shared/session/identity.js'
 import './styles/codenames.css'
@@ -14,39 +14,12 @@ export default function CodenamesApp({ onExit }) {
   const [playerName, setPlayerName] = useState(() => readIdentity().playerName || '')
   const [joinRoomId, setJoinRoomId] = useState('')
   const [restoring, setRestoring] = useState(() => { const id = readIdentity(); return !!(id.resumeToken && id.roomId && id.gameMode === 'codenames') })
-  const [userView, setUserView] = useState(null)
 
   const { sessionId } = ensureIdentity()
 
-  const myPlayer = room?.players?.find(p => p.id === sessionId)
-  const isPlayingOrFinished = !!room && (room.status === 'PLAYING' || room.status === 'FINISHED')
-  const isWaitingForPlayers = !!room && (room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS')
   const isBoardInitialized = !!(room?.board && room.board.length === 25)
 
-  const prevStatusRef = useRef(room?.status)
-  useEffect(() => {
-    if (prevStatusRef.current !== room?.status) {
-      if (room?.status === 'PLAYING') {
-        setUserView('GAME')
-      }
-      prevStatusRef.current = room?.status
-    }
-  }, [room?.status])
-
-  let activeView = 'LOBBY'
-  if (isPlayingOrFinished) {
-    activeView = 'GAME'
-  } else if (!myPlayer?.team && !myPlayer?.role && room?.status === 'LOBBY') {
-    activeView = 'LOBBY'
-  } else if (userView === 'GAME') {
-    activeView = 'GAME'
-  } else if (userView === 'LOBBY') {
-    activeView = 'LOBBY'
-  } else if (myPlayer?.team && myPlayer?.role && (isWaitingForPlayers || isBoardInitialized)) {
-    activeView = 'GAME'
-  } else {
-    activeView = 'LOBBY'
-  }
+  const activeView = isBoardInitialized ? 'GAME' : 'LOBBY'
 
   const isGameView = activeView === 'GAME'
   usePageBackground(isGameView ? '#040309' : '#111111')
@@ -263,14 +236,12 @@ export default function CodenamesApp({ onExit }) {
           room={room} 
           playerId={sessionId}
           onLeave={handleLeave} 
-          onNavigateToGame={() => setUserView('GAME')}
         />
       ) : (
         <CodenamesBoard 
           room={room} 
           playerId={sessionId} 
           onLeave={handleLeave}
-          onBackToLobby={() => setUserView('LOBBY')}
         />
       )}
     </div>
