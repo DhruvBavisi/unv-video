@@ -6528,21 +6528,30 @@ html.sk-screen-lock body {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
   box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-  transition: padding 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Instant positioning with zero in/out animation */
+  transition: none !important;
 }
 
-/* Inner animation wrapper: isolates entrance/exit animation from dock positioning */
+/* Solid theme-white apron extending below the dock so translucent iOS keyboards do not show see-through content */
+.sk-guess-dock::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 120vh;
+  background: var(--sk-surface, #ffffff);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Inner wrapper: static positioning with zero in/out animation */
 .sk-guess-dock-inner {
   width: 100%;
   display: flex;
-  transform: translateY(var(--sk-dock-anim-y, 3px)) scale(var(--sk-dock-anim-scale, 0.985));
-  opacity: var(--sk-dock-anim-opacity, 0.92);
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
 }
 
 .sk-guess-dock .sk-input {
@@ -6573,13 +6582,15 @@ html.sk-kb-open .sk-guess-dock {
   padding: 6px 10px 4px;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
   border-top-color: rgba(97, 116, 244, 0.2);
+  /* Instant positioning with zero in/out animation */
+  transition: none !important;
 }
 
 .sk-guess-dock:focus-within .sk-guess-dock-inner,
 html.sk-kb-open .sk-guess-dock-inner {
-  --sk-dock-anim-y: 0px;
-  --sk-dock-anim-scale: 1;
-  --sk-dock-anim-opacity: 1;
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
 }
 
 .sk-guess-dock .sk-input:focus,
@@ -6596,7 +6607,6 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   .sk-guess-dock-inner,
   .sk-guess-dock .sk-input {
     transition: none !important;
-    transform: none !important;
     animation: none !important;
   }
 }
@@ -6611,13 +6621,24 @@ html.sk-kb-open .sk-guess-dock .sk-input {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  transition: none !important;
 }
 
 /* Keyboard open: the lifted dock overlays the bottom of the players/chat panel, so cap the height of the
    panel's inner columns to keep their content (and the newest chat line) above the dock.
    A cap can never make the panel taller, so there is no layout feedback loop. */
-.sk-lower-info-section > div {
-  max-height: calc(100% - var(--sk-kb-lift, 0px));
+/* Keyboard open: ensure game body can scroll down with full clearance above the lifted dock */
+html.sk-kb-open .sk-game-body {
+  padding-bottom: calc(var(--sk-kb-lift, 0px) + 54px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  transition: none !important;
+}
+
+/* Keyboard open: ensure inner columns (PlayerStrip and ChatBox) retain full content and scrollable range */
+html.sk-kb-open .sk-lower-info-section > div {
+  max-height: none !important;
+  height: 100% !important;
 }
 html.sk-kb-open .sk-lower-info-section {
   transition: none !important;
@@ -6921,10 +6942,12 @@ html.sk-kb-open .sk-lower-info-section {
   box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
 }
 
-/* --- SKRIBBL FINAL SCORES (inside canvas overlay matching reference) --- */
+/* --- SKRIBBL FINAL SCORES (Tournament 3D Podium Stage) --- */
 .sk-final {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 25;
   display: flex;
   flex-direction: column;
@@ -6932,7 +6955,7 @@ html.sk-kb-open .sk-lower-info-section {
   align-items: center;
   background: #1e2230; /* dark slate/charcoal */
   color: #ffffff;
-  padding: clamp(4px, 1.2vw, 8px) clamp(6px, 1.5vw, 12px) clamp(4px, 1.2vw, 6px);
+  padding: clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 14px) clamp(6px, 1.5vw, 8px);
   box-sizing: border-box;
   overflow: hidden;
   user-select: none;
@@ -6976,14 +6999,22 @@ html.sk-kb-open .sk-lower-info-section {
   text-align: center;
   margin-top: 2px;
   margin-bottom: clamp(2px, 0.8vw, 4px);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 4px;
 }
 .sk-final-title {
   margin: 0;
   font-family: var(--sk-font-display, inherit);
-  font-size: clamp(0.88rem, 2.8vw, 1.3rem);
+  font-size: clamp(0.88rem, 2.8vw, 1.25rem);
   font-weight: 700;
   color: #F8FAFC;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .sk-final-winner-name {
   color: #FFC857; /* Gold accent */
@@ -7000,61 +7031,43 @@ html.sk-kb-open .sk-lower-info-section {
   flex: 1;
   min-height: 0;
   width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-sizing: border-box;
+  padding: 0 2px;
 }
 
-/* Podium wrapper: centers the podium in the available space above lower players */
+/* Podium wrapper: centers the stage in the available space above lower players */
 .sk-final-podium-wrap {
   flex: 1;
   min-height: 0;
   width: 100%;
+  max-width: 440px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2px 0;
-}
-
-/* Avatar slot placeholders */
-.sk-final-avatar-slot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-.sk-final-avatar-slot--podium {
-  height: clamp(28px, 6vw, 48px);
-  min-height: 24px;
-}
-.sk-final-avatar-slot--row {
-  height: clamp(18px, 4vw, 28px);
-  min-height: 16px;
-}
-.sk-final-avatar-slot.is-empty {
-  display: none;
-}
-.sk-final-avatar-img {
-  width: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  padding: 2px 0 0;
 }
 
 /* Podium Grid: 2nd left, 1st center, 3rd right */
 .sk-final-podium {
   flex: none;
   display: grid;
-  grid-template-columns: 1fr 1.15fr 1fr;
+  grid-template-columns: 1fr 1.16fr 1fr;
   align-items: end;
   justify-content: center;
-  gap: clamp(4px, 1.2vw, 10px);
+  gap: clamp(4px, 1.2vw, 8px);
   width: 100%;
-  max-width: 440px;
+  max-width: 100%;
   margin: 0 auto;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .sk-final-slot {
@@ -7064,6 +7077,7 @@ html.sk-kb-open .sk-lower-info-section {
   align-items: center;
   min-width: 0;
   height: 100%;
+  box-sizing: border-box;
 }
 .sk-final-slot--empty {
   visibility: hidden;
@@ -7074,7 +7088,83 @@ html.sk-kb-open .sk-lower-info-section {
 .sk-final-slot--silver { --tier: #CBD5E1; }
 .sk-final-slot--bronze { --tier: #D98A4E; }
 
-/* Podium Box */
+/* Podium Header (Crown + Avatar) */
+.sk-final-podium-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 2px;
+  position: relative;
+}
+
+.sk-final-crown {
+  font-size: clamp(14px, 3.2vw, 20px);
+  line-height: 1;
+  margin-bottom: 1px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  animation: skCrownBob 2.4s ease-in-out infinite;
+}
+
+@keyframes skCrownBob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Avatar slot placeholders */
+.sk-final-avatar-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+}
+.sk-final-avatar-slot--podium {
+  height: clamp(28px, 6.5vw, 46px);
+  min-height: 24px;
+}
+.sk-final-avatar-slot--pill {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.sk-final-avatar-slot.is-empty {
+  display: none;
+}
+.sk-final-avatar-img {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+}
+.sk-final-avatar-fallback {
+  width: clamp(26px, 6vw, 38px);
+  height: clamp(26px, 6vw, 38px);
+  border-radius: 50%;
+  color: #ffffff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.75rem, 2vw, 1.05rem);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+.sk-final-avatar-slot--pill .sk-final-avatar-fallback {
+  width: 20px;
+  height: 20px;
+  font-size: 0.65rem;
+  border-width: 1px;
+  box-shadow: none;
+}
+
+/* Podium Box (Stage Pedestals) */
 .sk-final-box {
   box-sizing: border-box;
   width: 100%;
@@ -7087,27 +7177,34 @@ html.sk-kb-open .sk-lower-info-section {
   position: relative;
   padding: 4px 4px 18px;
   text-align: center;
-  background: rgba(25, 30, 42, 0.85);
+  background: rgba(25, 30, 42, 0.92);
   border: 2px solid var(--tier);
-  border-radius: 8px 8px 4px 4px;
+  border-radius: 8px 8px 0 0;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-/* Fixed responsive heights: 1st tallest in center, 2nd medium on left, 3rd on right */
+/* Specific heights and tournament lighting for each place */
 .sk-final-slot--first .sk-final-box,
 .sk-final-slot--pos-1 .sk-final-box {
   height: clamp(72px, 18vw, 105px);
   min-height: 0;
+  background: linear-gradient(180deg, rgba(255, 200, 87, 0.16) 0%, rgba(25, 30, 42, 0.96) 100%);
+  box-shadow: 0 0 16px rgba(255, 200, 87, 0.22), inset 0 2px 6px rgba(255, 200, 87, 0.1);
 }
 .sk-final-slot--second .sk-final-box,
 .sk-final-slot--pos-2 .sk-final-box {
   height: clamp(56px, 14vw, 82px);
   min-height: 0;
+  background: linear-gradient(180deg, rgba(203, 213, 225, 0.12) 0%, rgba(25, 30, 42, 0.96) 100%);
+  box-shadow: 0 0 10px rgba(203, 213, 225, 0.15);
 }
 .sk-final-slot--third .sk-final-box,
 .sk-final-slot--pos-3 .sk-final-box {
   height: clamp(44px, 11vw, 68px);
   min-height: 0;
+  background: linear-gradient(180deg, rgba(217, 138, 78, 0.12) 0%, rgba(25, 30, 42, 0.96) 100%);
+  box-shadow: 0 0 10px rgba(217, 138, 78, 0.15);
 }
 
 .sk-final-rank {
@@ -7162,13 +7259,22 @@ html.sk-kb-open .sk-lower-info-section {
   min-height: 0;
 }
 
+/* Connected Tournament Stage Floor */
+.sk-final-stage-floor {
+  width: 100%;
+  height: clamp(6px, 1.4vw, 10px);
+  background: linear-gradient(180deg, #3d4663 0%, #1a1e2b 100%);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  margin-top: -1px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
 /* Local player indicator */
 .sk-final-slot.is-you .sk-final-box {
-  box-shadow: 0 0 0 2px rgba(97, 116, 244, 0.5), inset 0 0 12px rgba(97, 116, 244, 0.15);
-}
-.sk-final-rest-item.is-you {
-  border-color: rgba(97, 116, 244, 0.6);
-  background: rgba(97, 116, 244, 0.15);
+  box-shadow: 0 0 0 2px rgba(97, 116, 244, 0.6), inset 0 0 12px rgba(97, 116, 244, 0.2);
 }
 
 .is-offline {
@@ -7176,33 +7282,36 @@ html.sk-kb-open .sk-lower-info-section {
 }
 
 .sk-final-you {
-  background: rgba(97, 116, 244, 0.25);
+  background: rgba(97, 116, 244, 0.35);
   color: #93a5ff;
   font-size: clamp(0.5rem, 1.2vw, 0.6rem);
   line-height: 1.1;
   padding: 1px 3px;
   border-radius: 3px;
+  font-weight: 800;
 }
 
 .sk-final-ready {
-  background: rgba(85, 214, 176, 0.25);
+  background: rgba(85, 214, 176, 0.35);
   color: #55D6B0;
   font-size: clamp(0.5rem, 1.2vw, 0.6rem);
   line-height: 1.1;
   padding: 1px 3px;
   border-radius: 3px;
+  font-weight: 800;
 }
 
-/* Lower Row / Grid of Remaining Players */
+/* Lower Row / Grid of Remaining Players (#4 and below) in horizontal runner pills */
 .sk-final-rest-container {
   flex: 0 1 auto;
   width: 100%;
-  max-width: 460px;
-  margin: 2px auto 0;
-  padding: 2px 0;
-  max-height: clamp(55px, 20vw, 90px);
+  max-width: 440px;
+  margin: 4px auto 0;
+  padding: 2px 2px;
+  max-height: clamp(54px, 16vw, 84px);
   overflow-y: auto;
   overflow-x: hidden;
+  box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
 .sk-final-rest-container::-webkit-scrollbar {
@@ -7216,59 +7325,67 @@ html.sk-kb-open .sk-lower-info-section {
 .sk-final-rest-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: clamp(4px, 1.2vw, 8px);
   width: 100%;
   box-sizing: border-box;
-  padding: 0 4px;
 }
 
-.sk-final-rest-item {
-  display: flex;
-  flex-direction: column;
+.sk-final-runner-pill {
+  display: inline-flex;
   align-items: center;
-  min-width: clamp(38px, 9vw, 56px);
-  max-width: 72px;
-  text-align: center;
-  padding: 2px 3px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 3px 8px;
+  min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
-.sk-final-rest-rank {
-  font-family: var(--sk-font-display, inherit);
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+.sk-final-runner-pill.is-you {
+  border-color: rgba(97, 116, 244, 0.7);
+  background: rgba(97, 116, 244, 0.18);
 }
 
-.sk-final-rest-name {
-  max-width: 100%;
+.sk-final-runner-rank {
+  font-family: var(--sk-font-display, inherit);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.65);
+  flex-shrink: 0;
+}
+
+.sk-final-runner-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.sk-final-runner-name {
+  max-width: 84px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(0.64rem, 1.5vw, 0.76rem);
+  font-size: 0.72rem;
   font-weight: 700;
   color: #FFFFFF;
 }
 
-.sk-final-rest-points {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: clamp(0.56rem, 1.3vw, 0.68rem);
+.sk-final-runner-points {
+  font-size: 0.62rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.sk-final-rest-badges {
+.sk-final-runner-badges {
   display: flex;
+  align-items: center;
   gap: 2px;
-  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 /* Footer / Controls */

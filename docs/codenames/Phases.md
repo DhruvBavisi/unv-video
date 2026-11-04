@@ -1,7 +1,7 @@
 # CODENAMES — Development Phases
 
 ## Status
-Foundational mode integration, room lifecycle, teams & roles, server board generation, and clue giving are implemented.
+Gameplay loop implemented (Phases 1–8 complete): clue giving, operative card reveal, turn resolution, win/assassin conditions, and same-room rematch.
 
 ## Phase 1 — Mode Integration
 - [x] Add Codenames to the existing mode selector.
@@ -49,44 +49,48 @@ Implement:
 Verify that hidden categories never cross the privacy boundary.
 
 ## Phase 6 — Clue Phase
-- Spymaster gives clue + number.
-- Validate turn, role, team and phase.
-- Broadcast clue publicly after acceptance.
-- Prevent duplicate/stale submissions.
+- [x] Spymaster gives clue + number.
+- [x] Validate turn, role, team and phase.
+- [x] Broadcast clue publicly after acceptance.
+- [x] Prevent duplicate/stale submissions.
 
 ## Phase 7 — Guess Phase
-- Operatives reveal cards.
-- Validate active team.
-- Reveal one card at a time.
-- Resolve category.
-- Update remaining guesses.
-- Prevent repeat reveals.
+- [x] Operatives reveal cards.
+- [x] Validate active team and operative role.
+- [x] Reveal one card at a time.
+- [x] Resolve category and decrement remaining guesses.
+- [x] Prevent repeat reveals.
 
 ## Phase 8 — Turn Resolution
-Implement:
-- own-team card
-- neutral card
-- opponent card
-- assassin
-- End Turn
-
-Ensure the server, not the client, determines the next phase/team.
+- [x] Own-team card (continue guessing if guesses remain).
+- [x] Neutral card (immediate turn end to opponent).
+- [x] Opponent card (immediate turn end to opponent, count revealed for opponent).
+- [x] Assassin (immediate loss, opponent wins).
+- [x] End Turn (voluntary pass transferred to opponent).
+- [x] Server-authoritative phase and team transitions.
 
 ## Phase 9 — Win / Result
-- all own agents revealed → team win
-- assassin → immediate loss
-- final board reveal
-- result screen
-- same-room Play Again
+- [x] All own agents revealed → team win.
+- [x] Assassin → immediate loss.
+- [x] Final board reveal across public state on finish.
+- [x] Same-room Play Again handler.
+- [x] Dedicated classic victory modal (`VictoryModal`) with team theme, win reason, stats, and "Inspect Board" toggle.
 
 ## Phase 10 — UI / Responsive Polish
-- mobile-first 5×5 board
-- desktop layout
-- team panels
-- clue panel
-- result overlay
-- accessible interactions
-- reduced-motion behavior
+- [x] Mobile-first 5×5 board.
+- [x] Desktop layout with side team panels and center board.
+- [x] Natural hierarchy reordering: Game-Info Row (top) -> Clue Input / Action Row -> Status Row -> Word Board (5x5 grid).
+- [x] Spymaster 10-frame circular number selector popup (`1` to `9` + `∞`) appearing above the clue input with active selection and backdrop dismiss.
+- [x] Server authoritative infinity clue support (`room.guessesLeft = 25`, persistent operative guessing).
+- [x] Real-time Game Log feed (`turnHistory`) logging clues and card reveal outcomes.
+- [x] Full-width Game Log messages covering 100% width with team colored left-accent borders, full header strips, and wrapped outcome chips.
+- [x] Play Again table reset: resets room to `WAITING_FOR_PLAYERS`, converting all players to spectators to choose their roles again on the main board.
+- [x] Role slot joining lock: hides "JOIN TEAM" buttons on other cards once a player has joined a role.
+- [x] Settings role switcher: allows players to change roles or leave to spectator directly from SettingsModal.
+- [x] Operative tap-to-select and "Confirm Guess" flow (official `codenames.game` mechanic).
+- [x] How to play (`RulesModal`) wired to `?` button.
+- [x] Result overlay with inspect board toggle.
+- [x] Accessible keyboard and ARIA interactions.
 
 ## Phase 11 — Reconnect / Recovery Audit
 - preserve current turn

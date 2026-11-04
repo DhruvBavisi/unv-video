@@ -1,16 +1,25 @@
 import React, { useMemo } from 'react'
 import { rankPlayers } from '../finalScoresRanking.js'
+import { getAvatarColorClass } from './Lobby.jsx'
 
 const tierOf = (rank) => (rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze')
 
 export function AvatarSlot({ player, size = 'podium' }) {
   const avatarSrc = player?.avatarUrl || player?.avatar
-  if (!avatarSrc) {
-    return null
+  if (avatarSrc) {
+    return (
+      <div className={`sk-final-avatar-slot sk-final-avatar-slot--${size}`}>
+        <img src={avatarSrc} alt={player?.name || ''} className="sk-final-avatar-img" />
+      </div>
+    )
   }
+  const colorClass = getAvatarColorClass(player?.id)
+  const initial = player?.name ? player.name.charAt(0).toUpperCase() : '?'
   return (
     <div className={`sk-final-avatar-slot sk-final-avatar-slot--${size}`}>
-      <img src={avatarSrc} alt={player?.name || ''} className="sk-final-avatar-img" />
+      <div className={`sk-avatar ${colorClass} sk-final-avatar-fallback`}>
+        {initial}
+      </div>
     </div>
   )
 }
@@ -66,7 +75,7 @@ export default function FinalScores({
 
       {/* Results Content Area: Podium centered in available space, lower players beneath */}
       <div className="sk-final-content">
-        {/* Podium Area: 2nd (left), 1st (center), 3rd (right) */}
+        {/* Podium Area: 2nd (left), 1st (center), 3rd (right) with unified Stage Base */}
         <div className="sk-final-podium-wrap">
           <div className="sk-final-podium">
             {slots.map(({ player: p, position, podiumPlace }, s) =>
@@ -79,7 +88,14 @@ export default function FinalScores({
                     (p.isConnected === false ? ' is-offline' : '')
                   }
                 >
-                  <AvatarSlot player={p} size="podium" />
+                  <div className="sk-final-podium-header">
+                    {podiumPlace === 1 && (
+                      <div className="sk-final-crown" aria-hidden="true" title="Winner">
+                        👑
+                      </div>
+                    )}
+                    <AvatarSlot player={p} size="podium" />
+                  </div>
                   <div className="sk-final-box">
                     <span className="sk-final-rank">#{p.rank}</span>
                     <span className="sk-final-name" title={p.name}>{p.name}</span>
@@ -101,9 +117,11 @@ export default function FinalScores({
               )
             )}
           </div>
+          {/* Connected Tournament Stage Floor */}
+          <div className="sk-final-stage-floor" aria-hidden="true" />
         </div>
 
-        {/* Lower Row / Grid of Remaining Players (#4 and below) */}
+        {/* Lower Row: Remaining Players (#4 and below) in clean horizontal runner pills */}
         {rest.length > 0 && (
           <div className="sk-final-rest-container" data-sk-scroll>
             <div className="sk-final-rest-row">
@@ -111,17 +129,19 @@ export default function FinalScores({
                 <div
                   key={p.id}
                   className={
-                    'sk-final-rest-item' +
+                    'sk-final-runner-pill' +
                     (p.id === sessionId ? ' is-you' : '') +
                     (p.isConnected === false ? ' is-offline' : '')
                   }
                 >
-                  <span className="sk-final-rest-rank">#{p.rank}</span>
-                  <AvatarSlot player={p} size="row" />
-                  <span className="sk-final-rest-name" title={p.name}>{p.name}</span>
-                  <span className="sk-final-rest-points">{p.score} points</span>
+                  <span className="sk-final-runner-rank">#{p.rank}</span>
+                  <AvatarSlot player={p} size="pill" />
+                  <div className="sk-final-runner-info">
+                    <span className="sk-final-runner-name" title={p.name}>{p.name}</span>
+                    <span className="sk-final-runner-points">{p.score} pts</span>
+                  </div>
                   {(p.id === sessionId || p.playAgain) && (
-                    <div className="sk-final-rest-badges">
+                    <div className="sk-final-runner-badges">
                       {p.id === sessionId && <span className="sk-badge sk-final-you">YOU</span>}
                       {p.playAgain && <span className="sk-badge sk-final-ready">READY</span>}
                     </div>

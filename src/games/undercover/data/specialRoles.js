@@ -9,7 +9,7 @@ export const SPECIAL_ROLES = [
       "Does not know who the Undercovers or Mr. White are."
     ],
     mobileDescription: "The Joy Fool wins 4 extra points if voted out first!",
-    avatar: '/images/characters/joyfool.png'
+    avatar: '/images/characters/joyfool.webp'
   },
   {
     key: "duelists",
@@ -22,7 +22,7 @@ export const SPECIAL_ROLES = [
       "The duel resolves only once."
     ],
     mobileDescription: "Two players are in a secret duel. The first one to get eliminated loses 2 points, the other one wins 2 points",
-    avatar: '/images/characters/duelist.png'
+    avatar: '/images/characters/duelist.webp'
   },
   {
     key: "lovers",
@@ -31,10 +31,10 @@ export const SPECIAL_ROLES = [
     description: "Two players bound by a secret romance. Their fates are intertwined.",
     rules: [
       "Assigned to exactly two players.",
-      "If one Lover is eliminated, the other Lover is immediately eliminated from a broken heart."
+      "If one Lover is eliminated, the other Lover is immediately eliminated from a broken heart.",
     ],
     mobileDescription: "Two players are in love. If one of them gets eliminated, the other one too",
-    avatar: '/images/characters/lovers.png'
+    avatar: '/images/characters/lovers.webp'
   },
   {
     key: "revenger",
@@ -45,7 +45,7 @@ export const SPECIAL_ROLES = [
       "If eliminated by vote, the Revenger can choose to eliminate one other player along with them."
     ],
     mobileDescription: "When the Revenger is eliminated, she can eliminate someone else with her",
-    avatar: '/images/characters/revenger.png'
+    avatar: '/images/characters/revenger.webp'
   },
   {
     key: "boomerang",
@@ -56,7 +56,7 @@ export const SPECIAL_ROLES = [
       "The first time the Boomerang receives the highest number of votes, those votes bounce back to the players who cast them and the vote is recalculated."
     ],
     mobileDescription: "The first time the Boomerang receives the majority of votes, the votes bounce back to those who cast them!",
-    avatar: '/images/characters/boomerang.png'
+    avatar: '/images/characters/boomerang.webp'
   },
   {
     key: "goddessOfJustice",
@@ -68,7 +68,7 @@ export const SPECIAL_ROLES = [
       "The Goddess remains in the game to deal out justice even if she has already been eliminated."
     ],
     mobileDescription: "In case of equality of votes, she decides who gets eliminated (even if she has already been eliminated)",
-    avatar: '/images/characters/goddessofjustice.png'
+    avatar: '/images/characters/goddessofjustice.webp'
   },
   {
     key: "ghost",
@@ -79,7 +79,7 @@ export const SPECIAL_ROLES = [
       "Can continue to communicate with the remaining players after being eliminated."
     ],
     mobileDescription: "The Ghost can still vote even after being eliminated!",
-    avatar: '/images/characters/ghost.png',
+    avatar: '/images/characters/ghost.webp',
     implemented: true
   },
   {
@@ -92,7 +92,7 @@ export const SPECIAL_ROLES = [
       "The player eating the falafel cannot speak for the remainder of the round."
     ],
     mobileDescription: "Once per round, give one player a falafel that prevents them from speaking for the rest of the round.",
-    avatar: '/images/characters/falafalvendor.png',
+    avatar: '/images/characters/falafalvendor.webp',
     implemented: true
   },
   {
@@ -104,7 +104,7 @@ export const SPECIAL_ROLES = [
       "Mr. Meme must communicate using memes, emojis, or internet slang."
     ],
     mobileDescription: "Mr. Meme must communicate using memes, emojis, or internet slang.",
-    avatar: '/images/characters/mrmeme.png',
+    avatar: '/images/characters/mrmeme.webp',
     implemented: true
   }
 ];

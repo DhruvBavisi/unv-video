@@ -740,6 +740,7 @@ export function disconnectDrawPlayer(sessionId, socketId) {
 }
 
 export function resetDrawRoomToLobby(room) {
+  room.kickVotes = {}
   if (room.turnTimeout) clearTimeout(room.turnTimeout)
   if (room.wordChoiceTimeout) clearTimeout(room.wordChoiceTimeout)
   if (room.hintTimer) clearInterval(room.hintTimer)
@@ -832,6 +833,16 @@ export function removeDrawPlayer(sessionId, { isKick = false } = {}) {
     departingPlayerRecord.departed = true
     if (isKick) {
       departingPlayerRecord.kicked = true
+    }
+  }
+
+  if (foundRoom.kickVotes) {
+    delete foundRoom.kickVotes[sessionId]
+    for (const tid of Object.keys(foundRoom.kickVotes)) {
+      foundRoom.kickVotes[tid] = foundRoom.kickVotes[tid].filter(id => id !== sessionId)
+      if (foundRoom.kickVotes[tid].length === 0) {
+        delete foundRoom.kickVotes[tid]
+      }
     }
   }
 

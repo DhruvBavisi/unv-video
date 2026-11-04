@@ -59,6 +59,11 @@ export default function ChatBox({ room }) {
               style.color = '#359b35'
             } else if (text.includes('left')) {
               style.color = '#cc4e14'
+            } else if (text.includes('Vote to kick') || text.includes('voted to kick') || text.includes('was kicked')) {
+              style.color = '#DC2626'
+              style.background = '#FEE2E2'
+              style.borderLeft = '3px solid #EF4444'
+              style.paddingLeft = '5px'
             } else {
               style.color = '#777777'
             }

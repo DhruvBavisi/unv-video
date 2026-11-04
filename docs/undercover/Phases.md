@@ -494,7 +494,7 @@ Changes eligibility for post-elimination participation — most invasive role re
 - The Ghost does not clue and does not re-enter the active roster; this is a voting/discussion exception only.
 - UI distinguishes an ordinary spectator ("SPECTATOR — cannot vote") from a Ghost-empowered spectator ("SPECTATOR — GHOST — may still vote").
 - **Elimination Feedback:** During elimination, the Ghost's own device presents a localized private message within the EliminationOverlay indicating "YOU ARE NOW A GHOST" and confirming they can still vote in future rounds.
-- **Vote Visual Indicator:** When the eliminated Ghost locks in a vote against a target during the VOTE phase, that target's voting card receives a small `ghost-bg.png` visual marker to indicate the Ghost's choice to all players.
+- **Vote Visual Indicator:** When the eliminated Ghost locks in a vote against a target during the VOTE phase, that target's voting card receives a small `ghost-bg.webp` visual marker to indicate the Ghost's choice to all players.
 - No minimum player count specified by source.
 
 ---

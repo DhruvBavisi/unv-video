@@ -399,7 +399,7 @@ export default function EliminationOverlay({
 
   const { playerName, role, specialRole } = eliminationResult
   const specialRoleData = specialRole ? SPECIAL_ROLES.find(r => r.key === specialRole) : null
-  const characterUrl = specialRoleData?.avatar || (role === 'MR_WHITE' ? '/images/characters/mrwhite-1.png' : getRoleImage(role))
+  const characterUrl = specialRoleData?.avatar || (role === 'MR_WHITE' ? '/images/characters/mrwhite-1.webp' : getRoleImage(role))
   const displayRole = role ? role.replace('_', ' ') : 'UNKNOWN'
   const roleKey = (role || 'civilian').toLowerCase()
 

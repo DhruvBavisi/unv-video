@@ -31,11 +31,24 @@ const readKb = () => {
   try { return Number(JSON.parse(sessionStorage.getItem(KB_KEY) || '{}')[orientation()]) || 0 } catch { return 0 }
 }
 const writeKb = (px) => {
+  if (px < 150) return // never store partial / in-flight heights
   try {
     const all = JSON.parse(sessionStorage.getItem(KB_KEY) || '{}')
     all[orientation()] = px
     sessionStorage.setItem(KB_KEY, JSON.stringify(all))
   } catch { /* storage unavailable */ }
+}
+
+const getIphoneKeyboardEstimate = (baseH) => {
+  if (typeof window === 'undefined') return 336
+  const w = window.screen?.width || window.innerWidth || 390
+  const h = window.screen?.height || window.innerHeight || baseH || 844
+  const minDim = Math.min(w, h)
+  const maxDim = Math.max(w, h)
+  if (minDim >= 430 || maxDim >= 932) return 346 // Pro Max / Plus
+  if (minDim >= 390 || maxDim >= 844) return 336 // Standard iPhone (12/13/14/15/16)
+  if (minDim <= 375 && maxDim <= 667) return 260 // Home button iPhones (SE)
+  return Math.round(baseH * DEFAULT_KB_RATIO) || 336
 }
 
 export function useGuessKeyboard(inputRef, enabled) {
@@ -78,7 +91,7 @@ export function useGuessKeyboard(inputRef, enabled) {
         root.style.setProperty('--sk-kb-lift', lift + 'px')
         root.classList.add('sk-kb-open')
       } else {
-        dock.style.removeProperty('transform')
+        dock.style.transform = 'translate3d(0, 0px, 0)'
         root.style.removeProperty('--sk-kb-lift')
         root.classList.remove('sk-kb-open')
       }
@@ -94,6 +107,10 @@ export function useGuessKeyboard(inputRef, enabled) {
       estimating = false
       setLift(0)
       setPan(0)
+      const gameBody = document.querySelector('.sk-game-body')
+      if (gameBody && gameBody.scrollTop !== 0) {
+        gameBody.scrollTop = 0
+      }
     }
 
     const update = () => {
@@ -109,10 +126,15 @@ export function useGuessKeyboard(inputRef, enabled) {
       // Never interfere with pinch-zoom
       if (Math.abs(vv.scale - 1) > 0.05) { resetAll(); return }
 
-      const keyboardUp = baseH - vv.height > MIN_KB
-      if (!focused && !keyboardUp) baseH = window.innerHeight
-      const following = focused || keyboardUp || lift > 0 || now < stickyUntil
-      if (!following) { resetAll(); return }
+      // When the input is not focused, the keyboard is closed or dismissing -> dock drops down immediately
+      if (!focused) {
+        if (lift > 0) setLift(0)
+        setPan(vv.offsetTop)
+        if (now >= stickyUntil && lift === 0 && pan === 0) {
+          resetAll()
+        }
+        return
+      }
 
       // 1) If iOS panned the visual viewport (or left it offset), keep the whole shell on the visible area
       setPan(vv.offsetTop)
@@ -125,16 +147,24 @@ export function useGuessKeyboard(inputRef, enabled) {
       const visibleBottom = vv.offsetTop + vv.height
       let obstruction = Math.max(0, naturalBottom - visibleBottom)
 
-      if (obstruction > MIN_KB) {
-        estimating = false
-        if (focused) writeKb(Math.round(obstruction))
-      } else if (estimating && focused && now < estimateUntil) {
-        obstruction = estimateKb // keyboard is animating in but not reported yet: use the last known height
-      } else if (obstruction < 1) {
-        obstruction = 0
+      if (estimating && now < estimateUntil) {
+        // While the entrance animation runs: only update if actual viewport measurement has fully
+        // caught up to or exceeded estimateKb. This prevents intermediate WebKit frames from cutting
+        // the lift animation short or stuttering.
+        if (obstruction >= estimateKb - 30) {
+          estimating = false
+          writeKb(Math.round(obstruction))
+          setLift(Math.min(obstruction, Math.max(0, naturalTop - visibleTop)))
+        }
+      } else {
+        if (obstruction > MIN_KB) {
+          estimating = false
+          writeKb(Math.round(obstruction))
+        } else if (obstruction < 1) {
+          obstruction = 0
+        }
+        setLift(Math.min(obstruction, Math.max(0, naturalTop - visibleTop)))
       }
-      // never lift the dock above the top of the visible area
-      setLift(Math.min(obstruction, Math.max(0, naturalTop - visibleTop)))
 
       // Locked screen: the document must never be scrolled
       if (window.scrollY !== 0) window.scrollTo(0, 0)
@@ -161,13 +191,17 @@ export function useGuessKeyboard(inputRef, enabled) {
     }
     const onInputFocus = () => {
       estimating = true
-      estimateKb = readKb() || Math.round(baseH * DEFAULT_KB_RATIO)
+      estimateKb = readKb() || getIphoneKeyboardEstimate(baseH)
       estimateUntil = performance.now() + ESTIMATE_MS
       if (ios) hideFromScroll() // covers focus that did not come from our touch path (e.g. refocus after send)
+      // Immediately lift dock at t=0 matching iPhone keyboard opening speed
+      setLift(estimateKb)
       onChange()
     }
     const onInputBlur = () => {
       estimating = false
+      // Immediately drop dock at t=0 matching iPhone keyboard closing speed
+      setLift(0)
       stickyUntil = performance.now() + STICKY_MS
       kick(STICKY_MS)
       onChange()
@@ -196,7 +230,9 @@ export function useGuessKeyboard(inputRef, enabled) {
       if ((lift === 0 && pan === 0) || e.touches.length !== 1) return
       const target = e.target instanceof Element ? e.target : null
       if (!target || target.closest('input, textarea')) return
-      const dy = e.touches[0].clientY - lastTouchY // > 0: finger moves down, content scrolls up
+      const currentY = e.touches[0].clientY
+      const dy = currentY - lastTouchY
+      lastTouchY = currentY
       for (let el = target.closest('[data-sk-scroll]'); el; el = el.parentElement && el.parentElement.closest('[data-sk-scroll]')) {
         if (el.scrollHeight <= el.clientHeight + 1) continue // nothing to scroll here
         const atTop = el.scrollTop <= 0

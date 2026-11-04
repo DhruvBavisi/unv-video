@@ -241,8 +241,8 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
     
     // Only clean sessionSockets if this socket is the registered owner and player is not in other modes
     if (sessionSockets.get(leavingSessionId) === socket.id) {
-      const inUndercover = Array.from(rooms.values()).some(r => r.players.some(p => p.id === leavingSessionId))
-      const inCodenames = Array.from(codenamesRooms.values()).some(r => r.players.some(p => p.id === leavingSessionId))
+      const inUndercover = Array.from(context?.rooms?.values() || []).some(r => r.players.some(p => p.id === leavingSessionId))
+      const inCodenames = Array.from(context?.codenamesRooms?.values() || []).some(r => r.players.some(p => p.id === leavingSessionId))
       if (!inUndercover && !inCodenames) {
         sessionSockets.delete(leavingSessionId)
       }
@@ -826,8 +826,8 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
         targetSocket.leave(`draw:${roomId}`)
         targetSocket.leave(targetId)
       }
-      const inUndercover = Array.from(rooms.values()).some(r => r.players.some(p => p.id === targetId))
-      const inCodenames = Array.from(codenamesRooms.values()).some(r => r.players.some(p => p.id === targetId))
+      const inUndercover = Array.from(context?.rooms?.values() || []).some(r => r.players.some(p => p.id === targetId))
+      const inCodenames = Array.from(context?.codenamesRooms?.values() || []).some(r => r.players.some(p => p.id === targetId))
       if (!inUndercover && !inCodenames) {
         sessionSockets.delete(targetId)
       }
@@ -837,6 +837,98 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
       broadcastDrawRoomState(removed.room)
     }
     callback?.({ success: true })
+  })
+
+  socket.on('draw:vote-kick', ({ targetId }, callback) => {
+    if (!isCurrentDrawSession(socketState.currentSessionId)) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    if (!targetId || typeof targetId !== 'string') return callback?.({ success: false, error: 'INVALID_TARGET' })
+    if (targetId === socketState.currentSessionId) return callback?.({ success: false, error: 'CANNOT_TARGET_SELF' })
+
+    let room = null
+    let roomId = null
+    for (const [rid, dr] of drawRooms) {
+      if (dr.players.some(p => p.id === socketState.currentSessionId)) {
+        room = dr
+        roomId = rid
+        break
+      }
+    }
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+
+    const voter = room.players.find(p => p.id === socketState.currentSessionId)
+    const targetPlayer = room.players.find(p => p.id === targetId)
+    if (!voter || !targetPlayer) return callback?.({ success: false, error: 'TARGET_NOT_FOUND' })
+
+    if (!room.kickVotes) room.kickVotes = {}
+    if (!Array.isArray(room.kickVotes[targetId])) room.kickVotes[targetId] = []
+
+    if (room.kickVotes[targetId].includes(socketState.currentSessionId)) {
+      return callback?.({ success: false, error: 'ALREADY_VOTED' })
+    }
+
+    room.kickVotes[targetId].push(socketState.currentSessionId)
+
+    // Calculate eligible voters: all connected players excluding the voted player
+    const eligibleVoters = room.players.filter(p => p.isConnected && p.id !== targetId)
+    const totalVotes = Math.max(1, eligibleVoters.length)
+    const activeVoters = room.kickVotes[targetId].filter(vid => eligibleVoters.some(p => p.id === vid))
+    const voteCount = activeVoters.length
+
+    // Show system chat message: "Vote to kick {target} ({vote count}/{total votes})"
+    if (!room.chatMessages) room.chatMessages = []
+    const voteMsg = {
+      id: crypto.randomUUID(),
+      playerId: 'system',
+      playerName: 'System',
+      type: 'SYSTEM',
+      message: `Vote to kick ${targetPlayer.name} (${voteCount}/${totalVotes})`,
+      createdAt: Date.now()
+    }
+    room.chatMessages.push(voteMsg)
+    if (room.chatMessages.length > 100) room.chatMessages.shift()
+    io.to(`draw:${room.id}`).emit('draw:chat-message', voteMsg)
+
+    // Check if all players excluding the voted player have voted
+    if (voteCount >= totalVotes) {
+      delete room.kickVotes[targetId]
+
+      const kickMsg = {
+        id: crypto.randomUUID(),
+        playerId: 'system',
+        playerName: 'System',
+        type: 'SYSTEM',
+        message: `${targetPlayer.name} was kicked from the room.`,
+        createdAt: Date.now()
+      }
+      room.chatMessages.push(kickMsg)
+      if (room.chatMessages.length > 100) room.chatMessages.shift()
+      io.to(`draw:${room.id}`).emit('draw:chat-message', kickMsg)
+
+      io.to(targetId).emit('draw:kicked')
+      const removed = removeDrawPlayer(targetId, { isKick: true })
+
+      const targetSocketId = sessionSockets.get(targetId)
+      if (targetSocketId) {
+        const targetSocket = io.sockets.sockets.get(targetSocketId)
+        if (targetSocket) {
+          targetSocket.leave(`draw:${roomId}`)
+          targetSocket.leave(targetId)
+        }
+        const inUndercover = Array.from(context?.rooms?.values() || []).some(r => r.players.some(p => p.id === targetId))
+        const inCodenames = Array.from(context?.codenamesRooms?.values() || []).some(r => r.players.some(p => p.id === targetId))
+        if (!inUndercover && !inCodenames) {
+          sessionSockets.delete(targetId)
+        }
+      }
+
+      if (removed.room) {
+        broadcastDrawRoomState(removed.room)
+      }
+      return callback?.({ success: true, kicked: true, voteCount, totalVotes })
+    }
+
+    broadcastDrawRoomState(room)
+    callback?.({ success: true, kicked: false, voteCount, totalVotes })
   })
 
   // Simple mock word generator

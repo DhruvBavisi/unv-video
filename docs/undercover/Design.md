@@ -201,7 +201,7 @@ They remain connected to the Room ID but cannot clue or vote.
 If the eliminated player is a Ghost, they instead see a specialized status in the UI:
 `SPECTATOR — GHOST — may still vote`
 During elimination, the Ghost receives a private localized `YOU ARE NOW A GHOST` message inside the Elimination Overlay confirming they can continue to vote. 
-When the Ghost votes, a small Ghost visual marker (`ghost-bg.png`) appears on their selected target's card to alert all players of the haunting.
+When the Ghost votes, a small Ghost visual marker (`ghost-bg.webp`) appears on their selected target's card to alert all players of the haunting.
 
 A player joining mid-investigation should see:
 

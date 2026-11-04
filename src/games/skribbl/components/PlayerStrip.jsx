@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { getAvatarColorClass } from './Lobby.jsx'
 
 export default function PlayerStrip({ 
@@ -6,6 +7,7 @@ export default function PlayerStrip({
   currentDrawerId, 
   sessionId, 
   onKickPlayer, 
+  onVoteKickPlayer,
   isKicking = false, 
   onTargetLeft 
 }) {
@@ -26,85 +28,11 @@ export default function PlayerStrip({
 
   const guessedIds = room?.guessedPlayerIds || []
 
-  // Host long-press state & refs
+  // Player selection & action modal state
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null)
   const [actionTarget, setActionTarget] = useState(null)
-  const [confirmStep, setConfirmStep] = useState(false)
-  const [pressingId, setPressingId] = useState(null)
-
-  const longPressTimerRef = useRef(null)
-  const pointerStartPosRef = useRef({ x: 0, y: 0 })
-  const activePointerIdRef = useRef(null)
-
-  const cancelLongPress = useCallback(() => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-    activePointerIdRef.current = null
-    setPressingId(null)
-  }, [])
-
-  const handlePointerDown = (e, player) => {
-    if (!isHost || player.id === sessionId) return
-    if (e.button !== undefined && e.button !== 0) return
-
-    cancelLongPress()
-
-    activePointerIdRef.current = e.pointerId
-    pointerStartPosRef.current = { x: e.clientX, y: e.clientY }
-    setPressingId(player.id)
-
-    longPressTimerRef.current = setTimeout(() => {
-      setActionTarget(player)
-      setConfirmStep(false)
-      setPressingId(null)
-      activePointerIdRef.current = null
-      longPressTimerRef.current = null
-      try {
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(40)
-        }
-      } catch {}
-    }, 600)
-  }
-
-  const handlePointerMove = (e) => {
-    if (!longPressTimerRef.current) return
-    if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return
-
-    const dx = e.clientX - pointerStartPosRef.current.x
-    const dy = e.clientY - pointerStartPosRef.current.y
-    if (Math.hypot(dx, dy) > 10) {
-      cancelLongPress()
-    }
-  }
-
-  const handlePointerUp = () => {
-    cancelLongPress()
-  }
-
-  const handlePointerCancel = () => {
-    cancelLongPress()
-  }
-
-  const handlePointerLeave = () => {
-    cancelLongPress()
-  }
-
-  const handleContextMenu = (e, player) => {
-    if (isHost && player.id !== sessionId) {
-      e.preventDefault()
-    }
-  }
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current)
-      }
-    }
-  }, [])
+  const [confirmStep, setConfirmStep] = useState(null) // null | 'kick' | 'votekick'
+  const [isVoting, setIsVoting] = useState(false)
 
   // Auto-close menu if target disappears from room
   useEffect(() => {
@@ -113,7 +41,8 @@ export default function PlayerStrip({
       if (!stillHere) {
         const name = actionTarget.name
         setActionTarget(null)
-        setConfirmStep(false)
+        setConfirmStep(null)
+        setSelectedPlayerId(null)
         onTargetLeft?.(name)
       }
     }
@@ -138,21 +67,18 @@ export default function PlayerStrip({
         const isDrawer = p.id === currentDrawerId
         const isCurrent = p.id === sessionId
         const isGuessed = guessedIds.includes(p.id)
-        const canLongPress = isHost && !isCurrent
-        const isPressing = pressingId === p.id
+        const isSelected = selectedPlayerId === p.id && !isCurrent
         
         const baseBg = i % 2 === 0 ? '#FFFFFF' : '#f1f1f1ff'
-        const bg = isPressing ? '#E2E8F0' : (isGuessed ? '#CFFFBD' : baseBg)
+        const bg = isSelected ? '#E2E8F0' : (isGuessed ? '#CFFFBD' : baseBg)
 
         return (
           <div 
             key={p.id}
-            onPointerDown={canLongPress ? (e) => handlePointerDown(e, p) : undefined}
-            onPointerMove={canLongPress ? handlePointerMove : undefined}
-            onPointerUp={canLongPress ? handlePointerUp : undefined}
-            onPointerCancel={canLongPress ? handlePointerCancel : undefined}
-            onPointerLeave={canLongPress ? handlePointerLeave : undefined}
-            onContextMenu={canLongPress ? (e) => handleContextMenu(e, p) : undefined}
+            onClick={() => {
+              if (isCurrent) return
+              setSelectedPlayerId(prev => (prev === p.id ? null : p.id))
+            }}
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -161,18 +87,54 @@ export default function PlayerStrip({
               minHeight: '36px',
               opacity: p.isConnected ? 1 : 0.5,
               background: bg,
-              userSelect: canLongPress ? 'none' : 'auto',
-              WebkitUserSelect: canLongPress ? 'none' : 'auto',
-              WebkitTouchCallout: canLongPress ? 'none' : 'default',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
               touchAction: 'pan-y',
-              cursor: canLongPress ? 'pointer' : 'default',
-              transition: 'background-color 150ms ease, transform 150ms ease',
-              transform: isPressing ? 'scale(0.98)' : 'none'
+              cursor: isCurrent ? 'default' : 'pointer',
+              transition: 'background-color 150ms ease'
             }}
           >
-            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'black', width: '24px', flexShrink: 0, textAlign: 'center' }}>
-              #{rankMap[p.id] || 1}
-            </div>
+            {/* Left corner: Gear button when tapped once; otherwise rank number */}
+            {isSelected ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActionTarget(p)
+                  setConfirmStep(null)
+                }}
+                className="sk-gear-btn"
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  lineHeight: 1,
+                  boxShadow: 'none'
+                }}
+                aria-label={`Options for ${p.name}`}
+                title={`Options for ${p.name}`}
+              >
+                <img
+                  src="/images/svg/settings.svg"
+                  alt="Settings"
+                  width="18"
+                  height="18"
+                  style={{ display: 'block', opacity: 0.85 }}
+                />
+              </button>
+            ) : (
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'black', width: '24px', flexShrink: 0, textAlign: 'center' }}>
+                #{rankMap[p.id] || 1}
+              </div>
+            )}
+
             <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ 
               width: '28px', height: '28px', fontSize: '0.9rem', flexShrink: 0, borderRadius: '50%',
               border: isDrawer ? '2px solid var(--sk-primary)' : '1px solid rgba(0,0,0,0.1)',
@@ -192,58 +154,60 @@ export default function PlayerStrip({
         )
       })}
 
-      {/* Host Kick Action / Confirmation Modal */}
-      {actionTarget && (
-        <div className="sk-edge-overlay"
+      {/* Action Modal: rendered via createPortal so ChatBox cannot overlap it */}
+      {actionTarget && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="sk-edge-overlay"
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 999995,
+            zIndex: 999999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(38, 51, 74, 0.55)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
             padding: '16px'
           }}
           onClick={() => {
-            if (!isKicking) {
+            if (!isKicking && !isVoting) {
               setActionTarget(null)
-              setConfirmStep(false)
+              setConfirmStep(null)
             }
           }}
         >
           <div
             style={{
-              width: 'min(320px, 90vw)',
-              padding: '20px',
+              width: 'min(340px, 92vw)',
+              padding: '22px',
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',
               background: 'var(--sk-surface, #ffffff)',
               border: '3px solid var(--sk-primary, #3366cc)',
               borderRadius: '24px',
-              boxShadow: '0 24px 60px rgba(38, 51, 74, 0.35)',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.35)',
               fontFamily: 'var(--sk-font-body)'
             }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label={confirmStep ? `Confirm Kick ${actionTarget.name}` : `Player Action for ${actionTarget.name}`}
+            aria-label={`Player Actions for ${actionTarget.name}`}
           >
+            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                 <div
                   className={`sk-avatar ${getAvatarColorClass(actionTarget.id)}`}
-                  style={{ width: '32px', height: '32px', fontSize: '1rem', flexShrink: 0, borderRadius: '50%' }}
+                  style={{ width: '34px', height: '34px', fontSize: '1rem', flexShrink: 0, borderRadius: '50%' }}
                 >
                   {actionTarget.name.charAt(0).toUpperCase()}
                 </div>
                 <span
                   style={{
                     fontFamily: 'var(--sk-font-display)',
-                    fontSize: '1.2rem',
+                    fontSize: '1.25rem',
                     fontWeight: 800,
                     color: 'var(--sk-text, #1e293b)',
                     overflow: 'hidden',
@@ -254,7 +218,7 @@ export default function PlayerStrip({
                   {actionTarget.name}
                 </span>
               </div>
-              {!isKicking && (
+              {!isKicking && !isVoting && (
                 <button
                   type="button"
                   style={{
@@ -262,13 +226,13 @@ export default function PlayerStrip({
                     border: 'none',
                     fontSize: '1.8rem',
                     lineHeight: 1,
-                    color: 'var(--sk-muted)',
+                    color: 'var(--sk-muted, #64748b)',
                     cursor: 'pointer',
                     padding: '0 4px'
                   }}
                   onClick={() => {
                     setActionTarget(null)
-                    setConfirmStep(false)
+                    setConfirmStep(null)
                   }}
                   aria-label="Close"
                 >
@@ -277,29 +241,60 @@ export default function PlayerStrip({
               )}
             </div>
 
+            {/* Menu Options */}
             {!confirmStep ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="sk-btn sk-btn--danger"
-                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
-                  onClick={() => setConfirmStep(true)}
-                >
-                  KICK PLAYER
-                </button>
+                {isHost && (
+                  <button
+                    type="button"
+                    className="sk-btn sk-btn--danger"
+                    style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700 }}
+                    onClick={() => setConfirmStep('kick')}
+                  >
+                    KICK PLAYER
+                  </button>
+                )}
+                {(() => {
+                  const targetVotes = room?.kickVotes?.[actionTarget.id] || []
+                  const hasVoted = targetVotes.includes(sessionId)
+                  const eligibleVoters = (room?.players || []).filter(p => p.isConnected && p.id !== actionTarget.id)
+                  const totalVotes = Math.max(1, eligibleVoters.length)
+                  const currentVotes = targetVotes.filter(vid => eligibleVoters.some(p => p.id === vid)).length
+                  
+                  return (
+                    <button
+                      type="button"
+                      className="sk-btn sk-btn--secondary"
+                      style={{ 
+                        width: '100%', 
+                        padding: '12px', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 700,
+                        borderColor: hasVoted ? '#94a3b8' : 'var(--sk-primary, #3366cc)',
+                        color: hasVoted ? '#64748b' : 'var(--sk-primary, #3366cc)',
+                        background: hasVoted ? '#f1f5f9' : 'transparent',
+                        opacity: (hasVoted || isVoting) ? 0.75 : 1
+                      }}
+                      disabled={hasVoted || isVoting}
+                      onClick={() => setConfirmStep('votekick')}
+                    >
+                      {hasVoted ? `VOTED (${currentVotes}/${totalVotes})` : `VOTE KICK (${currentVotes}/${totalVotes})`}
+                    </button>
+                  )
+                })()}
                 <button
                   type="button"
                   className="sk-btn sk-btn--secondary"
                   style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
                   onClick={() => {
                     setActionTarget(null)
-                    setConfirmStep(false)
+                    setConfirmStep(null)
                   }}
                 >
                   CANCEL
                 </button>
               </div>
-            ) : (
+            ) : confirmStep === 'kick' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={{ margin: 0, color: 'var(--sk-muted, #64748b)', fontSize: '0.92rem', lineHeight: 1.4, fontWeight: 600 }}>
                   Kick <strong style={{ color: 'var(--sk-text, #1e293b)' }}>{actionTarget.name}</strong> from the room? They will not be able to rejoin this game.
@@ -315,7 +310,8 @@ export default function PlayerStrip({
                       onKickPlayer?.(targetId, (success) => {
                         if (success) {
                           setActionTarget(null)
-                          setConfirmStep(false)
+                          setConfirmStep(null)
+                          setSelectedPlayerId(null)
                         }
                       })
                     }}
@@ -327,19 +323,66 @@ export default function PlayerStrip({
                     className="sk-btn sk-btn--secondary"
                     style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
                     disabled={isKicking}
-                    onClick={() => {
-                      setConfirmStep(false)
-                    }}
+                    onClick={() => setConfirmStep(null)}
                   >
-                    CANCEL
+                    BACK
                   </button>
                 </div>
               </div>
-            )}
+            ) : confirmStep === 'votekick' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {(() => {
+                  const targetVotes = room?.kickVotes?.[actionTarget.id] || []
+                  const eligibleVoters = (room?.players || []).filter(p => p.isConnected && p.id !== actionTarget.id)
+                  const totalVotes = Math.max(1, eligibleVoters.length)
+                  const currentVotes = targetVotes.filter(vid => eligibleVoters.some(p => p.id === vid)).length
+                  const willBeVotes = currentVotes + 1
+
+                  return (
+                    <>
+                      <p style={{ margin: 0, color: 'var(--sk-muted, #64748b)', fontSize: '0.92rem', lineHeight: 1.4, fontWeight: 600 }}>
+                        Vote to kick <strong style={{ color: 'var(--sk-text, #1e293b)' }}>{actionTarget.name}</strong>? Requires all players excluding {actionTarget.name} to agree ({willBeVotes}/{totalVotes}).
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <button
+                          type="button"
+                          className="sk-btn sk-btn--primary"
+                          style={{ width: '100%', padding: '12px', fontSize: '0.95rem', opacity: isVoting ? 0.7 : 1 }}
+                          disabled={isVoting}
+                          onClick={() => {
+                            setIsVoting(true)
+                            const targetId = actionTarget.id
+                            onVoteKickPlayer?.(targetId, (success) => {
+                              setIsVoting(false)
+                              if (success) {
+                                setActionTarget(null)
+                                setConfirmStep(null)
+                                setSelectedPlayerId(null)
+                              }
+                            })
+                          }}
+                        >
+                          {isVoting ? 'VOTING...' : 'YES, VOTE KICK'}
+                        </button>
+                        <button
+                          type="button"
+                          className="sk-btn sk-btn--secondary"
+                          style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
+                          disabled={isVoting}
+                          onClick={() => setConfirmStep(null)}
+                        >
+                          BACK
+                        </button>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            ) : null}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
 }
-

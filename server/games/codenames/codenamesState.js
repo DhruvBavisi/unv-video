@@ -7,7 +7,8 @@ export const codenamesRooms = new Map();
 export function checkCodenamesReadiness(room) {
   if (!room || !Array.isArray(room.players)) return false
   const realPlayers = room.players.filter(p => !p.isBot)
-  if (realPlayers.length < 4) return false
+  if (realPlayers.length < 1) return false
+  if (room.players.length < 4) return false
 
   const redSpymasters = room.players.filter(p => p.team === 'red' && p.role === 'SPYMASTER')
   const blueSpymasters = room.players.filter(p => p.team === 'blue' && p.role === 'SPYMASTER')
@@ -65,7 +66,8 @@ export function getCodenamesPublicState(room) {
       id: card.id,
       word: card.word,
       revealed: card.revealed,
-      category: card.revealed ? card.category : undefined
+      category: (card.revealed || room.status === 'FINISHED') ? card.category : undefined,
+      tileVariant: (card.revealed || room.status === 'FINISHED') ? card.tileVariant : undefined
     })) : undefined,
     timer: room.timer || 'OFF',
     mode: room.mode || 'CLASSIC',
@@ -73,7 +75,9 @@ export function getCodenamesPublicState(room) {
     currentClue: room.currentClue || null,
     guessesLeft: room.guessesLeft ?? null,
     winner: room.winner || null,
-    endReason: room.endReason || null
+    endReason: room.endReason || null,
+    turnHistory: Array.isArray(room.turnHistory) ? room.turnHistory : [],
+    targetedCards: room.targetedCards || {}
   }
 }
 
@@ -91,7 +95,8 @@ export function getCodenamesPrivateState(room, playerId) {
         id: card.id,
         word: card.word,
         revealed: card.revealed,
-        category: card.category
+        category: card.category,
+        tileVariant: card.tileVariant
       }))
     }
   }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../../shared/realtime/socket.js'
 import QRModal from '../../../shared/components/QRModal.jsx'
+import { getPlayerAvatarUrl } from '../utils/cardTiles.js'
 
 export function Icon({ type, size = 16 }) {
   const common = {
@@ -42,15 +43,33 @@ export function Icon({ type, size = 16 }) {
     )
   }
 
+  if (type === 'restart' || type === 'refresh') {
+    return (
+      <svg {...common}>
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24L21 8" />
+        <path d="M21 3v5h-5" />
+      </svg>
+    )
+  }
+
+  if (type === 'settings' || type === 'gear') {
+    return (
+      <svg {...common}>
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    )
+  }
+
   return (
     <svg {...common}>
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06A1.7 1.7 0 0 0 16 18.44a1.7 1.7 0 0 0-1.03 1.56V20h-2.7v-.09A1.7 1.7 0 0 0 11.24 18.35a1.7 1.7 0 0 0-1.88.34l-.06.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 7.56 15a1.7 1.7 0 0 0-1.56-1.03H5.9v-2.7h.1A1.7 1.7 0 0 0 7.56 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.9-1.9.06.06A1.7 1.7 0 0 0 11 6.56a1.7 1.7 0 0 0 1.03-1.56V4.9h2.7V5A1.7 1.7 0 0 0 16 6.56a1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06A1.7 1.7 0 0 0 19.44 10a1.7 1.7 0 0 0 1.56 1.03h.1v2.7h-.1A1.7 1.7 0 0 0 19.4 15Z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   )
 }
 
-export function TopBar({ count, onPlayers, onSettings }) {
+export function TopBar({ count, onPlayers, onSettings, onRestart }) {
   return (
     <div className="cn-game-nav">
       <div className="cn-nav-left">
@@ -60,6 +79,17 @@ export function TopBar({ count, onPlayers, onSettings }) {
         </button>
       </div>
       <div className="cn-nav-right">
+        {onRestart && (
+          <button
+            type="button"
+            className="cn-nav-btn restart-btn"
+            aria-label="Reset table"
+            title="Reset table (new words & move to spectators)"
+            onClick={onRestart}
+          >
+            <Icon type="restart" />
+          </button>
+        )}
         <button type="button" className="cn-nav-btn settings-btn" aria-label="Settings" onClick={onSettings}>
           <Icon type="settings" />
         </button>
@@ -68,12 +98,28 @@ export function TopBar({ count, onPlayers, onSettings }) {
   )
 }
 
-export function SettingsModal({ onClose, onLeave }) {
+export function SettingsModal({ room, playerId, onClose, onLeave }) {
+  const isHost = room?.hostId === playerId
+  const handleDevAddBots = (count = 3) => {
+    connectSocket(playerId).emit('codenames:dev-add-bots', { count })
+  }
+  const handleDevRemoveBots = () => {
+    connectSocket(playerId).emit('codenames:dev-remove-bots')
+  }
+
   return (
     <div className="cn-modal-overlay" onClick={onClose}>
       <div className="cn-modal" onClick={e => e.stopPropagation()}>
         <div className="cn-modal-header">Settings</div>
         <div className="cn-modal-content">
+          {import.meta.env.DEV && isHost && (
+            <div style={{ marginBottom: '14px', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase' }}>Development Bots</div>
+              <button type="button" className="cn-modal-btn" onClick={() => handleDevAddBots(3)}>🤖 Add 3 Bots (Fill Teams)</button>
+              <button type="button" className="cn-modal-btn" onClick={() => handleDevAddBots(1)}>🤖 Add 1 Bot</button>
+              <button type="button" className="cn-modal-btn" onClick={handleDevRemoveBots}>🚫 Remove Bots</button>
+            </div>
+          )}
           <button className="cn-modal-btn danger" onClick={onLeave}>Leave Game</button>
           <button className="cn-modal-btn" onClick={onClose}>Close</button>
         </div>
@@ -111,7 +157,7 @@ export function PlayersModal({ room, playerId, onClose }) {
                 <div className="cn-pm-group-title">{g.title} · {g.list.length}</div>
                 {g.list.map(p => (
                   <div key={p.id} className="cn-pm-row">
-                    <img className="cn-pm-avatar" src={avatarUrl(p.id)} alt="" />
+                    <img className="cn-pm-avatar" src={getPlayerAvatarUrl(p)} alt="" />
                     <div className="cn-pm-info">
                       <span className="cn-pm-name">{p.name}{p.id === room.hostId ? ' 👑' : ''}{p.id === playerId && <em> (you)</em>}{p.isBot && <em> [bot]</em>}</span>
                       <span className="cn-pm-role">{p.role === 'SPYMASTER' ? 'Spymaster' : p.role === 'OPERATIVE' ? 'Operative' : 'Spectating'}</span>
@@ -133,5 +179,128 @@ export function PlayersModal({ room, playerId, onClose }) {
         <QRModal joinUrl={`${window.location.origin}/?mode=codenames&room=${room.id}`} roomId={room.id} onClose={() => setShowQR(false)} mode="codenames" />
       )}
     </>
+  )
+}
+
+export function RulesModal({ onClose }) {
+  return (
+    <div className="cn-modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="cn-modal cn-rules-modal" onClick={e => e.stopPropagation()}>
+        <div className="cn-pm-head">
+          <h3>HOW TO PLAY CODENAMES</h3>
+          <button type="button" className="cn-pm-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="cn-rules-body">
+          <div className="cn-rule-section">
+            <h4>OBJECTIVE</h4>
+            <p>Two rival spymasters know the secret identities of 25 agents. Their teammates (Operatives) know the agents only by their CODENAMES. The first team to contact all their agents wins.</p>
+          </div>
+          <div className="cn-rule-section">
+            <h4>GIVING CLUES</h4>
+            <p>Spymasters take turns giving a one-word clue and a number (e.g. <strong>"ANIMAL 2"</strong>). The number tells Operatives how many word cards relate to that clue.</p>
+          </div>
+          <div className="cn-rule-section">
+            <h4>GUESSING & CONFIRMING</h4>
+            <p>Operatives discuss, tap a card to target it, and confirm their guess. Operatives can make up to <strong>[Number + 1]</strong> guesses, or tap <strong>END GUESSING</strong> to pass.</p>
+          </div>
+          <div className="cn-rule-section">
+            <h4>CARD TYPES</h4>
+            <ul className="cn-rule-types">
+              <li><span className="cn-dot red" /> <strong>Red Agent:</strong> Revealed for Red Team.</li>
+              <li><span className="cn-dot blue" /> <strong>Blue Agent:</strong> Revealed for Blue Team.</li>
+              <li><span className="cn-dot neutral" /> <strong>Innocent Bystander:</strong> Ends your turn immediately.</li>
+              <li><span className="cn-dot assassin" /> <strong>Assassin:</strong> Immediate loss! Opponent team wins.</li>
+            </ul>
+          </div>
+        </div>
+        <div className="cn-modal-footer">
+          <button type="button" className="cn-modal-btn" onClick={onClose}>GOT IT</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function VictoryModal({ room, playerId, onPlayAgain, onInspectBoard }) {
+  if (room.status !== 'FINISHED' || !room.winner) return null
+  const isHost = room.hostId === playerId
+  const isRedWin = room.winner === 'red'
+  const reasonText = room.endReason === 'ASSASSIN'
+    ? `${isRedWin ? 'Blue' : 'Red'} team contacted the Assassin!`
+    : `All ${room.winner.toUpperCase()} agents were identified!`
+
+  const totalTurns = Array.isArray(room.turnHistory) ? room.turnHistory.length : 0
+
+  return (
+    <div className="cn-modal-overlay cn-victory-overlay">
+      <div className={`cn-modal cn-victory-modal ${isRedWin ? 'victory--red' : 'victory--blue'}`}>
+        <div className="cn-victory-crown">👑</div>
+        <h2 className="cn-victory-title">{room.winner.toUpperCase()} TEAM WINS!</h2>
+        <p className="cn-victory-reason">{reasonText}</p>
+        
+        <div className="cn-victory-stats">
+          <div className="cn-victory-stat">
+            <span className="stat-value">{totalTurns}</span>
+            <span className="stat-label">TOTAL TURNS</span>
+          </div>
+        </div>
+
+        <div className="cn-victory-actions">
+          <button type="button" className="cn-inspect-board-btn" onClick={onInspectBoard}>
+            INSPECT BOARD
+          </button>
+          {isHost ? (
+            <button type="button" className="cn-rematch-btn" onClick={onPlayAgain}>
+              PLAY AGAIN
+            </button>
+          ) : (
+            <div className="cn-rematch-waiting">WAITING FOR HOST TO RESTART</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ResetConfirmModal({ isOpen, onConfirm, onCancel, isSubmitting = false }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="cn-modal-overlay cn-reset-overlay" onClick={e => { if (e.target === e.currentTarget && !isSubmitting) onCancel() }}>
+      <div className="cn-modal cn-reset-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="cn-reset-dialog-title">
+        <div className="cn-reset-header">
+          <div className="cn-reset-header-icon-wrap" aria-hidden="true">
+            <Icon type="restart" size={26} />
+          </div>
+          <h3 id="cn-reset-dialog-title" className="cn-reset-title">RESET TABLE?</h3>
+        </div>
+        <div className="cn-reset-body">
+          <p className="cn-reset-lead">Are you sure you want to reset this table?</p>
+          <ul className="cn-reset-list">
+            <li>Deal a brand-new 25-word board</li>
+            <li>Move all players back to Spectators</li>
+            <li>Clear current clues and turn progress</li>
+          </ul>
+        </div>
+        <div className="cn-reset-actions">
+          <button
+            type="button"
+            className="cn-reset-btn cn-reset-btn-cancel"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="cn-reset-btn cn-reset-btn-confirm"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Resetting...' : 'Reset Table'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

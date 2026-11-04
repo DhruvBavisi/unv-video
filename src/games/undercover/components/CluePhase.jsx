@@ -78,7 +78,7 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
           {specialRoleMeta && (() => {
             const layout = SPECIAL_ROLE_AVATAR_LAYOUT[specialRoleKey] || { scale: 1, translateY: 0, translateX: 0 }
             const avatarSrc = layout.imageVariant && layout.imageVariant !== 'normal' && specialRoleMeta.avatar
-              ? specialRoleMeta.avatar.replace('.png', `-${layout.imageVariant}.png`)
+              ? specialRoleMeta.avatar.replace(/\.(png|webp)$/, `-${layout.imageVariant}.webp`)
               : specialRoleMeta.avatar;
             
             return (
@@ -625,7 +625,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
               <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
               <div className="voting-card__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {isGhostTarget && (
-                  <img src="/images/characters/ghost-bg.png" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                  <img src="/images/characters/ghost-bg.webp" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
                 )}
                 {voteCounts[p.id] > 0 && (
                   <span className="voting-card__votes">{voteCounts[p.id]} Vote{voteCounts[p.id] > 1 ? 's' : ''}</span>

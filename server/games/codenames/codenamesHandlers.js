@@ -12,6 +12,15 @@ import {
   syncCodenamesSpymasters,
   removeCodenamesPlayer
 } from "./codenamesState.js";
+import {
+  autoAssignCodenamesBots,
+  clearRoomBotTimers,
+  executeGiveClue,
+  executeCardReveal,
+  executeEndTurn,
+  executeTableReset,
+  triggerCodenamesBotTurn
+} from "./codenamesBot.js";
 
 export function registerCodenamesHandlers(io, socket, socketState, context) {
   socket.on('codenames:create-room', ({ sessionId: reqSessionId, playerName }, callback) => {
@@ -51,7 +60,8 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
       spymasters: { red: null, blue: null },
       board: [],
       currentTeam: null,
-      phase: 'LOBBY'
+      phase: 'LOBBY',
+      turnHistory: []
     }
     
     room.players[0].resumeToken = ensureResumeToken(room.players[0])
@@ -84,7 +94,7 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!room) {
       return callback?.({ error: 'ROOM_NOT_FOUND' })
     }
-    if (room.status === 'FINISHED' && !room.players.some(p => p.id === reqSessionId)) {
+    if ((room.status === 'PLAYING' || room.status === 'FINISHED') && !room.players.some(p => p.id === reqSessionId)) {
       return callback?.({ error: 'GAME_IN_PROGRESS' })
     }
 
@@ -210,6 +220,7 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(socketState.currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.status === 'PLAYING') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
     if (room.status === 'FINISHED') return callback?.({ success: false, error: 'GAME_FINISHED' })
 
     if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
@@ -249,7 +260,13 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
 
     syncCodenamesSpymasters(room)
     checkAndApplyCodenamesTransition(room)
+    if (room.players.some(p => p.isBot)) {
+      autoAssignCodenamesBots(room, checkAndApplyCodenamesTransition)
+    }
     broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
     callback?.({ success: true })
   })
 
@@ -316,7 +333,13 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
 
     syncCodenamesSpymasters(room)
     checkAndApplyCodenamesTransition(room)
+    if (room.players.some(p => p.isBot)) {
+      autoAssignCodenamesBots(room, checkAndApplyCodenamesTransition)
+    }
     broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
     callback?.({ success: true })
   })
 
@@ -376,7 +399,13 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
       })
     }
 
+    if (room.players.some(p => p.isBot)) {
+      autoAssignCodenamesBots(room, checkAndApplyCodenamesTransition)
+    }
     broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
     callback?.({ success: true })
   })
 
@@ -389,6 +418,7 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     const isWaitingPhase = room.status === 'WAITING_FOR_PLAYERS' || room.phase === 'WAITING_FOR_PLAYERS'
     if (room.status !== 'LOBBY' && !isWaitingPhase) return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
 
+    clearRoomBotTimers(room)
     const botIds = room.players.filter(p => p.isBot).map(p => p.id)
     room.players = room.players.filter(p => !p.isBot)
 
@@ -402,7 +432,13 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
 
     syncCodenamesSpymasters(room)
     checkAndApplyCodenamesTransition(room)
+    if (room.players.some(p => p.isBot)) {
+      autoAssignCodenamesBots(room, checkAndApplyCodenamesTransition)
+    }
     broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
     callback?.({ success: true })
   })
 
@@ -425,10 +461,12 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     room.startingTeam = Math.random() < 0.5 ? 'red' : 'blue'
     room.currentTeam = room.startingTeam
     room.board = generateCodenamesBoard(room.startingTeam)
+    room.tileVariantPools = { red: [], blue: [], neutral: [], assassin: [] }
     room.currentClue = null
     room.guessesLeft = null
     room.winner = null
     room.endReason = null
+    room.turnHistory = []
 
     if (checkCodenamesReadiness(room)) {
       room.status = 'PLAYING'
@@ -438,7 +476,14 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
       room.phase = 'WAITING_FOR_PLAYERS'
     }
 
+    if (room.players.some(p => p.isBot)) {
+      autoAssignCodenamesBots(room, checkAndApplyCodenamesTransition)
+    }
+
     broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
     callback?.({ success: true })
   })
 
@@ -457,17 +502,120 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!checkCodenamesReadiness(room)) return callback?.({ success: false, error: 'ROOM_NOT_READY' })
 
     const clueStr = typeof payload?.clue === 'string' ? payload.clue.trim() : ''
-    const num = Number(payload?.number)
+    const isInfinity = payload?.number === '∞' || payload?.number === 'unlimited' || payload?.number === 99 || payload?.number === 'INFINITY'
+    const num = isInfinity ? '∞' : Number(payload?.number)
     if (!clueStr) return callback?.({ success: false, error: 'EMPTY_CLUE' })
     if (clueStr.length > 25 || !/^[\p{L}\p{N}'-]+$/u.test(clueStr)) return callback?.({ success: false, error: 'INVALID_CLUE' })
     const upper = clueStr.toUpperCase()
     if (room.board.some(c => !c.revealed && String(c.word).toUpperCase() === upper)) return callback?.({ success: false, error: 'CLUE_MATCHES_BOARD_WORD' })
-    if (!Number.isInteger(num) || num < 1 || num > 9) return callback?.({ success: false, error: 'INVALID_NUMBER' })
+    if (!isInfinity && (!Number.isInteger(num) || num < 0 || num > 9)) return callback?.({ success: false, error: 'INVALID_NUMBER' })
     
-    room.currentClue = { word: upper, number: num, team: room.currentTeam }
-    room.phase = 'GUESS_PHASE'
-    room.guessesLeft = num + 1
+    executeGiveClue(room, upper, num)
+    broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
+    callback?.({ success: true })
+  })
 
+  socket.on('codenames:select-card', ({ cardIndex }, callback) => {
+    if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(socketState.currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.status !== 'PLAYING' || room.phase !== 'GUESS_PHASE') return callback?.({ success: false, error: 'NOT_GUESS_PHASE' })
+
+    const player = room.players.find(p => p.id === socketState.currentSessionId)
+    if (!player || player.team !== room.currentTeam || player.role !== 'OPERATIVE') {
+      return callback?.({ success: false, error: 'NOT_ACTIVE_OPERATIVE' })
+    }
+
+    if (!room.targetedCards) room.targetedCards = {}
+
+    if (cardIndex === null || cardIndex === undefined || room.targetedCards[player.id] === cardIndex) {
+      delete room.targetedCards[player.id]
+    } else if (typeof cardIndex === 'number' && cardIndex >= 0 && cardIndex < room.board.length && !room.board[cardIndex].revealed) {
+      room.targetedCards[player.id] = cardIndex
+    }
+
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true, targetedCards: room.targetedCards })
+  })
+
+  socket.on('codenames:reveal-card', ({ cardIndex, word }, callback) => {
+    if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(socketState.currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    const player = room.players.find(p => p.id === socketState.currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_IN_ROOM' })
+
+    if (room.status !== 'PLAYING') return callback?.({ success: false, error: 'GAME_NOT_IN_PROGRESS' })
+    if (room.phase !== 'GUESS_PHASE') return callback?.({ success: false, error: 'NOT_GUESS_PHASE' })
+    if (player.team !== room.currentTeam) return callback?.({ success: false, error: 'NOT_YOUR_TURN' })
+    if (player.role !== 'OPERATIVE') return callback?.({ success: false, error: 'NOT_OPERATIVE' })
+    if (!checkCodenamesReadiness(room)) return callback?.({ success: false, error: 'ROOM_NOT_READY' })
+    if (!room.board || room.board.length !== 25) return callback?.({ success: false, error: 'BOARD_NOT_INITIALIZED' })
+
+    let idx = -1
+    if (typeof cardIndex === 'number' && cardIndex >= 0 && cardIndex < room.board.length) {
+      idx = cardIndex
+    } else if (typeof word === 'string' && word.trim()) {
+      idx = room.board.findIndex(c => c.word.toUpperCase() === word.trim().toUpperCase())
+    }
+
+    if (idx === -1) return callback?.({ success: false, error: 'CARD_NOT_FOUND' })
+    const card = room.board[idx]
+    if (card.revealed) return callback?.({ success: false, error: 'CARD_ALREADY_REVEALED' })
+
+    executeCardReveal(room, idx, player.id)
+
+    broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
+    callback?.({ success: true, card: { index: idx, word: card.word, category: card.category } })
+  })
+
+  socket.on('codenames:end-turn', (callback) => {
+    if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(socketState.currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    const player = room.players.find(p => p.id === socketState.currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_IN_ROOM' })
+
+    if (room.status !== 'PLAYING') return callback?.({ success: false, error: 'GAME_NOT_IN_PROGRESS' })
+    if (room.phase !== 'GUESS_PHASE') return callback?.({ success: false, error: 'NOT_GUESS_PHASE' })
+    if (player.team !== room.currentTeam) return callback?.({ success: false, error: 'NOT_YOUR_TURN' })
+    if (player.role !== 'OPERATIVE') return callback?.({ success: false, error: 'NOT_OPERATIVE' })
+
+    executeEndTurn(room)
+
+    broadcastCodenamesRoomState(room)
+    if (room.status === 'PLAYING') {
+      triggerCodenamesBotTurn(room, broadcastCodenamesRoomState)
+    }
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:table-reset', (callback) => {
+    if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(socketState.currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    const player = room.players?.find(p => p.id === socketState.currentSessionId)
+    if (!player) return callback?.({ success: false, error: 'PLAYER_NOT_IN_ROOM' })
+
+    executeTableReset(room)
+    broadcastCodenamesRoomState(room)
+    callback?.({ success: true })
+  })
+
+  socket.on('codenames:play-again', (callback) => {
+    if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
+    const room = codenamesRooms.get(socketState.currentRoomId)
+    if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
+    if (room.hostId !== socketState.currentSessionId) return callback?.({ success: false, error: 'NOT_HOST' })
+    if (room.status !== 'FINISHED') return callback?.({ success: false, error: 'GAME_NOT_FINISHED' })
+
+    executeTableReset(room)
     broadcastCodenamesRoomState(room)
     callback?.({ success: true })
   })

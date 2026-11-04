@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { connectSocket } from '../../../shared/realtime/socket.js'
 import { TopBar, SettingsModal, PlayersModal } from './CodenamesShared.jsx'
+import { getPlayerAvatarUrl } from '../utils/cardTiles.js'
 
 export default function CodenamesLobby({ room, playerId, onLeave }) {
 
@@ -110,7 +111,7 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
       <div key={p.id} className="cn-avatar-wrapper">
         {p.id === room.hostId && <div className="cn-avatar-crown">👑</div>}
         <div className={`cn-avatar-circle ${p.id === playerId ? 'is-me' : ''}`}>
-          <div className="cn-avatar-placeholder"></div>
+          <img src={getPlayerAvatarUrl(p)} alt="" className="cn-avatar-img" />
         </div>
         <div className="cn-avatar-name">{p.name} {p.isBot && <span style={{ color: '#aaa', fontSize: '0.6rem' }}>[BOT]</span>}</div>
       </div>

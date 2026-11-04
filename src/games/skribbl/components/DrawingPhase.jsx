@@ -181,6 +181,28 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
     })
   }, [isKicking])
 
+  const handleVoteKickPlayer = useCallback((targetId, onComplete) => {
+    const socket = getSocket()
+    if (!socket?.connected) {
+      setKickError('Unable to vote: Not connected to server.')
+      onComplete?.(false)
+      return
+    }
+
+    socket.emit('draw:vote-kick', { targetId }, (res) => {
+      if (res?.error || res?.success === false) {
+        const message = res?.error === 'ALREADY_VOTED' 
+          ? 'You have already voted to kick this player.' 
+          : (getFriendlyError(res?.error) || 'Failed to vote kick.')
+        setKickError(message)
+        onComplete?.(false)
+      } else {
+        setKickError(null)
+        onComplete?.(true)
+      }
+    })
+  }, [])
+
   const handleTargetLeft = useCallback((targetName) => {
     setKickError(`${targetName || 'That player'} is no longer in the room.`)
   }, [])
@@ -728,7 +750,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           background: var(--sk-canvas);
           z-index: 5;
           overflow: hidden;
-          transition: flex 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition: none !important;
         }
         .sk-view--game.is-game-result .sk-drawing-surface-wrapper {
           flex: 74;
@@ -741,7 +763,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         .sk-lower-info-section {
           flex: ${INFO_PANEL_FLEX};
           min-height: 120px;
-          transition: flex 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition: none !important;
         }
         .sk-view--game.is-game-result .sk-lower-info-section {
           flex: 26;
@@ -756,7 +778,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             align-items: center;
             justify-content: center;
             overflow: hidden !important;
-            transition: height 1000ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+            transition: none !important;
           }
           .sk-view--game.is-game-result .sk-drawing-surface-wrapper {
             height: clamp(340px, 92vw, min(420px, calc(100dvh - 160px))) !important;
@@ -776,6 +798,10 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             position: absolute !important;
             inset: 0 !important;
             aspect-ratio: auto !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
           }
           .sk-lower-info-section {
             flex: 1 1 0% !important;
@@ -880,6 +906,8 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
                 textColor = '#359b35'
               } else if (text.includes('left')) {
                 textColor = '#cc4e14'
+              } else if (text.includes('Vote to kick') || text.includes('voted to kick') || text.includes('was kicked')) {
+                textColor = '#DC2626'
               } else {
                 textColor = '#777777'
               }
@@ -999,6 +1027,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
             currentDrawerId={room.currentDrawerId} 
             sessionId={sessionId}
             onKickPlayer={handleKickPlayer}
+            onVoteKickPlayer={handleVoteKickPlayer}
             isKicking={isKicking}
             onTargetLeft={handleTargetLeft}
           />

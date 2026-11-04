@@ -233,6 +233,7 @@ function reapAbandonedRooms() {
     const realPlayers = room.players.filter(p => !p.isBot)
     if (realPlayers.length === 0) {
       console.log('[ROOM] destroying empty codenames room (no real players)', { roomId })
+      if (Array.isArray(room.botTimers)) { room.botTimers.forEach(t => clearTimeout(t)) }
       codenamesRooms.delete(roomId)
       io.to(`codenames:${roomId}`).emit('room-closed', { message: 'Room closed — all players left.' })
       continue
