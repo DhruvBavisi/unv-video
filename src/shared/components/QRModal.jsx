@@ -59,20 +59,38 @@ export default function QRModal({ joinUrl, roomId, onClose, buttonRect, mode = '
 
   const isSkribbl = mode === 'skribbl'
   const panelStyle = isSkribbl 
-    ? { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative', background: 'var(--sk-surface)', color: 'var(--sk-text)', borderRadius: '24px', border: '3px solid var(--sk-primary)' }
+    ? { 
+        ...getOriginVars(), 
+        maxWidth: '380px', 
+        width: '90%', 
+        padding: '30px 22px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        margin: 'auto', 
+        position: 'relative', 
+        backgroundColor: '#0d3284', 
+        backgroundImage: "url('/images/characters/skribbl/background.webp')",
+        backgroundRepeat: 'repeat',
+        backgroundSize: '320px 320px',
+        color: '#ffffff', 
+        borderRadius: '20px', 
+        border: '3px solid #2345B5',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)'
+      }
     : { ...getOriginVars(), maxWidth: '360px', width: '90%', padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: 'auto', position: 'relative' }
 
   return createPortal(
     <div className={`players-panel-overlay ${overlayClass}`} ref={overlayRef} onClick={handleOverlayClick} style={{ zIndex: 1000000 }}>
       <div className={`players-panel ${animClass}`} style={panelStyle}>
-        <button type="button" className="players-panel-close" onClick={handleClose} aria-label="Close QR" style={{ position: 'absolute', top: '5px', right: '16px', color: isSkribbl ? 'var(--sk-muted)' : undefined }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button type="button" className="players-panel-close" onClick={handleClose} aria-label="Close QR" style={{ position: 'absolute', top: '10px', right: '16px', color: isSkribbl ? '#ffffff' : undefined }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <h2 style={{ fontFamily: isSkribbl ? 'var(--sk-font-display)' : 'var(--font-display)', fontSize: '1.5rem', marginBottom: '8px', letterSpacing: '0.1em' }}>ROOM {roomId}</h2>
-        <p style={{ color: isSkribbl ? 'var(--sk-muted)' : 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.9rem', fontFamily: isSkribbl ? 'var(--sk-font-body)' : undefined }}>
+        <h2 style={{ fontFamily: isSkribbl ? 'var(--sk-font-body)' : 'var(--font-display)', fontWeight: 900, color: '#ffd600', fontSize: '1.6rem', marginBottom: '8px', letterSpacing: '0.12em' }}>ROOM {roomId}</h2>
+        <p style={{ color: isSkribbl ? 'rgba(255, 255, 255, 0.75)' : 'var(--text-secondary)', marginBottom: '20px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 600, fontFamily: isSkribbl ? 'var(--sk-font-body)' : undefined }}>
           {isSkribbl ? 'Scan this code to join the Skribbl game' : 'Scan this code to join the investigation'}
         </p>
         <div style={{ background: '#ffffff', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>

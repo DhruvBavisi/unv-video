@@ -716,13 +716,6 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
 
   return (
     <div className={`sk-view sk-view--game ${room.phase === 'GAME_RESULT' ? 'is-game-result' : ''}`}>
-      {/* Background (light layout) */}
-      <div className="sk-bg-shapes">
-        <div className="sk-bg-shape sk-bg-shape-1" />
-        <div className="sk-bg-shape sk-bg-shape-2" />
-        <div className="sk-bg-shape sk-bg-shape-3" />
-      </div>
-
       {/* GAME BODY: everything above the guess dock. Never scrolls while the keyboard is closed; while it is open it is the only scrollable area (user-driven). */}
       <div className="sk-game-body" data-sk-scroll>
 
@@ -752,8 +745,13 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
           overflow: hidden;
           transition: none !important;
         }
+        .sk-view--game.is-game-result .sk-game-body {
+          overflow-y: hidden !important;
+          overscroll-behavior: none !important;
+        }
         .sk-view--game.is-game-result .sk-drawing-surface-wrapper {
           flex: 74;
+          touch-action: none;
         }
         .sk-drawing-surface {
           position: absolute;
@@ -995,7 +993,7 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
       </div>
 
       {/* BOTTOM CONTROLS (drawer toolbar only; the guess form is the dock at the bottom of the shell) */}
-      <div style={{ flexShrink: 0, zIndex: 10 }}>
+      <div style={{ flexShrink: 0, zIndex: 10, background: '#ffffff' }}>
         {(isDrawer && room.phase === 'DRAWING') && (
           <DrawingToolbar 
             color={color} 
@@ -1018,7 +1016,8 @@ export default function DrawingPhase({ room, onLeave, error, connectionStatus = 
         minHeight: 0,
         background: '#ffffff',
         zIndex: 10,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        paddingBottom: isDrawer ? 'max(4px, env(safe-area-inset-bottom, 0px))' : undefined
       }}>
         {/* Left Column: Player List */}
         <div style={{ flex: '0 0 45%', borderRight: '1px solid rgba(0,0,0,0.05)', minWidth: 0 }}>

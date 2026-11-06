@@ -59,7 +59,7 @@ unv/
 ├── public/
 │   ├── icons/                         # App & PWA icons (icon-192, icon-512, apple-touch-icon)
 │   ├── images/
-│   │   ├── characters/                # 27 Undercover character portraits & badges
+│   │   ├── characters/                # Game character portraits & tiles (undercover/, codenames/, skribbl/)
 │   │   ├── investigation-room-30fps/  # 300-frame 30fps cinematic scrub sequence
 │   │   ├── cinematic/                 # 480-frame evidence surveillance frames
 │   │   ├── investigation-room/        # Hero, logo, and section background plates

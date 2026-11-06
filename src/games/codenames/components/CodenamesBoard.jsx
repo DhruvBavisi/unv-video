@@ -394,10 +394,23 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
   const renderSlot = (team, role) => {
     const members = room.players.filter(p => p.team === team && p.role === role)
     const isMine = myPlayer?.team === team && myPlayer?.role === role
-    const spyTaken = role === 'SPYMASTER' && members.length > 0
-    const myHasRole = Boolean(myPlayer?.team && myPlayer?.role)
-    const isAssignable = (room.status === 'LOBBY' || isWaiting) && room.status !== 'FINISHED'
-    const canJoin = !myHasRole && !spyTaken && isAssignable
+
+    // Mid-game joining & switching rules:
+    // 1. Cannot join the exact slot you are already in
+    // 2. Spectators / unassigned players: can join ANY slot (Red/Blue Operative or Spymaster)
+    // 3. Operatives: can switch between Red and Blue Operatives (Red Operative <-> Blue Operative)
+    // 4. Spymasters: can switch between Red and Blue Spymasters (Red Spymaster <-> Blue Spymaster)
+    let canJoin = false
+    if (!isMine) {
+      if (!myPlayer?.role) {
+        canJoin = true
+      } else if (myPlayer.role === 'OPERATIVE' && role === 'OPERATIVE') {
+        canJoin = true
+      } else if (myPlayer.role === 'SPYMASTER' && role === 'SPYMASTER') {
+        canJoin = true
+      }
+    }
+
     return (
       <div className="cn-panel-content cn-panel-content--join">
         <div className="cn-panel-avatars">{members.map(renderAvatar)}</div>

@@ -1,4 +1,4 @@
-const CHARACTER_DIR = '/images/characters'
+const CHARACTER_DIR = '/images/characters/undercover'
 
 const ROLE_IMAGES = {
   CIVILIAN: `${CHARACTER_DIR}/civilian-1.webp`,

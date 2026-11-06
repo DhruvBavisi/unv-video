@@ -37,7 +37,7 @@ Current assets:
 - `public/images/cinematic/frame-0001.webp` … `frame-0480.webp` (primary WebP frame sequence)
 - `public/videos/Undercover_cinematic_30fps.mp4` — active 30fps fallback video
 - `public/images/investigation-room-30fps/frame-0001.webp` … `frame-0300.webp` (investigation sequence)
-- `public/images/characters/` (27 character portraits)
+- `public/images/characters/undercover/` (27 character portraits)
 - `public/videos/uncercover-cinematic.mp4` — legacy file with filename typo; unreferenced in active code
 
 Do not create fake character assets or replacement characters.

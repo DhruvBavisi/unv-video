@@ -33,15 +33,14 @@ export default function DrawingToolbar({ color, setColor, size, setSize, tool, s
           bottom: '100%', 
           left: '12px', 
           marginBottom: '8px', 
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(0,0,0,0.1)',
+          background: '#ffffff',
+          border: '1px solid rgba(0,0,0,0.12)',
           borderRadius: '12px',
           padding: '12px',
           display: 'grid',
           gridTemplateColumns: 'repeat(8, 1fr)',
           gap: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
           zIndex: 20
         }}>
           {DRAW_COLORS.map(c => (
@@ -65,10 +64,9 @@ export default function DrawingToolbar({ color, setColor, size, setSize, tool, s
       {/* Toolbar */}
       <div style={{ 
         padding: '8px 12px', 
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(12px)',
-        borderTop: '1px solid rgba(0,0,0,0.05)',
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
+        background: '#ffffff',
+        borderTop: '1px solid rgba(0,0,0,0.08)',
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

@@ -94,9 +94,6 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!room) {
       return callback?.({ error: 'ROOM_NOT_FOUND' })
     }
-    if ((room.status === 'PLAYING' || room.status === 'FINISHED') && !room.players.some(p => p.id === reqSessionId)) {
-      return callback?.({ error: 'GAME_IN_PROGRESS' })
-    }
 
 
 
@@ -220,8 +217,6 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     if (!socketState.currentSessionId || !socketState.currentRoomId) return callback?.({ success: false, error: 'PLAYER_NOT_FOUND' })
     const room = codenamesRooms.get(socketState.currentRoomId)
     if (!room) return callback?.({ success: false, error: 'ROOM_NOT_FOUND' })
-    if (room.status === 'PLAYING') return callback?.({ success: false, error: 'GAME_IN_PROGRESS' })
-    if (room.status === 'FINISHED') return callback?.({ success: false, error: 'GAME_FINISHED' })
 
     if (team !== 'red' && team !== 'blue' && team !== null) return callback?.({ success: false, error: 'INVALID_TEAM' })
     if (role !== 'SPYMASTER' && role !== 'OPERATIVE' && role !== null) return callback?.({ success: false, error: 'INVALID_ROLE' })
@@ -232,11 +227,24 @@ export function registerCodenamesHandlers(io, socket, socketState, context) {
     const targetTeam = (team && role) ? team : null
     const targetRole = (team && role) ? role : null
 
-    // Prevent overwriting an existing Spymaster slot
+    // Switching restrictions during PLAYING:
+    // - Operative can switch between Red and Blue Operatives, but NOT to Spymaster
+    // - Spymaster can switch between Red and Blue Spymasters, but NOT to Operative (prevent cheating with card knowledge)
+    if (room.status === 'PLAYING' && player.role) {
+      if (player.role === 'OPERATIVE' && targetRole !== 'OPERATIVE') {
+        return callback?.({ success: false, error: 'CANNOT_SWITCH_TO_SPYMASTER' })
+      }
+      if (player.role === 'SPYMASTER' && targetRole !== 'SPYMASTER') {
+        return callback?.({ success: false, error: 'CANNOT_SWITCH_TO_OPERATIVE' })
+      }
+    }
+
+    // If human chooses Spymaster, demote any bot Spymaster on targetTeam to Operative
     if (targetRole === 'SPYMASTER') {
-      const existingSpy = room.players.find(p => p.id !== socketState.currentSessionId && p.team === targetTeam && p.role === 'SPYMASTER')
-      if (existingSpy || (room.spymasters?.[targetTeam] && room.spymasters[targetTeam] !== socketState.currentSessionId)) {
-        return callback?.({ success: false, error: 'SPYMASTER_SLOT_TAKEN' })
+      const botSpy = room.players.find(p => p.isBot && p.team === targetTeam && p.role === 'SPYMASTER')
+      if (botSpy) {
+        botSpy.role = 'OPERATIVE'
+        clearRoomBotTimers(room)
       }
     }
 

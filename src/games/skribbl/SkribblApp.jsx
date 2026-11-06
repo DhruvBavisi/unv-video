@@ -7,6 +7,7 @@ import QRScannerModal from '../../shared/components/QRScannerModal.jsx'
 import SkribblNetworkStatus from './components/SkribblNetworkStatus.jsx'
 
 import SkribblError from './components/SkribblError.jsx'
+import SkribblHome from './components/SkribblHome.jsx'
 export { SkribblError }
 
 export function getFriendlyError(errCode) {
@@ -72,7 +73,6 @@ import { getSkribblActiveComponent, shouldRenderIndividualLobby } from './skribb
 export { getSkribblActiveComponent, shouldRenderIndividualLobby }
 
 export default function SkribblApp({ onExit }) {
-  usePageBackground('#EEF5FF')
   const [roomState, setRoomState] = useState(null)
   const [error, setError] = useState(null)
   const [connectionStatus, setConnectionStatus] = useState(() => {
@@ -81,15 +81,6 @@ export default function SkribblApp({ onExit }) {
     return 'Connecting'
   })
   const connectPromiseRef = useRef(null)
-  const createNameRef = useRef(null)
-  const joinIdRef = useRef(null)
-  const joinNameRef = useRef(null)
-
-  useMobileKeyboardFocus(createNameRef)
-  useMobileKeyboardFocus(joinIdRef)
-  useMobileKeyboardFocus(joinNameRef)
-
-  const [showScanner, setShowScanner] = useState(false)
 
   const [view, setView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -107,6 +98,16 @@ export default function SkribblApp({ onExit }) {
     if (urlMode === 'skribbl' && urlRoom) return 'join'
     return 'menu'
   })
+
+  // Dynamic status bar / page background: pure white (#ffffff) during main drawing game so safe area
+  // blends seamlessly with the white DrawingTopBar; authentic dark blue (#0d3284) in menus & lobby.
+  const activeComponent = (view === 'lobby' && roomState)
+    ? getSkribblActiveComponent(view, roomState, readIdentity()?.sessionId)
+    : view
+
+  const isInGame = activeComponent === 'DRAWING_PHASE'
+  const activePageBg = isInGame ? '#ffffff' : '#0d3284'
+  usePageBackground(activePageBg)
 
   const clearSkribblSession = () => {
     const id = readIdentity()
@@ -398,7 +399,7 @@ export default function SkribblApp({ onExit }) {
     return connectPromiseRef.current
   }
 
-  const handleCreateRoom = async (playerName) => {
+  const handleCreateRoom = async (playerName, avatar) => {
     const { sessionId } = ensureIdentity()
     let socket
     try {
@@ -407,7 +408,7 @@ export default function SkribblApp({ onExit }) {
       setError('Unable to connect to the game server. Please try again.')
       return
     }
-    socket.emit('draw:create-room', { sessionId, playerName }, (res) => {
+    socket.emit('draw:create-room', { sessionId, playerName, avatar }, (res) => {
       if (res?.error) setError(getFriendlyError(res.error))
       else if (res?.room) {
         setError(null)
@@ -417,7 +418,7 @@ export default function SkribblApp({ onExit }) {
     })
   }
 
-  const handleJoinRoom = async (roomId, playerName) => {
+  const handleJoinRoom = async (roomId, playerName, avatar) => {
     const { sessionId, resumeToken } = ensureIdentity()
     let socket
     try {
@@ -426,7 +427,7 @@ export default function SkribblApp({ onExit }) {
       setError('Unable to connect to the game server. Please try again.')
       return
     }
-    socket.emit('draw:join-room', { sessionId, resumeToken, roomId, playerName }, (res) => {
+    socket.emit('draw:join-room', { sessionId, resumeToken, roomId, playerName, avatar }, (res) => {
       if (res?.error) {
         setError(getFriendlyError(res.error))
       } else if (res?.room) {
@@ -468,20 +469,11 @@ export default function SkribblApp({ onExit }) {
     socket.emit('draw:update-config', config)
   }
 
-  const isInGame = Boolean(
-    view === 'lobby' &&
-    roomState &&
-    ['WORD_CHOICE', 'DRAWING', 'ROUND_REVEAL', 'GAME_RESULT'].includes(roomState.phase)
-  )
-
   const networkStatusElement = (
     <SkribblNetworkStatus status={connectionStatus} inGame={isInGame} />
   )
 
   if (view === 'lobby' && roomState) {
-    const { sessionId } = ensureIdentity()
-    const activeComponent = getSkribblActiveComponent(view, roomState, sessionId)
-
     if (activeComponent === 'LOBBY') {
       return (
         <>
@@ -518,178 +510,34 @@ export default function SkribblApp({ onExit }) {
   return (
     <>
       {networkStatusElement}
-      <div className="sk-view">
-      <div className="sk-bg-shapes">
-        <div className="sk-bg-shape sk-bg-shape-1" />
-        <div className="sk-bg-shape sk-bg-shape-2" />
-        <div className="sk-bg-shape sk-bg-shape-3" />
-      </div>
-      
-      <div className="sk-header">
-        <h1 className="sk-logo">SKRIBBL</h1>
-        <p className="sk-tagline">DRAW IT. GUESS IT. HAVE FUN.</p>
-      </div>
-
-      <div className="sk-container">
-        <SkribblError message={error} />
-
-        <SkribblScreenTransition view={view}>
-          {view === 'restoring' && (
-            <div style={{ textAlign: 'center', marginTop: '40px' }}>
-              <h2 className="sk-card-title" style={{ justifyContent: 'center' }}>RESTORING SESSION...</h2>
-              <div className="restore-spinner" aria-label="Loading" style={{ margin: '20px auto' }} />
-              <p style={{ color: 'var(--sk-muted)' }}>Recovering your Skribbl session. Please wait.</p>
-              <button 
-                className="sk-btn sk-btn--secondary" 
-                onClick={() => {
-                  clearSkribblSession()
-                  setError(null)
-                  setView('menu')
-                }}
-                style={{ marginTop: '20px', maxWidth: '200px', marginInline: 'auto' }}
-              >
-                CANCEL
-              </button>
-            </div>
-          )}
-
-          {view === 'menu' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <svg width="120" height="120" viewBox="0 0 100 100" style={{ opacity: 0.8 }}>
-                  <circle cx="50" cy="50" r="40" fill="var(--sk-canvas)" stroke="var(--sk-muted)" strokeWidth="4" strokeDasharray="10 6" />
-                  <path d="M35,45 Q40,35 45,45 T55,45 T65,45" fill="none" stroke="var(--sk-primary)" strokeWidth="4" strokeLinecap="round" />
-                  <circle cx="40" cy="40" r="4" fill="var(--sk-text)" />
-                  <circle cx="60" cy="40" r="4" fill="var(--sk-text)" />
-                  <path d="M40,65 Q50,75 60,65" fill="none" stroke="var(--sk-coral)" strokeWidth="5" strokeLinecap="round" />
-                </svg>
-              </div>
-              
-              <button className="sk-btn" onClick={() => { setError(null); setView('create') }}>
-                CREATE ROOM
-              </button>
-              <button className="sk-btn sk-btn--secondary" onClick={() => { setError(null); setView('join') }}>
-                JOIN ROOM
-              </button>
-              <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                <button 
-                  onClick={onExit} 
-                  style={{ background: 'none', border: 'none', color: 'var(--sk-muted)', fontFamily: 'var(--sk-font-body)', fontWeight: 700, fontSize: '0.95rem', padding: '10px', textDecoration: 'underline', cursor: 'pointer' }}
-                >
-                  Back to Game Modes
-                </button>
-              </div>
-            </div>
-          )}
-
-          {view === 'create' && (
-            <div className="sk-card">
-              <h2 className="sk-card-title">YOUR NAME</h2>
-              <input 
-                ref={createNameRef}
-                type="text" 
-                id="sk-create-name" 
-                name="name"
-                placeholder="Enter your name" 
-                className="sk-input"
-                autoFocus
-                maxLength={24}
-                autoComplete="name"
-                autoCapitalize="words"
-                autoCorrect="on"
-                spellCheck={true}
-              />
-              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>
-                  CANCEL
-                </button>
-                <button className="sk-btn" style={{ flex: 1.5, padding: '16px 12px' }} onClick={() => {
-                  const name = document.getElementById('sk-create-name').value
-                  if (name) handleCreateRoom(name)
-                  else setError(getFriendlyError('INVALID_NAME'))
-                }}>
-                  CREATE
-                </button>
-              </div>
-            </div>
-          )}
-
-          {view === 'join' && (
-            <div className="sk-card">
-              <h2 className="sk-card-title">JOIN GAME</h2>
-              <div className="sk-join-input-wrapper">
-                <input 
-                  ref={joinIdRef}
-                  type="text" 
-                  id="sk-join-id" 
-                  name="roomCode"
-                  placeholder="ROOM CODE" 
-                  className="sk-input"
-                  autoFocus
-                  maxLength={6}
-                  defaultValue={new URLSearchParams(window.location.search).get('room') || ''}
-                  style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
-                  autoCapitalize="characters"
-                  autoCorrect="off"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  className="sk-join-qr-icon"
-                  title="Scan QR Code"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h6v6H4z" /><path d="M14 4h6v6h-6z" /><path d="M4 14h6v6H4z" /><path d="M14 14h6v6h-6z" /></svg>
-                </button>
-              </div>
-              <input 
-                ref={joinNameRef}
-                type="text" 
-                id="sk-join-name" 
-                name="name"
-                placeholder="YOUR NAME" 
-                className="sk-input"
-                maxLength={24}
-                style={{ marginTop: '12px' }}
-                autoComplete="name"
-                autoCapitalize="words"
-                autoCorrect="on"
-                spellCheck={true}
-              />
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button className="sk-btn sk-btn--secondary" style={{ flex: 1, padding: '16px 12px' }} onClick={() => { setError(null); setView('menu') }}>
-                  CANCEL
-                </button>
-                <button className="sk-btn" style={{ flex: 1.5, padding: '16px 12px' }} onClick={() => {
-                  const name = document.getElementById('sk-join-name').value
-                  const roomId = document.getElementById('sk-join-id').value
-                  if (name && roomId) handleJoinRoom(roomId, name)
-                  else setError(getFriendlyError('INVALID_NAME'))
-                }}>
-                  JOIN
-                </button>
-              </div>
-            </div>
-          )}
-        </SkribblScreenTransition>
-        
-        {showScanner && (
-          <QRScannerModal 
-            onClose={(focus) => {
-              setShowScanner(false)
-              if (focus && joinIdRef.current) joinIdRef.current.focus()
-            }}
-            onScan={(code) => {
-              if (joinIdRef.current) {
-                joinIdRef.current.value = code
-              }
-            }}
-            expectedMode="skribbl"
-          />
-        )}
-      </div>
-    </div>
-  </>
-)
+      {view === 'restoring' ? (
+        <div className="sk-home-view">
+          <div className="sk-home-card" style={{ textAlign: 'center', margin: '40px auto' }}>
+            <h2 className="sk-card-title" style={{ justifyContent: 'center' }}>RESTORING SESSION...</h2>
+            <div className="restore-spinner" aria-label="Loading" style={{ margin: '20px auto' }} />
+            <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Recovering your Skribbl session. Please wait.</p>
+            <button 
+              className="sk-home-btn sk-home-btn--create" 
+              onClick={() => {
+                clearSkribblSession()
+                setError(null)
+                setView('menu')
+              }}
+              style={{ marginTop: '20px', maxWidth: '200px', marginInline: 'auto' }}
+            >
+              CANCEL
+            </button>
+          </div>
+        </div>
+      ) : (
+        <SkribblHome
+          onCreateRoom={handleCreateRoom}
+          onJoinRoom={handleJoinRoom}
+          onExit={onExit}
+          error={error}
+          clearError={() => setError(null)}
+        />
+      )}
+    </>
+  )
 }

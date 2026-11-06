@@ -15,7 +15,7 @@ export function checkCodenamesReadiness(room) {
   const redOperatives = room.players.filter(p => p.team === 'red' && p.role === 'OPERATIVE')
   const blueOperatives = room.players.filter(p => p.team === 'blue' && p.role === 'OPERATIVE')
 
-  if (redSpymasters.length !== 1 || blueSpymasters.length !== 1) return false
+  if (redSpymasters.length < 1 || blueSpymasters.length < 1) return false
   if (redOperatives.length < 1 || blueOperatives.length < 1) return false
 
 
@@ -139,9 +139,14 @@ export function findCodenamesRoomByPlayer(sessionId) {
 
 
 export function syncCodenamesSpymasters(room) {
+  const findSpy = (team) => {
+    const spies = (room.players || []).filter(p => p.team === team && p.role === 'SPYMASTER')
+    const human = spies.find(p => !p.isBot)
+    return human?.id || spies[0]?.id || null
+  }
   room.spymasters = {
-    red: room.players.find(p => p.team === 'red' && p.role === 'SPYMASTER')?.id || null,
-    blue: room.players.find(p => p.team === 'blue' && p.role === 'SPYMASTER')?.id || null
+    red: findSpy('red'),
+    blue: findSpy('blue')
   }
 }
 

@@ -253,6 +253,9 @@ export function triggerCodenamesBotTurn(room, broadcastFn) {
 
   // 1. SPYMASTER TURN
   if (room.phase === 'BOARD_READY' || room.phase === 'CLUE_PHASE') {
+    const hasHumanSpymaster = room.players.some(p => !p.isBot && p.team === room.currentTeam && p.role === 'SPYMASTER')
+    if (hasHumanSpymaster) return
+
     const activeSpymaster = room.players.find(p => p.team === room.currentTeam && p.role === 'SPYMASTER')
     if (!activeSpymaster?.isBot) return
 

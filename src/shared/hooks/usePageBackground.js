@@ -7,6 +7,7 @@ export function usePageBackground(color) {
     const root = document.documentElement
     const body = document.body
     const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+    const appleStatusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
 
     const previousRootColor = root.style.backgroundColor
     const previousBodyColor = body.style.backgroundColor
@@ -15,6 +16,9 @@ export function usePageBackground(color) {
     root.style.backgroundColor = color
     body.style.backgroundColor = color
     themeColorMeta?.setAttribute('content', color)
+    if (appleStatusBarMeta) {
+      appleStatusBarMeta.setAttribute('content', 'black-translucent')
+    }
 
     return () => {
       root.style.backgroundColor = previousRootColor

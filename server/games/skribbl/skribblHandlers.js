@@ -23,10 +23,19 @@ import {
   removeDrawPlayer
 } from './skribblState.js';
 
+function sanitizeAvatar(a) {
+  if (!a || typeof a !== 'object') return null
+  return {
+    color: typeof a.color === 'number' ? Math.max(0, Math.min(17, Math.floor(a.color))) : 15,
+    eyes: typeof a.eyes === 'number' ? Math.max(1, Math.min(17, Math.floor(a.eyes))) : 1,
+    mouth: typeof a.mouth === 'number' ? Math.max(1, Math.min(19, Math.floor(a.mouth))) : 1
+  }
+}
+
 export function registerSkribblHandlers(io, socket, socketState, context) {
   const isCurrentDrawSession = (sessionId = socketState.currentSessionId) => isDrawSocketOwner(sessionId, socket);
 
-  socket.on('draw:create-room', ({ sessionId, playerName }, callback) => {
+  socket.on('draw:create-room', ({ sessionId, playerName, avatar }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -61,6 +70,7 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
       players: [{
         id: sessionId,
         name: trimmed,
+        avatar: sanitizeAvatar(avatar),
         isHost: true,
         isConnected: true,
         spectator: false,
@@ -100,7 +110,7 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
     callback?.({ room: getSafeStateForPlayer(room, sessionId) })
   })
 
-  socket.on('draw:join-room', ({ sessionId, resumeToken, roomId, playerName }, callback) => {
+  socket.on('draw:join-room', ({ sessionId, resumeToken, roomId, playerName, avatar }, callback) => {
     if (!sessionId || !playerName || typeof playerName !== 'string') {
       return callback?.({ error: 'INVALID_NAME' })
     }
@@ -127,6 +137,9 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
 
       existing.isConnected = true
       existing.name = existing.name || trimmed
+      if (avatar && !existing.avatar) {
+        existing.avatar = sanitizeAvatar(avatar)
+      }
       existing.disconnectedAt = null
       if (existing.playAgain == null && room.playerRecords && room.playerRecords[sessionId]?.playAgain) {
         existing.playAgain = room.playerRecords[sessionId].playAgain
@@ -182,6 +195,7 @@ export function registerSkribblHandlers(io, socket, socketState, context) {
     const newPlayer = {
       id: sessionId,
       name: targetName,
+      avatar: sanitizeAvatar(avatar),
       isHost: false,
       isConnected: true,
       spectator: false,

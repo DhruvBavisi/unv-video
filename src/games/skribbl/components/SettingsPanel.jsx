@@ -40,9 +40,11 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, co
     if (!buttonRect) return {}
     const bx = buttonRect.left + buttonRect.width / 2
     const by = buttonRect.top + buttonRect.height / 2
+    const cx = (typeof document !== 'undefined' && document.documentElement.clientWidth) ? document.documentElement.clientWidth / 2 : window.innerWidth / 2
+    const cy = (typeof document !== 'undefined' && document.documentElement.clientHeight) ? document.documentElement.clientHeight / 2 : window.innerHeight / 2
     return {
-      '--fly-tx': `${bx - window.innerWidth / 2}px`,
-      '--fly-ty': `${by - window.innerHeight / 2}px`,
+      '--fly-tx': `${Math.round(bx - cx)}px`,
+      '--fly-ty': `${Math.round(by - cy)}px`,
     }
   }, [buttonRect])
 
@@ -64,6 +66,16 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, co
   const handleClose = useCallback(() => {
     setAnimState((s) => (s === ANIM_EXITING ? s : ANIM_EXITING))
   }, [])
+
+  const handleAnimationEnd = (e) => {
+    if (e.target !== e.currentTarget) return
+    if (e.animationName === 'panelFlyIn') {
+      setAnimState(ANIM_OPEN)
+    } else if (e.animationName === 'panelFlyOut') {
+      onCloseRef.current()
+      if (leaveAfterCloseRef.current) onLeaveRef.current()
+    }
+  }
 
   const handleOverlayClick = (e) => {
     if (e.target === overlayRef.current) handleClose()
@@ -112,6 +124,7 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, co
           <div
             className={`players-panel sk-settings-panel ${panelAnim}`}
             style={getOriginVars()}
+            onAnimationEnd={handleAnimationEnd}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -173,11 +186,11 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, co
                   <span className="sk-settings-status-label">CONNECTION</span>
                   <SkribblNetworkStatus status={connectionStatus} inline />
                 </div>
-                <button type="button" className="sk-btn sk-btn--danger" onClick={() => setConfirmLeave(true)}>
-                  LEAVE GAME
-                </button>
-                <button type="button" className="sk-btn sk-btn--secondary" onClick={handleClose}>
+                <button type="button" className="sk-theme-btn sk-theme-btn--success" onClick={handleClose}>
                   RESUME
+                </button>
+                <button type="button" className="sk-theme-btn sk-theme-btn--danger" onClick={() => setConfirmLeave(true)}>
+                  LEAVE GAME
                 </button>
               </div>
             ) : (
@@ -185,11 +198,11 @@ export default function SettingsPanel({ buttonRect, onClose, onLeave, roomId, co
                 <p className="sk-settings-text">
                   You will leave this room. You can rejoin with the room code if the room is still open.
                 </p>
-                <button type="button" className="sk-btn sk-btn--danger" onClick={handleConfirmLeave}>
-                  YES, LEAVE
-                </button>
-                <button type="button" className="sk-btn sk-btn--secondary" onClick={() => setConfirmLeave(false)}>
+                <button type="button" className="sk-theme-btn sk-theme-btn--success" onClick={() => setConfirmLeave(false)}>
                   STAY
+                </button>
+                <button type="button" className="sk-theme-btn sk-theme-btn--danger" onClick={handleConfirmLeave}>
+                  YES, LEAVE
                 </button>
               </div>
             )}

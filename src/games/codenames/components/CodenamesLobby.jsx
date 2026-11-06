@@ -213,9 +213,9 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('blue', 'SPYMASTER')}
-            disabled={isBlueSpyTaken}
+            disabled={player.team === 'blue' && player.role === 'SPYMASTER'}
           >
-            {isBlueSpyTaken ? 'SLOT TAKEN' : 'JOIN TEAM'}
+            JOIN TEAM
           </button>
         </div>
 
@@ -227,9 +227,9 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           <button 
             className="cn-join-btn" 
             onClick={() => handleSelectTeam('red', 'SPYMASTER')}
-            disabled={isRedSpyTaken}
+            disabled={player.team === 'red' && player.role === 'SPYMASTER'}
           >
-            {isRedSpyTaken ? 'SLOT TAKEN' : 'JOIN TEAM'}
+            JOIN TEAM
           </button>
         </div>
       </div>

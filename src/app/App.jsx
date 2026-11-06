@@ -9,8 +9,10 @@ import GameEntryTransition from '../games/undercover/components/GameEntryTransit
 import ModeSelect from '../shared/components/ModeSelect.jsx'
 import SkribblApp from '../games/skribbl/SkribblApp.jsx'
 import CodenamesApp from '../games/codenames/CodenamesApp.jsx'
+import SkribblWinningPreview from '../games/skribbl/components/SkribblWinningPreview.jsx'
 import { readIdentity, ensureIdentity, clearSession } from '../shared/session/identity.js'
-import { connectSocket } from '../shared/realtime/socket.js'
+import ServerSkeletonScreen from '../shared/components/ServerSkeletonScreen.jsx'
+import { connectSocket, isServerConnected, subscribeServerConnection, initBackgroundServerConnection } from '../shared/realtime/socket.js'
 
 class GameErrorBoundary extends Component {
   constructor(props) {
@@ -191,6 +193,18 @@ function getInitialGameView() {
   const params = new URLSearchParams(window.location.search)
   const room = params.get('room')
   const mode = params.get('mode')
+  const preview = (params.get('preview') || params.get('view') || '').toLowerCase()
+  const path = (window.location.pathname || '').toLowerCase()
+
+  // Dev preview route for Skribbl winning page
+  if (
+    preview === 'skribbl-winning' ||
+    preview === 'winning' ||
+    mode === 'skribbl-winning' ||
+    path.includes('/preview/skribbl-winning')
+  ) {
+    return 'skribbl-winning-preview'
+  }
 
   const { resumeToken, roomId, gameMode } = readIdentity()
 
@@ -217,7 +231,75 @@ function getInitialGameView() {
 }
 
 export default function App() {
-  const [gameView, setGameView] = useState(getInitialGameView())
+  const [initialView] = useState(() => getInitialGameView())
+  const [gameView, setGameView] = useState(initialView)
+  const [isConnected, setIsConnected] = useState(() => isServerConnected())
+  const [hasResolvedInitialConnection, setHasResolvedInitialConnection] = useState(() => {
+    const init = getInitialGameView()
+    // Dev preview bypasses server check
+    return init === 'skribbl-winning-preview' || isServerConnected()
+  })
+  const [pendingDestination, setPendingDestination] = useState(null)
+
+  // Start background connection to the server immediately on mount
+  useEffect(() => {
+    const { sessionId } = ensureIdentity()
+    initBackgroundServerConnection(sessionId)
+
+    const unsubscribe = subscribeServerConnection((connected) => {
+      setIsConnected(connected)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setGameView(getInitialGameView())
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // Intercept navigation to check if server is currently connecting
+  const handleNavigateOrWait = (target) => {
+    if (!isServerConnected()) {
+      setPendingDestination(target === 'transition' ? 'mode-select' : target)
+      setHasResolvedInitialConnection(false)
+    } else {
+      setGameView(target)
+    }
+  }
+
+  // Display high-polish skeleton loading screen whenever the server is connecting behind
+  if (!hasResolvedInitialConnection && initialView !== 'skribbl-winning-preview') {
+    return (
+      <ServerSkeletonScreen
+        initialView={initialView}
+        targetDestination={pendingDestination}
+        onSelectDestination={setPendingDestination}
+        isConnected={isConnected}
+        onConnectRedirect={(destination) => {
+          setHasResolvedInitialConnection(true)
+          setGameView(destination)
+        }}
+      />
+    )
+  }
+
+  if (gameView === 'skribbl-winning-preview') {
+    return (
+      <GameErrorBoundary onReset={() => {
+        window.history.replaceState({}, '', window.location.pathname)
+        setGameView('landing')
+      }}>
+        <SkribblWinningPreview onExit={() => {
+          window.history.replaceState({}, '', window.location.pathname)
+          setGameView('landing')
+        }} />
+      </GameErrorBoundary>
+    )
+  }
 
   if (gameView === 'transition') {
     return <GameEntryTransition onComplete={() => setGameView('mode-select')} />
@@ -235,9 +317,9 @@ export default function App() {
     return (
       <GameErrorBoundary onReset={() => setGameView('landing')}>
         <ModeSelect 
-          onSelectUndercover={() => setGameView('undercover')}
-          onSelectSkribbl={() => setGameView('skribbl')}
-          onSelectCodenames={() => setGameView('codenames')}
+          onSelectUndercover={() => handleNavigateOrWait('undercover')}
+          onSelectSkribbl={() => handleNavigateOrWait('skribbl')}
+          onSelectCodenames={() => handleNavigateOrWait('codenames')}
           onBack={() => setGameView('landing')}
         />
       </GameErrorBoundary>
@@ -270,13 +352,13 @@ export default function App() {
 
   return (
     <>
-      <Navbar onPlay={() => setGameView('transition')} />
+      <Navbar onPlay={() => handleNavigateOrWait('transition')} />
       <main>
-        <Hero onPlay={() => setGameView('transition')} />
+        <Hero onPlay={() => handleNavigateOrWait('transition')} />
         <Transition text="The truth is never simple" />
         <CinematicSequence />
         <Investigation />
-        <FinalCTA onPlay={() => setGameView('transition')} />
+        <FinalCTA onPlay={() => handleNavigateOrWait('transition')} />
       </main>
     </>
   )

@@ -107,11 +107,11 @@ try {
   check('player 3 late joins during WAITING_FOR_PLAYERS', joinP3?.success)
   await sleep(100)
   const p3RedSpyRes = await emitAck(p3.socket, 'codenames:join-team-role', { team: 'red', role: 'SPYMASTER' })
-  check('cannot overwrite occupied Red Spymaster slot', !p3RedSpyRes?.success && p3RedSpyRes?.error === 'SPYMASTER_SLOT_TAKEN', p3RedSpyRes?.error)
+  check('multiple spymasters allowed on team', p3RedSpyRes?.success === true, p3RedSpyRes?.error)
 
-  // Player 3 selects Blue Spymaster instead
+  // Player 3 switches to Blue Spymaster
   const p3BlueSpyRes = await emitAck(p3.socket, 'codenames:join-team-role', { team: 'blue', role: 'SPYMASTER' })
-  check('player 3 selects Blue Spymaster', p3BlueSpyRes?.success)
+  check('spymaster can switch teams (Red -> Blue)', p3BlueSpyRes?.success)
   await sleep(100)
 
   // 8. Player 4 joins late and selects Red Operative
@@ -138,17 +138,28 @@ try {
   check('room isReady is true', host.roomState?.isReady === true)
   check('board is preserved after transition to PLAYING', host.roomState?.board?.[0]?.word === initialBoardWord0)
 
-  // 10. Late joining is blocked once room enters PLAYING
+  // 10. Late joining is allowed once room enters PLAYING (unassigned spectator by default)
   const joinP5 = await emitAck(p5.socket, 'codenames:join-room', {
     sessionId: p5.sessionId,
     playerName: 'PlayerFive',
     roomId: initialRoomId
   })
-  check('new player rejected once room is PLAYING', !joinP5?.success && joinP5?.error === 'GAME_IN_PROGRESS', joinP5?.error)
+  check('new player joins successfully during PLAYING', joinP5?.success === true, joinP5?.error)
+  await sleep(80)
+  check('player 5 starts unassigned', p5.roomState?.players?.find(p => p.id === p5.sessionId)?.team === null)
 
-  // 11. Role changes blocked once room is PLAYING
+  // 11. Mid-game role selection & switching rules:
+  // - P5 joins Red Operative
+  const p5SelectOp = await emitAck(p5.socket, 'codenames:join-team-role', { team: 'red', role: 'OPERATIVE' })
+  check('player 5 selects Red Operative mid-game', p5SelectOp?.success === true, p5SelectOp?.error)
+
+  // - Host (Blue Operative) switches between Operative teams (to Red Operative)
   const roleChangeInPlay = await emitAck(host.socket, 'codenames:join-team-role', { team: 'red', role: 'OPERATIVE' })
-  check('role changes blocked once room is PLAYING', !roleChangeInPlay?.success && roleChangeInPlay?.error === 'GAME_IN_PROGRESS', roleChangeInPlay?.error)
+  check('operative can switch teams (Blue -> Red)', roleChangeInPlay?.success === true, roleChangeInPlay?.error)
+
+  // - Anti-cheat: Operative cannot switch to Spymaster mid-game
+  const illegalSwitch = await emitAck(p5.socket, 'codenames:join-team-role', { team: 'red', role: 'SPYMASTER' })
+  check('operative blocked from switching to Spymaster mid-game', !illegalSwitch?.success && illegalSwitch?.error === 'CANNOT_SWITCH_TO_SPYMASTER', illegalSwitch?.error)
 
   // 12. Returning player reconnects with resumeToken
   const p4ResumeToken = p4.resumeToken
@@ -165,7 +176,7 @@ try {
   })
   check('returning player reconnects successfully', reconnectRes?.success)
   await sleep(100)
-  check('player count unchanged after reconnect', host.roomState?.players?.length === 4)
+  check('player count unchanged after reconnect', host.roomState?.players?.length === 5)
   p4ReconnectSocket.disconnect()
 
 } catch (err) {

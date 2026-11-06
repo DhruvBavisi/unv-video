@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { getAvatarColorClass } from './Lobby.jsx'
+import SkribblAvatar from './SkribblAvatar.jsx'
+
+const ANIM_ENTERING = 'ENTERING'
+const ANIM_OPEN = 'OPEN'
+const ANIM_EXITING = 'EXITING'
 
 export default function PlayerStrip({ 
   room, 
@@ -31,8 +36,41 @@ export default function PlayerStrip({
   // Player selection & action modal state
   const [selectedPlayerId, setSelectedPlayerId] = useState(null)
   const [actionTarget, setActionTarget] = useState(null)
+  const [gearBtnRect, setGearBtnRect] = useState(null)
+  const [animState, setAnimState] = useState(null) // null | ANIM_ENTERING | ANIM_OPEN | ANIM_EXITING
   const [confirmStep, setConfirmStep] = useState(null) // null | 'kick' | 'votekick'
   const [isVoting, setIsVoting] = useState(false)
+  const overlayRef = useRef(null)
+
+  // Fly origin: from the tapped player card's gear button to the screen centre
+  const getOriginVars = useCallback(() => {
+    if (!gearBtnRect) return {}
+    const bx = gearBtnRect.left + gearBtnRect.width / 2
+    const by = gearBtnRect.top + gearBtnRect.height / 2
+    const cx = (typeof document !== 'undefined' && document.documentElement.clientWidth) ? document.documentElement.clientWidth / 2 : window.innerWidth / 2
+    const cy = (typeof document !== 'undefined' && document.documentElement.clientHeight) ? document.documentElement.clientHeight / 2 : window.innerHeight / 2
+    return {
+      '--fly-tx': `${Math.round(bx - cx)}px`,
+      '--fly-ty': `${Math.round(by - cy)}px`,
+    }
+  }, [gearBtnRect])
+
+  const handleAnimationEnd = (e) => {
+    if (e.target !== e.currentTarget) return
+    if (e.animationName === 'panelFlyIn') {
+      setAnimState(ANIM_OPEN)
+    } else if (e.animationName === 'panelFlyOut') {
+      setActionTarget(null)
+      setConfirmStep(null)
+      setGearBtnRect(null)
+      setAnimState(null)
+      setSelectedPlayerId(null)
+    }
+  }
+
+  const handleClose = useCallback(() => {
+    setAnimState((s) => (s === ANIM_EXITING ? s : ANIM_EXITING))
+  }, [])
 
   // Auto-close menu if target disappears from room
   useEffect(() => {
@@ -42,6 +80,8 @@ export default function PlayerStrip({
         const name = actionTarget.name
         setActionTarget(null)
         setConfirmStep(null)
+        setGearBtnRect(null)
+        setAnimState(null)
         setSelectedPlayerId(null)
         onTargetLeft?.(name)
       }
@@ -100,13 +140,16 @@ export default function PlayerStrip({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setGearBtnRect(rect)
                   setActionTarget(p)
                   setConfirmStep(null)
+                  setAnimState(ANIM_ENTERING)
                 }}
                 className="sk-gear-btn"
                 style={{
-                  width: '24px',
-                  height: '24px',
+                  width: '28px',
+                  height: '28px',
                   flexShrink: 0,
                   display: 'flex',
                   alignItems: 'center',
@@ -124,24 +167,30 @@ export default function PlayerStrip({
                 <img
                   src="/images/svg/settings.svg"
                   alt="Settings"
-                  width="18"
-                  height="18"
-                  style={{ display: 'block', opacity: 0.85 }}
+                  width="24"
+                  height="24"
+                  style={{ display: 'block', width: '24px', height: '24px', opacity: 0.9 }}
                 />
               </button>
             ) : (
-              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'black', width: '24px', flexShrink: 0, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'black', width: '28px', flexShrink: 0, textAlign: 'center' }}>
                 #{rankMap[p.id] || 1}
               </div>
             )}
 
-            <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ 
-              width: '28px', height: '28px', fontSize: '0.9rem', flexShrink: 0, borderRadius: '50%',
-              border: isDrawer ? '2px solid var(--sk-primary)' : '1px solid rgba(0,0,0,0.1)',
-              boxShadow: 'none'
-            }}>
-              {p.name.charAt(0).toUpperCase()}
-            </div>
+            {p.avatar ? (
+              <div style={{ width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <SkribblAvatar avatar={p.avatar} size={28} />
+              </div>
+            ) : (
+              <div className={`sk-avatar ${getAvatarColorClass(p.id)}`} style={{ 
+                width: '28px', height: '28px', fontSize: '0.9rem', flexShrink: 0, borderRadius: '50%',
+                border: isDrawer ? '2px solid var(--sk-primary)' : '1px solid rgba(0,0,0,0.1)',
+                boxShadow: 'none'
+              }}>
+                {p.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', lineHeight: '1.1' }}>
               <div style={{ fontSize: '0.8rem', fontFamily: 'var(--sk-font-body)', fontWeight: 800, color: isCurrent ? '#3366cc' : 'black', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {p.name} {isCurrent} {isDrawer && <span style={{ fontSize: '10px', marginLeft: '2px' }}>✏️</span>}
@@ -157,83 +206,40 @@ export default function PlayerStrip({
       {/* Action Modal: rendered via createPortal so ChatBox cannot overlap it */}
       {actionTarget && typeof document !== 'undefined' && createPortal(
         <div 
-          className="sk-edge-overlay"
+          className={`players-panel-overlay sk-settings-overlay ${
+            animState === ANIM_ENTERING ? 'players-panel-overlay--entering' :
+            animState === ANIM_EXITING ? 'players-panel-overlay--exiting' : 'players-panel-overlay--open'
+          }`}
+          ref={overlayRef}
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(5px)',
-            WebkitBackdropFilter: 'blur(5px)',
-            padding: '16px'
+            zIndex: 999999
           }}
-          onClick={() => {
-            if (!isKicking && !isVoting) {
-              setActionTarget(null)
-              setConfirmStep(null)
+          onClick={(e) => {
+            if (e.target === overlayRef.current && !isKicking && !isVoting) {
+              handleClose()
             }
           }}
         >
           <div
-            style={{
-              width: 'min(340px, 92vw)',
-              padding: '22px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              background: 'var(--sk-surface, #ffffff)',
-              border: '3px solid var(--sk-primary, #3366cc)',
-              borderRadius: '24px',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.35)',
-              fontFamily: 'var(--sk-font-body)'
-            }}
+            className={`players-panel sk-settings-panel sk-player-settings-panel ${
+              animState === ANIM_ENTERING ? 'players-panel--entering' :
+              animState === ANIM_EXITING ? 'players-panel--exiting' : ''
+            }`}
+            style={getOriginVars()}
+            onAnimationEnd={handleAnimationEnd}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={`Player Actions for ${actionTarget.name}`}
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                <div
-                  className={`sk-avatar ${getAvatarColorClass(actionTarget.id)}`}
-                  style={{ width: '34px', height: '34px', fontSize: '1rem', flexShrink: 0, borderRadius: '50%' }}
-                >
-                  {actionTarget.name.charAt(0).toUpperCase()}
-                </div>
-                <span
-                  style={{
-                    fontFamily: 'var(--sk-font-display)',
-                    fontSize: '1.25rem',
-                    fontWeight: 800,
-                    color: 'var(--sk-text, #1e293b)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {actionTarget.name}
-                </span>
-              </div>
+            <div className="sk-player-modal-header">
+              <span className="sk-player-modal-title">PLAYER OPTIONS</span>
               {!isKicking && !isVoting && (
                 <button
                   type="button"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '1.8rem',
-                    lineHeight: 1,
-                    color: 'var(--sk-muted, #64748b)',
-                    cursor: 'pointer',
-                    padding: '0 4px'
-                  }}
-                  onClick={() => {
-                    setActionTarget(null)
-                    setConfirmStep(null)
-                  }}
+                  className="sk-player-modal-close"
+                  onClick={handleClose}
                   aria-label="Close"
                 >
                   &times;
@@ -241,14 +247,38 @@ export default function PlayerStrip({
               )}
             </div>
 
+            {/* Target Player Card */}
+            <div className="sk-player-modal-card">
+              {actionTarget.avatar ? (
+                <div style={{ width: '38px', height: '38px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <SkribblAvatar avatar={actionTarget.avatar} size={38} bouncy={true} />
+                </div>
+              ) : (
+                <div
+                  className={`sk-avatar ${getAvatarColorClass(actionTarget.id)}`}
+                  style={{ width: '38px', height: '38px', fontSize: '1.1rem', flexShrink: 0, borderRadius: '50%' }}
+                >
+                  {actionTarget.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="sk-player-modal-details">
+                <div className="sk-player-modal-name">
+                  {actionTarget.name}
+                  {actionTarget.isHost && <span style={{ marginLeft: '4px' }} title="Host">👑</span>}
+                </div>
+                <div className="sk-player-modal-sub">
+                  {actionTarget.score || 0} points {!actionTarget.isConnected && '• Offline'}
+                </div>
+              </div>
+            </div>
+
             {/* Menu Options */}
             {!confirmStep ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="sk-player-modal-body">
                 {isHost && (
                   <button
                     type="button"
-                    className="sk-btn sk-btn--danger"
-                    style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 700 }}
+                    className="sk-theme-btn sk-theme-btn--danger"
                     onClick={() => setConfirmStep('kick')}
                   >
                     KICK PLAYER
@@ -264,17 +294,7 @@ export default function PlayerStrip({
                   return (
                     <button
                       type="button"
-                      className="sk-btn sk-btn--secondary"
-                      style={{ 
-                        width: '100%', 
-                        padding: '12px', 
-                        fontSize: '0.95rem', 
-                        fontWeight: 700,
-                        borderColor: hasVoted ? '#94a3b8' : 'var(--sk-primary, #3366cc)',
-                        color: hasVoted ? '#64748b' : 'var(--sk-primary, #3366cc)',
-                        background: hasVoted ? '#f1f5f9' : 'transparent',
-                        opacity: (hasVoted || isVoting) ? 0.75 : 1
-                      }}
+                      className="sk-theme-btn sk-theme-btn--primary"
                       disabled={hasVoted || isVoting}
                       onClick={() => setConfirmStep('votekick')}
                     >
@@ -284,53 +304,43 @@ export default function PlayerStrip({
                 })()}
                 <button
                   type="button"
-                  className="sk-btn sk-btn--secondary"
-                  style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
-                  onClick={() => {
-                    setActionTarget(null)
-                    setConfirmStep(null)
-                  }}
+                  className="sk-theme-btn sk-theme-btn--secondary"
+                  onClick={handleClose}
                 >
                   CANCEL
                 </button>
               </div>
             ) : confirmStep === 'kick' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ margin: 0, color: 'var(--sk-muted, #64748b)', fontSize: '0.92rem', lineHeight: 1.4, fontWeight: 600 }}>
-                  Kick <strong style={{ color: 'var(--sk-text, #1e293b)' }}>{actionTarget.name}</strong> from the room? They will not be able to rejoin this game.
+              <div className="sk-player-modal-body">
+                <p className="sk-player-modal-text">
+                  Kick <strong style={{ color: '#FFC857' }}>{actionTarget.name}</strong> from the room? They will not be able to rejoin this game.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button
-                    type="button"
-                    className="sk-btn sk-btn--danger"
-                    style={{ width: '100%', padding: '12px', fontSize: '0.95rem', opacity: isKicking ? 0.7 : 1 }}
-                    disabled={isKicking}
-                    onClick={() => {
-                      const targetId = actionTarget.id
-                      onKickPlayer?.(targetId, (success) => {
-                        if (success) {
-                          setActionTarget(null)
-                          setConfirmStep(null)
-                          setSelectedPlayerId(null)
-                        }
-                      })
-                    }}
-                  >
-                    {isKicking ? 'KICKING...' : 'YES, KICK'}
-                  </button>
-                  <button
-                    type="button"
-                    className="sk-btn sk-btn--secondary"
-                    style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
-                    disabled={isKicking}
-                    onClick={() => setConfirmStep(null)}
-                  >
-                    BACK
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="sk-theme-btn sk-theme-btn--danger"
+                  disabled={isKicking}
+                  onClick={() => {
+                    const targetId = actionTarget.id
+                    onKickPlayer?.(targetId, (success) => {
+                      if (success) {
+                        handleClose()
+                      }
+                    })
+                  }}
+                >
+                  {isKicking ? 'KICKING...' : 'YES, KICK'}
+                </button>
+                <button
+                  type="button"
+                  className="sk-theme-btn sk-theme-btn--secondary"
+                  disabled={isKicking}
+                  onClick={() => setConfirmStep(null)}
+                >
+                  BACK
+                </button>
               </div>
             ) : confirmStep === 'votekick' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="sk-player-modal-body">
                 {(() => {
                   const targetVotes = room?.kickVotes?.[actionTarget.id] || []
                   const eligibleVoters = (room?.players || []).filter(p => p.isConnected && p.id !== actionTarget.id)
@@ -340,40 +350,34 @@ export default function PlayerStrip({
 
                   return (
                     <>
-                      <p style={{ margin: 0, color: 'var(--sk-muted, #64748b)', fontSize: '0.92rem', lineHeight: 1.4, fontWeight: 600 }}>
-                        Vote to kick <strong style={{ color: 'var(--sk-text, #1e293b)' }}>{actionTarget.name}</strong>? Requires all players excluding {actionTarget.name} to agree ({willBeVotes}/{totalVotes}).
+                      <p className="sk-player-modal-text">
+                        Vote to kick <strong style={{ color: '#FFC857' }}>{actionTarget.name}</strong>? Requires all players excluding {actionTarget.name} to agree ({willBeVotes}/{totalVotes}).
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <button
-                          type="button"
-                          className="sk-btn sk-btn--primary"
-                          style={{ width: '100%', padding: '12px', fontSize: '0.95rem', opacity: isVoting ? 0.7 : 1 }}
-                          disabled={isVoting}
-                          onClick={() => {
-                            setIsVoting(true)
-                            const targetId = actionTarget.id
-                            onVoteKickPlayer?.(targetId, (success) => {
-                              setIsVoting(false)
-                              if (success) {
-                                setActionTarget(null)
-                                setConfirmStep(null)
-                                setSelectedPlayerId(null)
-                              }
-                            })
-                          }}
-                        >
-                          {isVoting ? 'VOTING...' : 'YES, VOTE KICK'}
-                        </button>
-                        <button
-                          type="button"
-                          className="sk-btn sk-btn--secondary"
-                          style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
-                          disabled={isVoting}
-                          onClick={() => setConfirmStep(null)}
-                        >
-                          BACK
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className="sk-theme-btn sk-theme-btn--primary"
+                        disabled={isVoting}
+                        onClick={() => {
+                          setIsVoting(true)
+                          const targetId = actionTarget.id
+                          onVoteKickPlayer?.(targetId, (success) => {
+                            setIsVoting(false)
+                            if (success) {
+                              handleClose()
+                            }
+                          })
+                        }}
+                      >
+                        {isVoting ? 'VOTING...' : 'YES, VOTE KICK'}
+                      </button>
+                      <button
+                        type="button"
+                        className="sk-theme-btn sk-theme-btn--secondary"
+                        disabled={isVoting}
+                        onClick={() => setConfirmStep(null)}
+                      >
+                        BACK
+                      </button>
                     </>
                   )
                 })()}

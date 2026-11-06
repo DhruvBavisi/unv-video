@@ -625,7 +625,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
               <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
               <div className="voting-card__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {isGhostTarget && (
-                  <img src="/images/characters/ghost-bg.webp" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                  <img src="/images/characters/undercover/ghost-bg.webp" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
                 )}
                 {voteCounts[p.id] > 0 && (
                   <span className="voting-card__votes">{voteCounts[p.id]} Vote{voteCounts[p.id] > 1 ? 's' : ''}</span>

@@ -143,6 +143,30 @@ export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSele
           </div>
 
         </div>
+
+        {import.meta.env.DEV && (
+          <div style={{ marginTop: '28px', textAlign: 'center' }}>
+            <a
+              href="?preview=skribbl-winning"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#FFC857',
+                fontSize: '0.82rem',
+                textDecoration: 'none',
+                background: 'rgba(255, 200, 87, 0.1)',
+                border: '1px solid rgba(255, 200, 87, 0.3)',
+                padding: '7px 16px',
+                borderRadius: '20px',
+                fontWeight: 700,
+                transition: 'all 150ms ease'
+              }}
+            >
+              👑 Dev Preview: Skribbl Winning Stage (?preview=skribbl-winning)
+            </a>
+          </div>
+        )}
       </div>
     </div>
   )
