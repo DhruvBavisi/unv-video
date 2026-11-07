@@ -3,6 +3,9 @@ import { connectSocket } from '../../../shared/realtime/socket.js'
 import CodenamesCard from './CodenamesCard.jsx'
 import { Icon, TopBar, SettingsModal, PlayersModal, RulesModal, ResetConfirmModal } from './CodenamesShared.jsx'
 import { getPlayerAvatarUrl } from '../utils/cardTiles.js'
+import CodenamesCrown from './CodenamesCrown.jsx'
+import { getCodenamesCrownStyle, getCodenamesCrownSize } from '../utils/codenamesCrownLayout.js'
+import CodenamesCrownManualControls from './CodenamesCrownManualControls.jsx'
 
 
 
@@ -55,6 +58,15 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
   const [keyboardSpace, setKeyboardSpace] = useState(0)
   const [selectedCardIndex, setSelectedCardIndex] = useState(null)
   const [flippingIndices, setFlippingIndices] = useState(new Set())
+
+  const [, setCrownTick] = useState(0)
+  useEffect(() => {
+    const onCrownUpdate = (e) => {
+      if (!e.detail || e.detail.mode === 'board') setCrownTick(t => t + 1)
+    }
+    window.addEventListener('codenames:crown-update', onCrownUpdate)
+    return () => window.removeEventListener('codenames:crown-update', onCrownUpdate)
+  }, [])
 
   const restingSpaceBelowRef = useRef(0)
 
@@ -385,8 +397,16 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
 
   const renderAvatar = (p) => (
     <div key={p.id} className="cn-board-avatar">
-      {p.id === room.hostId && <div className="cn-board-crown">👑</div>}
-      <img src={getPlayerAvatarUrl(p)} alt="avatar" />
+      <div className="cn-board-avatar-wrap">
+        {p.id === room.hostId && (
+          <CodenamesCrown 
+            size={getCodenamesCrownSize('board')} 
+            className="cn-board-crown" 
+            style={getCodenamesCrownStyle('board')}
+          />
+        )}
+        <img src={getPlayerAvatarUrl(p)} alt="avatar" />
+      </div>
       <div className="cn-board-avatar-name">{p.name.substring(0, 5)}</div>
     </div>
   )
@@ -782,6 +802,9 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
           isSubmitting={isSubmitting}
         />
       )}
+
+      {/* Manual Crown Position Controls */}
+      <CodenamesCrownManualControls defaultMode="board" />
     </div>
   )
 }

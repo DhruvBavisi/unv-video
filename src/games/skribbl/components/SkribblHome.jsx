@@ -3,6 +3,9 @@ import SkribblAvatar, { TOTAL_COLORS, TOTAL_EYES, TOTAL_MOUTHS, getRandomAvatar 
 import SkribblError from './SkribblError.jsx'
 import QRScannerModal from '../../../shared/components/QRScannerModal.jsx'
 import useSkribblBoilingAnimation from '../hooks/useSkribblBoilingAnimation.js'
+import HostCrown from '../../../shared/components/HostCrown.jsx'
+import { getCrownStyle, getCrownSize } from '../utils/skribblAvatarLayout.js'
+import CrownManualControls from './CrownManualControls.jsx'
 
 // 8 Mascot Avatars displayed beneath the logo matching the reference design
 const MASCOT_AVATARS = [
@@ -64,6 +67,15 @@ export default function SkribblHome({
 }) {
   // Activate boiling line stop-motion glitch animation on logo and mascots
   useSkribblBoilingAnimation()
+
+  const [, setCrownTick] = useState(0)
+  useEffect(() => {
+    const onCrownUpdate = (e) => {
+      if (!e.detail || e.detail.mode === 'home') setCrownTick(t => t + 1)
+    }
+    window.addEventListener('skribbl:crown-update', onCrownUpdate)
+    return () => window.removeEventListener('skribbl:crown-update', onCrownUpdate)
+  }, [])
 
   const [name, setName] = useState(() => {
     try {
@@ -248,25 +260,12 @@ export default function SkribblHome({
                 bouncy={true}
               />
               {idx === 6 && (
-                <div className="sk-mascot-crown-wrap" aria-hidden="true">
-                  <svg 
-                    viewBox="0 0 32 26" 
-                    className="sk-mascot-crown-svg"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path 
-                      d="M 3 22 L 29 22 L 27 9 L 21 15 L 16 4 L 11 15 L 5 9 Z" 
-                      fill="#ffd000" 
-                      stroke="#000000" 
-                      strokeWidth="2.5" 
-                      strokeLinejoin="round" 
-                      strokeLinecap="round" 
-                    />
-                    <path d="M 4.5 19 L 27.5 19" stroke="#000000" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="16" cy="4" r="1.6" fill="#ff2e55" stroke="#000000" strokeWidth="1.2" />
-                    <circle cx="5" cy="9" r="1.4" fill="#3388ff" stroke="#000000" strokeWidth="1.2" />
-                    <circle cx="27" cy="9" r="1.4" fill="#2bd652" stroke="#000000" strokeWidth="1.2" />
-                  </svg>
+                <div 
+                  className="sk-mascot-crown-wrap" 
+                  aria-hidden="true"
+                  style={getCrownStyle('home')}
+                >
+                  <HostCrown size={getCrownSize('home')} className="sk-mascot-crown-svg" style={{ transform: 'none' }} />
                 </div>
               )}
             </div>
@@ -431,6 +430,9 @@ export default function SkribblHome({
           expectedMode="skribbl"
         />
       )}
+
+      {/* Manual Crown Position Controls */}
+      <CrownManualControls defaultMode="home" />
     </div>
   )
 }

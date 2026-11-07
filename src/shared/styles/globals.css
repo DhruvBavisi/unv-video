@@ -8155,35 +8155,38 @@ html.sk-kb-open .sk-lower-info-section {
   image-rendering: crisp-edges;
 }
 
+.sk-assembled-avatar {
+  filter: url(#sk-boil-filter);
+}
+
 .sk-mascot-crown-wrap {
   position: absolute;
-  top: -10px;
-  left: 1px;
+  top: -5px;
+  left: 2px;
   width: 22px;
   height: 18px;
   pointer-events: none;
   z-index: 5;
   user-select: none;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
-  transform-origin: 30% 90%;
+  filter: url(#sk-boil-filter) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
 }
 
 .sk-mascot-crown-svg {
   width: 100%;
   height: 100%;
   display: block;
-  transform: rotate(-20deg);
-  transform-origin: 30% 90%;
+  transform: rotate(-26deg);
+  transform-origin: 50% 85%;
 }
 
 .sk-mascot-crown {
   position: absolute;
-  top: -10px;
-  left: 1px;
+  top: -5px;
+  left: 2px;
   width: 22px;
   height: 18px;
-  transform: rotate(-20deg);
-  transform-origin: 30% 90%;
+  transform: rotate(-26deg);
+  transform-origin: 50% 85%;
   pointer-events: none;
   z-index: 5;
   user-select: none;
@@ -8193,6 +8196,7 @@ html.sk-kb-open .sk-lower-info-section {
 @media (prefers-reduced-motion: reduce) {
   .sk-home-logo-wrap,
   .sk-home-logo-img,
+  .sk-assembled-avatar,
   .sk-mascot-crown {
     transform: none !important;
     filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45)) !important;
@@ -8778,9 +8782,10 @@ html.sk-kb-open .sk-lower-info-section {
 .sk-lobby-host-crown {
   position: absolute;
   top: -7px;
-  right: -5px;
-  font-size: 13px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  left: 2px;
+  filter: url(#sk-boil-filter) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  z-index: 5;
+  pointer-events: none;
 }
 
 .sk-lobby-player-info {

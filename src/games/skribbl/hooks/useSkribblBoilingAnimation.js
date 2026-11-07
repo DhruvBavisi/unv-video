@@ -153,27 +153,17 @@ export function ensureSvgFilters() {
   return { logoTurb, avatarTurb };
 }
 
-/**
- * Initializes and starts the boiling stop-motion animation loop.
- * Updates line-boil filter seeds at ~11 FPS (every 90ms) for authentic hand-drawn border jitter.
- */
-export function initSkribblBoilingAnimation() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {};
+let subscriberCount = 0;
+let rafId = null;
+let lastTime = 0;
+let accumulator = 0;
+let seedIdx = 0;
+const intervalMs = 90; // ~11 FPS stop-motion redraw rate
 
-  // Respect prefers-reduced-motion
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return () => {};
-  }
-
-  const { logoTurb, avatarTurb } = ensureSvgFilters();
-  const container = document.querySelector('.sk-home-header');
-  if (container) container.classList.add('sk-boil-active');
-
-  let seedIdx = 0;
-  let lastTime = performance.now();
-  let accumulator = 0;
-  const intervalMs = 90; // ~11 FPS stop-motion redraw rate
-  let rafId;
+function startBoilLoop() {
+  if (rafId) return;
+  lastTime = performance.now();
+  accumulator = 0;
 
   const tick = (now) => {
     const delta = now - lastTime;
@@ -185,6 +175,7 @@ export function initSkribblBoilingAnimation() {
       seedIdx = (seedIdx + 1) % BOIL_SEEDS.length;
       const seed = BOIL_SEEDS[seedIdx];
 
+      const { logoTurb, avatarTurb } = ensureSvgFilters();
       if (avatarTurb) {
         avatarTurb.setAttribute('seed', seed.toString());
       }
@@ -197,11 +188,44 @@ export function initSkribblBoilingAnimation() {
   };
 
   rafId = requestAnimationFrame(tick);
+}
+
+function stopBoilLoop() {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+}
+
+/**
+ * Initializes and starts the boiling stop-motion animation loop.
+ * Updates line-boil filter seeds at ~11 FPS (every 90ms) for authentic hand-drawn border jitter.
+ * Uses reference counting so multiple avatars and components share a single performant RAF loop.
+ */
+export function initSkribblBoilingAnimation() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {};
+
+  // Respect prefers-reduced-motion
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return () => {};
+  }
+
+  ensureSvgFilters();
+  const container = document.querySelector('.sk-home-header');
+  if (container) container.classList.add('sk-boil-active');
+
+  subscriberCount++;
+  if (subscriberCount === 1) {
+    startBoilLoop();
+  }
 
   return () => {
-    cancelAnimationFrame(rafId);
-    if (container) {
-      container.classList.remove('sk-boil-active');
+    subscriberCount = Math.max(0, subscriberCount - 1);
+    if (subscriberCount === 0) {
+      stopBoilLoop();
+      if (container) {
+        container.classList.remove('sk-boil-active');
+      }
     }
   };
 }

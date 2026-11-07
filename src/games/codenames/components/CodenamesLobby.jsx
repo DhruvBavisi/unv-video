@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { connectSocket } from '../../../shared/realtime/socket.js'
 import { TopBar, SettingsModal, PlayersModal } from './CodenamesShared.jsx'
 import { getPlayerAvatarUrl } from '../utils/cardTiles.js'
+import CodenamesCrown from './CodenamesCrown.jsx'
+import { getCodenamesCrownStyle, getCodenamesCrownSize } from '../utils/codenamesCrownLayout.js'
+import CodenamesCrownManualControls from './CodenamesCrownManualControls.jsx'
 
 export default function CodenamesLobby({ room, playerId, onLeave }) {
 
@@ -14,6 +17,15 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
 
   const isHost = room.hostId === playerId
   const player = room.players.find(p => p.id === playerId) || {}
+
+  const [, setCrownTick] = useState(0)
+  useEffect(() => {
+    const onCrownUpdate = (e) => {
+      if (!e.detail || e.detail.mode === 'lobby') setCrownTick(t => t + 1)
+    }
+    window.addEventListener('codenames:crown-update', onCrownUpdate)
+    return () => window.removeEventListener('codenames:crown-update', onCrownUpdate)
+  }, [])
   
   const handleSelectTeam = (team, role) => {
     const socket = connectSocket(playerId)
@@ -109,9 +121,17 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
   const renderAvatar = (p) => {
     return (
       <div key={p.id} className="cn-avatar-wrapper">
-        {p.id === room.hostId && <div className="cn-avatar-crown">👑</div>}
-        <div className={`cn-avatar-circle ${p.id === playerId ? 'is-me' : ''}`}>
-          <img src={getPlayerAvatarUrl(p)} alt="" className="cn-avatar-img" />
+        <div className="cn-avatar-circle-wrap">
+          {p.id === room.hostId && (
+            <CodenamesCrown 
+              size={getCodenamesCrownSize('lobby')} 
+              className="cn-avatar-crown" 
+              style={getCodenamesCrownStyle('lobby')}
+            />
+          )}
+          <div className={`cn-avatar-circle ${p.id === playerId ? 'is-me' : ''}`}>
+            <img src={getPlayerAvatarUrl(p)} alt="" className="cn-avatar-img" />
+          </div>
         </div>
         <div className="cn-avatar-name">{p.name} {p.isBot && <span style={{ color: '#aaa', fontSize: '0.6rem' }}>[BOT]</span>}</div>
       </div>
@@ -278,6 +298,9 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
           </div>
         </div>
       )}
+
+      {/* Manual Crown Position Controls */}
+      <CodenamesCrownManualControls defaultMode="lobby" />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { SKRIBBL_COLORS, TOTAL_EYES, TOTAL_MOUTHS, TOTAL_COLORS, getRandomAvatar } from '../utils/skribblAvatarData.js'
 import { getEyeTransform, getMouthTransform, EYE_LAYOUT, MOUTH_LAYOUT } from '../utils/skribblAvatarLayout.js'
-import { ensureSvgFilters } from '../hooks/useSkribblBoilingAnimation.js'
+import useSkribblBoilingAnimation, { ensureSvgFilters } from '../hooks/useSkribblBoilingAnimation.js'
 
 export { SKRIBBL_COLORS, TOTAL_EYES, TOTAL_MOUTHS, TOTAL_COLORS, getRandomAvatar, EYE_LAYOUT, MOUTH_LAYOUT }
 
@@ -71,6 +71,7 @@ export default function SkribblAvatar({
     preloadSkribblAvatarAssets()
     ensureSvgFilters()
   }, [])
+  useSkribblBoilingAnimation()
 
   const containerStyle = {
     position: 'relative',

@@ -217,6 +217,7 @@
   align-items: center;
   gap: 10px;
   overflow-x: auto;
+  padding-top: 10px;
   padding-bottom: 5px;
   min-height: 60px;
   max-width: 100%;
@@ -242,10 +243,21 @@
   position: relative;
   min-width: 50px;
 }
+.cn-avatar-circle-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .cn-avatar-crown {
   position: absolute;
-  top: -12px;
-  font-size: 1rem;
+  top: -5px;
+  left: 2px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  z-index: 5;
+  pointer-events: none;
 }
 .cn-avatar-circle {
   width: 44px;
@@ -803,9 +815,10 @@ html.cn-keyboard-active {
 
 /* AVATARS */
 .cn-board-avatar { position: relative; display: flex; flex-direction: column; align-items: center; }
+.cn-board-avatar-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
 .cn-board-avatar img { width: calc(var(--u) * 6.3); height: calc(var(--u) * 6.3); border-radius: 50%; object-fit: cover; object-position: center 15%; background: rgba(255, 255, 255, 0.35); box-shadow: 0 0 0 calc(var(--u) * 0.35) rgba(255, 255, 255, 0.3); border: 1px solid rgba(255, 255, 255, 0.5); }
 .cn-board-avatar-name { margin-top: calc(var(--u) * -0.9); min-width: calc(var(--u) * 7.4); box-sizing: border-box; padding: calc(var(--u) * 0.3) calc(var(--u) * 1); text-align: center; background: rgba(8, 36, 70, 0.85); border-radius: calc(var(--u) * 0.9); font-size: calc(var(--u) * 1.9); line-height: 1.2; color: #fff; z-index: 1; }
-.cn-board-crown { position: absolute; top: calc(var(--u) * -1); left: calc(var(--u) * -0.3); font-size: calc(var(--u) * 2.4); z-index: 2; }
+.cn-board-crown { position: absolute; top: calc(var(--u) * -0.9); left: calc(var(--u) * 0.4); filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); z-index: 2; pointer-events: none; }
 
 /* JOIN TEAM */
 .cn-spy-join-btn {
@@ -2805,10 +2818,12 @@ html.cn-keyboard-active {
 .codenames-app--lobby { --u: min(1vw, 4.8px); height: 100dvh; min-height: 0; overflow: hidden; padding: max(12px, env(safe-area-inset-top, 0px)) 0 max(8px, env(safe-area-inset-bottom, 0px)); }
 .codenames-app--lobby .cn-lobby-fullscreen { height: 100%; min-height: 0; max-width: 480px; gap: 0; }
 .cn-lobby-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 0; }
-.cn-lobby-body .cn-spectator-strip { margin-top: 0; flex: none; }
-.cn-lobby-body .cn-spectator-content { min-height: 40px; padding-bottom: 0; }
+.cn-lobby-body .cn-spectator-strip { margin-top: -4px; flex: none; }
+.cn-lobby-body .cn-spectator-content { min-height: 48px; padding-top: 10px; padding-bottom: 0; }
+.cn-lobby-body .cn-avatar-circle-wrap { width: 32px; height: 32px; }
 .cn-lobby-body .cn-avatar-circle { width: 32px; height: 32px; }
 .cn-lobby-body .cn-avatar-name { margin-top: -8px; font-size: 0.62rem; }
+.cn-lobby-body .cn-avatar-crown { top: -5px; left: 1px; }
 .cn-lobby-body .cn-settings-panel { margin-top: 0; flex: none; padding: 8px 10px; gap: 6px; }
 .cn-lobby-body .cn-settings-card { padding: 4px 6px; }
 .cn-lobby-body .cn-settings-card-content h4 { font-size: 0.95rem; }
@@ -2817,7 +2832,7 @@ html.cn-keyboard-active {
 .cn-lobby-body .cn-team-grid { flex: 1; min-height: 0; grid-template-rows: 1fr 1fr; gap: 8px; }
 .cn-lobby-body .cn-team-card { min-height: 0; padding: 4px 8px; }
 .cn-lobby-body .cn-team-card-content { min-height: 0; overflow: hidden; }
-.cn-lobby-body .cn-team-card-players { gap: 4px; height: auto; }
+.cn-lobby-body .cn-team-card-players { gap: 4px; height: auto; padding-top: 8px; margin-top: -4px; }
 .cn-lobby-body .cn-join-btn { padding: 4px 10px; margin-bottom: 4px; font-size: clamp(13px, 3.8vw, 17px); }
 .cn-lobby-body .cn-start-game-btn { flex: none; padding: 11px; font-size: 1.1rem; }
 .cn-lobby-body .cn-waiting-text { flex: none; padding: 8px; }

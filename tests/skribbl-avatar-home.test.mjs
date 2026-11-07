@@ -93,7 +93,7 @@ assert.ok(!cssCode.includes('skAvatarGlitchEyes'), 'Must not have growing/shrink
 assert.ok(!cssCode.includes('skAvatarGlitchMouth'), 'Must not have growing/shrinking skAvatarGlitchMouth keyframes')
 assert.ok(!cssCode.includes('skCrownGlitch'), 'Crown must not have jittering skCrownGlitch keyframes')
 assert.ok(cssCode.includes('skLogoBreathe'), 'Must define skLogoBreathe keyframes for gentle title scaling')
-assert.ok(cssCode.includes('rotate(-20deg)'), 'Crown must be rotated by -20deg')
+assert.ok(cssCode.includes('rotate(-26deg)'), 'Crown must be rotated by -26deg for flush head contact')
 assert.ok(cssCode.includes('skAvatarPopGlitch'), 'Must define skAvatarPopGlitch keyframes for interactive click pop')
 console.log('PASS: Avatar stability (no growing/shrinking) and gentle title scaling verified in globals.css')
 

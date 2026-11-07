@@ -1,9 +1,12 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { ensureIdentity } from '../../../shared/session/identity.js'
 import { getSocket } from '../../../shared/realtime/socket.js'
 import QRModal from '../../../shared/components/QRModal.jsx'
 import SkribblError from './SkribblError.jsx'
 import SkribblAvatar from './SkribblAvatar.jsx'
+import HostCrown from '../../../shared/components/HostCrown.jsx'
+import { getCrownStyle, getCrownSize } from '../utils/skribblAvatarLayout.js'
+import CrownManualControls from './CrownManualControls.jsx'
 
 function SegmentControl({ label, value, options, onChange, disabled }) {
   return (
@@ -114,6 +117,14 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
   const { sessionId } = ensureIdentity()
   const isHost = room.hostId === sessionId
   const [startError, setStartError] = useState('')
+  const [, setCrownTick] = useState(0)
+  useEffect(() => {
+    const onCrownUpdate = (e) => {
+      if (!e.detail || e.detail.mode === 'lobby') setCrownTick(t => t + 1)
+    }
+    window.addEventListener('skribbl:crown-update', onCrownUpdate)
+    return () => window.removeEventListener('skribbl:crown-update', onCrownUpdate)
+  }, [])
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
   const [showQR, setShowQR] = useState(false)
@@ -241,7 +252,11 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
                   <div className="sk-lobby-player-avatar-wrap">
                     <SkribblAvatar avatar={p.avatar} size={38} bouncy={true} />
                     {p.isHost && (
-                      <span className="sk-lobby-host-crown" title="Room Host">👑</span>
+                      <HostCrown 
+                        size={getCrownSize('lobby')} 
+                        className="sk-lobby-host-crown" 
+                        style={getCrownStyle('lobby')}
+                      />
                     )}
                   </div>
 
@@ -378,6 +393,9 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
           </button>
         </section>
       </main>
+
+      {/* Manual Crown Position Controls */}
+      <CrownManualControls defaultMode="lobby" />
     </div>
   )
 }

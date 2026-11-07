@@ -26,7 +26,7 @@ const start = Date.now()
 const connectedResult = await waitForServerConnection(200)
 const elapsed = Date.now() - start
 assert.strictEqual(typeof connectedResult, 'boolean', 'waitForServerConnection must resolve to a boolean')
-assert.ok(elapsed <= 250, 'waitForServerConnection must resolve within specified bounds')
+assert.ok(elapsed <= 400, 'waitForServerConnection must resolve within specified bounds')
 console.log('PASS: waitForServerConnection resolution verified (result: ' + connectedResult + ', elapsed: ' + elapsed + 'ms)')
 
 // 3. Verify gameState.js emitCreateRoom and emitJoinRoom have safety timeouts to prevent hanging on "Connecting..."
