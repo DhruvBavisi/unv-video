@@ -431,8 +431,8 @@ export default function SkribblHome({
         />
       )}
 
-      {/* Manual Crown Position Controls */}
-      <CrownManualControls defaultMode="home" />
+      {/* Manual Crown Position Controls (Dev Only) */}
+      {import.meta.env.DEV && <CrownManualControls defaultMode="home" />}
     </div>
   )
 }

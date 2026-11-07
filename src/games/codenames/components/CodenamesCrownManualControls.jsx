@@ -7,6 +7,8 @@ import { CODENAMES_CROWN_LAYOUT } from '../utils/codenamesCrownLayout.js'
  * Allows the user to live-tune crown positioning on screen and copy the exact JS config.
  */
 export default function CodenamesCrownManualControls({ defaultMode = 'lobby' }) {
+  if (!import.meta.env.DEV) return null
+
   const [isOpen, setIsOpen] = useState(false)
   const [mode, setMode] = useState(defaultMode)
   const [copied, setCopied] = useState(false)

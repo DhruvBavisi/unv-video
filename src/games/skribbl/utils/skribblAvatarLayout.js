@@ -109,7 +109,7 @@ export const CROWN_LAYOUT = {
  */
 export function getCrownStyle(mode = 'lobby') {
   let cfg = { ...(CROWN_LAYOUT[mode] || CROWN_LAYOUT.lobby) }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
     try {
       const stored = localStorage.getItem(`skribbl_crown_${mode}`)
       if (stored) {
@@ -132,7 +132,7 @@ export function getCrownStyle(mode = 'lobby') {
  */
 export function getCrownSize(mode = 'lobby') {
   let cfg = { ...(CROWN_LAYOUT[mode] || CROWN_LAYOUT.lobby) }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
     try {
       const stored = localStorage.getItem(`skribbl_crown_${mode}`)
       if (stored) {
@@ -142,7 +142,7 @@ export function getCrownSize(mode = 'lobby') {
       // ignore
     }
   }
-  return cfg.size || (mode === 'home' ? 22 : 20)
+  return cfg.size || (mode === 'home' ? 22 : 21)
 }
 
 

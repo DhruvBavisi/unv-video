@@ -33,7 +33,7 @@ export const CODENAMES_CROWN_LAYOUT = {
  */
 export function getCodenamesCrownStyle(mode = 'lobby') {
   let cfg = { ...(CODENAMES_CROWN_LAYOUT[mode] || CODENAMES_CROWN_LAYOUT.lobby) }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
     try {
       const stored = localStorage.getItem(`codenames_crown_${mode}`)
       if (stored) {
@@ -59,7 +59,7 @@ export function getCodenamesCrownStyle(mode = 'lobby') {
  */
 export function getCodenamesCrownSize(mode = 'lobby') {
   let cfg = { ...(CODENAMES_CROWN_LAYOUT[mode] || CODENAMES_CROWN_LAYOUT.lobby) }
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
     try {
       const stored = localStorage.getItem(`codenames_crown_${mode}`)
       if (stored) {

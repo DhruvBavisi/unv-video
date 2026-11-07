@@ -299,8 +299,8 @@ export default function CodenamesLobby({ room, playerId, onLeave }) {
         </div>
       )}
 
-      {/* Manual Crown Position Controls */}
-      <CodenamesCrownManualControls defaultMode="lobby" />
+      {/* Manual Crown Position Controls (Dev Only) */}
+      {import.meta.env.DEV && <CodenamesCrownManualControls defaultMode="lobby" />}
     </div>
   )
 }

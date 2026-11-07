@@ -394,8 +394,8 @@ export default function Lobby({ room, onLeave, onUpdateConfig, error }) {
         </section>
       </main>
 
-      {/* Manual Crown Position Controls */}
-      <CrownManualControls defaultMode="lobby" />
+      {/* Manual Crown Position Controls (Dev Only) */}
+      {import.meta.env.DEV && <CrownManualControls defaultMode="lobby" />}
     </div>
   )
 }

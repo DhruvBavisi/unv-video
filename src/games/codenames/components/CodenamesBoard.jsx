@@ -803,8 +803,8 @@ export default function CodenamesBoard({ room, playerId, onLeave }) {
         />
       )}
 
-      {/* Manual Crown Position Controls */}
-      <CodenamesCrownManualControls defaultMode="board" />
+      {/* Manual Crown Position Controls (Dev Only) */}
+      {import.meta.env.DEV && <CodenamesCrownManualControls defaultMode="board" />}
     </div>
   )
 }

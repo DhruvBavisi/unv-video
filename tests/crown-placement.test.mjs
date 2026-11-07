@@ -106,4 +106,15 @@ assert.ok(codenamesCss.includes('.cn-lobby-body .cn-spectator-content') && coden
           'codenames.css must give .cn-lobby-body .cn-spectator-content padding-top: 10px')
 console.log('PASS: Spectator row crown clipping fix verified in codenames.css')
 
+// 13. Verify that manual crown controls are strictly dev-only and removed from production
+assert.ok(manualControlsCode.includes('if (!import.meta.env.DEV) return null'), 'CrownManualControls must return null in non-DEV environments')
+assert.ok(cnControlsCode.includes('if (!import.meta.env.DEV) return null'), 'CodenamesCrownManualControls must return null in non-DEV environments')
+assert.ok(skribblHomeCode.includes('{import.meta.env.DEV && <CrownManualControls defaultMode="home" />}'), 'SkribblHome must guard CrownManualControls with import.meta.env.DEV')
+assert.ok(skribblLobbyCode.includes('{import.meta.env.DEV && <CrownManualControls defaultMode="lobby" />}'), 'Skribbl Lobby must guard CrownManualControls with import.meta.env.DEV')
+assert.ok(codenamesLobbyCode.includes('{import.meta.env.DEV && <CodenamesCrownManualControls defaultMode="lobby" />}'), 'Codenames Lobby must guard CodenamesCrownManualControls with import.meta.env.DEV')
+assert.ok(codenamesBoardCode.includes('{import.meta.env.DEV && <CodenamesCrownManualControls defaultMode="board" />}'), 'Codenames Board must guard CodenamesCrownManualControls with import.meta.env.DEV')
+assert.ok(layoutCode.includes('typeof window !== \'undefined\' && import.meta.env.DEV'), 'skribblAvatarLayout must only use localStorage overrides in DEV')
+assert.ok(cnLayoutCode.includes('typeof window !== \'undefined\' && import.meta.env.DEV'), 'codenamesCrownLayout must only use localStorage overrides in DEV')
+console.log('PASS: Crown controls strictly guarded from production')
+
 console.log('All tests passed successfully!')
