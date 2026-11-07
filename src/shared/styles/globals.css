@@ -9325,34 +9325,13 @@ html.sk-kb-open .sk-lower-info-section {
   align-items: center;
   text-align: center;
   gap: 16px;
-  cursor: pointer;
+  cursor: default;
   outline: none;
-  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  -webkit-tap-highlight-color: transparent;
   color: inherit;
   font-family: inherit;
   box-sizing: border-box;
-}
-
-.sk-server-skeleton__card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-}
-
-.sk-server-skeleton__card:focus-visible {
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-}
-
-/* Selected Card Highlight (Strictly Two-Tone) */
-.sk-server-skeleton__card.is-selected,
-.sk-server-skeleton__card--skribbl.is-selected {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 24px rgba(255, 255, 255, 0.12);
+  user-select: none;
 }
 
 /* Card Avatar Placeholder Bones */
@@ -9405,70 +9384,22 @@ html.sk-kb-open .sk-lower-info-section {
   height: 12px;
 }
 
-/* Card Action Button (Uniform Monochrome Light Style) */
+/* Card Action Button Placeholder Bone (Pure Skeleton Placeholder, Zero Buttons) */
 .sk-server-skeleton__card-action {
   width: 100%;
   margin-top: 4px;
 }
 
-.sk-server-skeleton__action-btn {
+.sk-server-skeleton__card-btn-bone {
   width: 100%;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 44px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  transition: all 150ms ease;
-  box-sizing: border-box;
-  padding: 0 12px;
 }
 
-.sk-server-skeleton__card:hover .sk-server-skeleton__action-btn {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.sk-server-skeleton__card.is-selected .sk-server-skeleton__action-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-/* Footer Stay Button */
+/* Footer (Zero interactive buttons) */
 .sk-server-skeleton__footer {
   margin-top: 4px;
-}
-
-.sk-server-skeleton__opt-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
-  padding: 10px 22px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 150ms ease;
-  outline: none;
-}
-
-.sk-server-skeleton__opt-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.sk-server-skeleton__opt-btn.is-selected {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.45);
+  min-height: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {

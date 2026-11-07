@@ -1,8 +1,15 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { usePageBackground } from '../hooks/usePageBackground.js'
+import { preloadSpecialRoles } from '../../games/undercover/utils/preloadUndercoverAssets.js'
 
 export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSelectCodenames, onBack }) {
   usePageBackground('#070914')
+
+  // Proactively preload Undercover special role images in the background
+  useEffect(() => {
+    preloadSpecialRoles()
+  }, [])
+
   return (
     <div className="mode-select mode-select--cinematic">
       
@@ -41,7 +48,12 @@ export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSele
         <div className="mode-select__panels">
           
           {/* UNDERCOVER PANEL */}
-          <div className="mode-select__panel mode-select__panel--uc" onClick={onSelectUndercover}>
+          <div 
+            className="mode-select__panel mode-select__panel--uc" 
+            onClick={onSelectUndercover}
+            onMouseEnter={preloadSpecialRoles}
+            onTouchStart={preloadSpecialRoles}
+          >
             
             <div className="mode-select__panel-bg"></div>
             <div className="mode-select__panel-glow"></div>

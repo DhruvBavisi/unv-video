@@ -13,6 +13,7 @@ import SkribblWinningPreview from '../games/skribbl/components/SkribblWinningPre
 import { readIdentity, ensureIdentity, clearSession } from '../shared/session/identity.js'
 import ServerSkeletonScreen from '../shared/components/ServerSkeletonScreen.jsx'
 import { connectSocket, isServerConnected, subscribeServerConnection, initBackgroundServerConnection } from '../shared/realtime/socket.js'
+import { preloadSpecialRoles } from '../games/undercover/utils/preloadUndercoverAssets.js'
 
 class GameErrorBoundary extends Component {
   constructor(props) {
@@ -241,10 +242,11 @@ export default function App() {
   })
   const [pendingDestination, setPendingDestination] = useState(null)
 
-  // Start background connection to the server immediately on mount
+  // Start background connection to the server immediately on mount & warm Undercover assets
   useEffect(() => {
     const { sessionId } = ensureIdentity()
     initBackgroundServerConnection(sessionId)
+    preloadSpecialRoles()
 
     const unsubscribe = subscribeServerConnection((connected) => {
       setIsConnected(connected)
@@ -263,6 +265,9 @@ export default function App() {
 
   // Intercept navigation to check if server is currently connecting
   const handleNavigateOrWait = (target) => {
+    if (target === 'undercover') {
+      preloadSpecialRoles()
+    }
     if (!isServerConnected()) {
       setPendingDestination(target === 'transition' ? 'mode-select' : target)
       setHasResolvedInitialConnection(false)

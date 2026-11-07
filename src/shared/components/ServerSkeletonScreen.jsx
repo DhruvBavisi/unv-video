@@ -7,16 +7,14 @@ import React, { useState, useEffect } from 'react'
  * Strict Two-Tone Palette:
  * 1. Dark page background (#0b0c0d) matching the page behind it.
  * 2. Light translucent card surface with subtle monochrome shimmer bones.
- * Zero extra colored glows, buttons, or highlights.
+ * Zero interactive buttons, colored glows, or external links.
  */
 export default function ServerSkeletonScreen({
   initialView = 'landing',
   targetDestination = null,
-  onSelectDestination,
   isConnected = false,
   onConnectRedirect,
 }) {
-  const [selectedDest, setSelectedDest] = useState(targetDestination || null)
   const [connectionTime, setConnectionTime] = useState(0)
 
   // Track elapsed connection seconds for adaptive friendly UX messaging
@@ -31,23 +29,16 @@ export default function ServerSkeletonScreen({
   useEffect(() => {
     if (isConnected) {
       const timer = setTimeout(() => {
-        onConnectRedirect(selectedDest || initialView)
+        onConnectRedirect(targetDestination || initialView)
       }, 300)
       return () => clearTimeout(timer)
     }
-  }, [isConnected, selectedDest, initialView, onConnectRedirect])
-
-  const handleChoose = (dest) => {
-    setSelectedDest(dest)
-    if (onSelectDestination) {
-      onSelectDestination(dest)
-    }
-  }
+  }, [isConnected, targetDestination, initialView, onConnectRedirect])
 
   const getStatusText = () => {
     if (isConnected) {
-      if (selectedDest && selectedDest !== initialView) {
-        const name = selectedDest === 'skribbl' ? 'Skribbl.io' : selectedDest === 'codenames' ? 'Codenames' : 'Undercover'
+      if (targetDestination && targetDestination !== initialView) {
+        const name = targetDestination === 'skribbl' ? 'Skribbl.io' : targetDestination === 'codenames' ? 'Codenames' : 'Undercover'
         return `Connected! Launching ${name}...`
       }
       return 'Connected! Entering game...'
@@ -84,26 +75,14 @@ export default function ServerSkeletonScreen({
         <section className="sk-server-skeleton__hero">
           <div className="sk-skeleton-bone sk-server-skeleton__heading-bone" />
           <p className="sk-server-skeleton__subtitle">
-            {selectedDest ? (
-              <span className="sk-server-skeleton__selected-cue">
-                ✓ <strong>{selectedDest.toUpperCase()}</strong> selected — redirecting on connection.
-              </span>
-            ) : (
-              'Tap any game below to jump straight in once connected, or wait to stay on this page.'
-            )}
+            Connecting to game server and establishing live session...
           </p>
         </section>
 
-        {/* Interactive Mode Cards Grid */}
-        <div className="sk-server-skeleton__grid" role="group" aria-label="Game Modes">
-          {/* Card 1: Undercover */}
-          <button
-            type="button"
-            className={`sk-server-skeleton__card sk-server-skeleton__card--undercover ${selectedDest === 'undercover' ? 'is-selected' : ''}`}
-            onClick={() => handleChoose('undercover')}
-            aria-pressed={selectedDest === 'undercover'}
-            title="Play Undercover"
-          >
+        {/* Pure Skeleton Mode Cards Grid (Zero Buttons) */}
+        <div className="sk-server-skeleton__grid" aria-hidden="true">
+          {/* Card 1: Undercover Placeholder */}
+          <div className="sk-server-skeleton__card sk-server-skeleton__card--undercover">
             <div className="sk-server-skeleton__avatar-wrap">
               <div className="sk-skeleton-bone sk-server-skeleton__avatar-bone sk-server-skeleton__avatar-bone--circle" />
             </div>
@@ -113,20 +92,12 @@ export default function ServerSkeletonScreen({
               <div className="sk-skeleton-bone sk-server-skeleton__card-desc-bone--short" />
             </div>
             <div className="sk-server-skeleton__card-action">
-              <div className="sk-server-skeleton__action-btn">
-                {selectedDest === 'undercover' ? '✓ Launching Undercover...' : 'Play Undercover'}
-              </div>
+              <div className="sk-skeleton-bone sk-server-skeleton__card-btn-bone" />
             </div>
-          </button>
+          </div>
 
-          {/* Card 2: Skribbl.io */}
-          <button
-            type="button"
-            className={`sk-server-skeleton__card sk-server-skeleton__card--skribbl ${selectedDest === 'skribbl' ? 'is-selected' : ''}`}
-            onClick={() => handleChoose('skribbl')}
-            aria-pressed={selectedDest === 'skribbl'}
-            title="Play Skribbl.io"
-          >
+          {/* Card 2: Skribbl.io Placeholder */}
+          <div className="sk-server-skeleton__card sk-server-skeleton__card--skribbl">
             <div className="sk-server-skeleton__avatar-wrap">
               <div className="sk-skeleton-bone sk-server-skeleton__avatar-bone sk-server-skeleton__avatar-bone--doodle" />
             </div>
@@ -136,20 +107,12 @@ export default function ServerSkeletonScreen({
               <div className="sk-skeleton-bone sk-server-skeleton__card-desc-bone--short" />
             </div>
             <div className="sk-server-skeleton__card-action">
-              <div className="sk-server-skeleton__action-btn">
-                {selectedDest === 'skribbl' ? '✓ Launching Skribbl.io...' : 'Play Skribbl.io'}
-              </div>
+              <div className="sk-skeleton-bone sk-server-skeleton__card-btn-bone" />
             </div>
-          </button>
+          </div>
 
-          {/* Card 3: Codenames */}
-          <button
-            type="button"
-            className={`sk-server-skeleton__card sk-server-skeleton__card--codenames ${selectedDest === 'codenames' ? 'is-selected' : ''}`}
-            onClick={() => handleChoose('codenames')}
-            aria-pressed={selectedDest === 'codenames'}
-            title="Play Codenames"
-          >
+          {/* Card 3: Codenames Placeholder */}
+          <div className="sk-server-skeleton__card sk-server-skeleton__card--codenames">
             <div className="sk-server-skeleton__avatar-wrap">
               <div className="sk-skeleton-bone sk-server-skeleton__avatar-bone sk-server-skeleton__avatar-bone--tiles" />
             </div>
@@ -159,34 +122,13 @@ export default function ServerSkeletonScreen({
               <div className="sk-skeleton-bone sk-server-skeleton__card-desc-bone--short" />
             </div>
             <div className="sk-server-skeleton__card-action">
-              <div className="sk-server-skeleton__action-btn">
-                {selectedDest === 'codenames' ? '✓ Launching Codenames...' : 'Play Codenames'}
-              </div>
+              <div className="sk-skeleton-bone sk-server-skeleton__card-btn-bone" />
             </div>
-          </button>
+          </div>
         </div>
 
-        {/* Footer Navigation Choice */}
-        <footer className="sk-server-skeleton__footer">
-          <button
-            type="button"
-            className={`sk-server-skeleton__opt-btn ${selectedDest === 'landing' ? 'is-selected' : ''}`}
-            onClick={() => handleChoose('landing')}
-          >
-            {selectedDest === 'landing' ? '✓ Staying on Home Page' : 'Stay on Home Page'}
-          </button>
-
-          {connectionTime >= 20 && !isConnected && (
-            <button
-              type="button"
-              className="sk-server-skeleton__opt-btn sk-server-skeleton__opt-btn--fallback"
-              onClick={() => onConnectRedirect(selectedDest || initialView)}
-              style={{ marginLeft: '12px' }}
-            >
-              Continue without waiting
-            </button>
-          )}
-        </footer>
+        {/* Footer (No buttons - purely non-interactive) */}
+        <footer className="sk-server-skeleton__footer" />
       </div>
     </div>
   )

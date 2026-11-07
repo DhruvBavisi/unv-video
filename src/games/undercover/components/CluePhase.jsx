@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import Button from '../../../shared/components/Button.jsx'
 import { emitSubmitClue, emitSendChat, emitSelectVote, emitLockVote, emitUnlockVote, emitGiveFalafel } from '../gameState.js'
 import { getRoleImage, getRoleImageAlt } from '../roleImages.js'
+import { handleUndercoverImageError } from '../utils/preloadUndercoverAssets.js'
 import { MAX_CLUE_LENGTH, MAX_CHAT_LENGTH } from '../../../../shared/game-limits.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
 import { useMobileKeyboardFocus } from '../../../shared/hooks/useMobileKeyboardFocus.js'
@@ -64,7 +65,15 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
             <span className="clue-panel__word-label" style={{ marginBottom: '8px' }}>Identity</span>
             {roleVisible ? (
               <div className="clue-panel__avatar" style={{ width: '84px', height: '84px', marginBottom: '5px', padding: 0 }}>
-                <img src={getRoleImage(role)} alt={getRoleImageAlt(role)} className="clue-panel__avatar-img" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img 
+                  src={getRoleImage(role)} 
+                  alt={getRoleImageAlt(role)} 
+                  className="clue-panel__avatar-img" 
+                  onError={handleUndercoverImageError}
+                  loading="eager"
+                  decoding="async"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                />
               </div>
             ) : (
               <div className="clue-panel__avatar" style={{ width: '84px', height: '84px', marginBottom: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', background: 'var(--bg-secondary)', padding: 0 }}>
@@ -109,7 +118,10 @@ function LocalRoleSection({ localSecret, revealRoles, gamePhase }) {
                   >
                     <img 
                       src={avatarSrc} 
-                      alt={layout.label || specialRoleMeta.name} 
+                      alt={layout.label || specialRoleMeta.name}
+                      onError={handleUndercoverImageError}
+                      loading="eager"
+                      decoding="async" 
                       style={{ 
                         width: '100%',
                         height: '100%',
@@ -625,7 +637,7 @@ function VotingPanel({ players, myPlayerId, votes, lockedVotes, voteResult, onSe
               <span className="voting-card__name">{p.name} {isMe ? '(You)' : ''}</span>
               <div className="voting-card__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {isGhostTarget && (
-                  <img src="/images/characters/undercover/ghost-bg.webp" alt="Ghost Voted" title="Ghost voted for this player" style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                  <img src="/images/characters/undercover/ghost-bg.webp" alt="Ghost Voted" title="Ghost voted for this player" onError={handleUndercoverImageError} style={{ height: '18px', width: '18px', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
                 )}
                 {voteCounts[p.id] > 0 && (
                   <span className="voting-card__votes">{voteCounts[p.id]} Vote{voteCounts[p.id] > 1 ? 's' : ''}</span>

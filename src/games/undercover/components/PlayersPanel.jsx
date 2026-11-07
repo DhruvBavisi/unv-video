@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getRoleImage } from '../roleImages.js'
+import { handleUndercoverImageError } from '../utils/preloadUndercoverAssets.js'
 
 function getInitial(name) {
   if (!name) return '?'
@@ -145,7 +146,7 @@ export default function PlayersPanel({ state, onClose, buttonRect, onActionReque
       >
         {isDisconnected && <span className="player-card__disconnected-badge">!</span>}
         {p.eliminated && p.role ? (
-          <img src={getRoleImage(p.role)} alt={p.role} className="player-card__avatar" />
+          <img src={getRoleImage(p.role)} alt={p.role} className="player-card__avatar" onError={handleUndercoverImageError} loading="eager" decoding="async" />
         ) : (
           <div className="player-card__initial">{getInitial(p.name)}</div>
         )}

@@ -25,6 +25,7 @@ import GameMenu from './components/GameMenu.jsx'
 import QRModal from '../../shared/components/QRModal.jsx'
 import QRScannerModal from '../../shared/components/QRScannerModal.jsx'
 import { readIdentity } from '../../shared/session/identity.js'
+import { preloadSpecialRoles, handleUndercoverImageError } from './utils/preloadUndercoverAssets.js'
 
 function ErrorState({ children }) {
   return children ? <p className="online-error" role="alert">{children}</p> : null
@@ -537,6 +538,9 @@ function SpecialRoleAvatar({ role }) {
           src={role.avatar} 
           alt={role.name} 
           className="special-role-avatar-img"
+          onError={handleUndercoverImageError}
+          loading="eager"
+          decoding="async"
         />
       ) : (
         <div className="special-role-avatar-placeholder" aria-hidden="true">
@@ -862,7 +866,14 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                         position: 'relative'
                       }}
                     >
-                      <img src={triggerAsset} alt="" className="mobile-trigger-char__color" />
+                      <img 
+                        src={triggerAsset} 
+                        alt="" 
+                        className="mobile-trigger-char__color"
+                        onError={handleUndercoverImageError}
+                        loading="eager"
+                        decoding="async"
+                      />
                       <div 
                         className={`mobile-trigger-char__mask ${enabled ? 'mobile-trigger-char__mask--hidden' : ''}`}
                         style={{ WebkitMaskImage: `url(${triggerAsset})`, maskImage: `url(${triggerAsset})` }}
@@ -892,7 +903,14 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                   <div className="special-role-row__leading">
                     <span className={`special-role-row__avatar-badge ${role.avatar ? 'special-role-row__avatar-badge--has-art' : ''}`} aria-hidden="true">
                       {role.avatar ? (
-                        <img src={role.avatar} alt="" className="special-role-row__art" />
+                        <img 
+                          src={role.avatar} 
+                          alt="" 
+                          className="special-role-row__art"
+                          onError={handleUndercoverImageError}
+                          loading="eager"
+                          decoding="async"
+                        />
                       ) : (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -993,6 +1011,9 @@ function SpecialRolesConfig({ configuration, host, onChangeConfig, totalPlayers 
                           src={role.avatar.replace(/\.(png|webp)$/, '-bg.webp')} 
                           alt="" 
                           className="special-role-mobile-row__art"
+                          onError={handleUndercoverImageError}
+                          loading="eager"
+                          decoding="async"
                           style={{
                             transform: `translateX(${panelLayout.translateX}px) scale(${panelLayout.scale}) translateY(${panelLayout.translateY}%)`,
                             transformOrigin: 'bottom center'
@@ -1126,6 +1147,24 @@ export default function OnlineGame({ onExit }) {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState)
   const [loading, setLoading] = useState(false)
   const [joining, setJoining] = useState(false)
+
+  // Preload all Undercover special roles and character assets proactively on mount
+  useEffect(() => {
+    preloadSpecialRoles()
+  }, [])
+
+  const handleOpenCreate = useCallback(async () => {
+    // Ensure all special role images are loaded and decoded before entering the create game page
+    try {
+      await Promise.race([
+        preloadSpecialRoles(),
+        new Promise((resolve) => setTimeout(resolve, 350))
+      ])
+    } catch {
+      // Proceed gracefully
+    }
+    dispatch({ type: 'OPEN_CREATE' })
+  }, [dispatch])
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showPlayers, setShowPlayers] = useState(false)
   const [showGameMenu, setShowGameMenu] = useState(false)
@@ -1378,7 +1417,9 @@ export default function OnlineGame({ onExit }) {
         <div className="online-actions">
           <Button 
             variant={hasSession ? undefined : 'primary'} 
-            onClick={() => dispatch({ type: 'OPEN_CREATE' })}
+            onClick={handleOpenCreate}
+            onMouseEnter={preloadSpecialRoles}
+            onTouchStart={preloadSpecialRoles}
             disabled={loading || joining}
           >
             Create room

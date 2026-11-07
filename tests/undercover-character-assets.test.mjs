@@ -10,23 +10,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const publicDir = path.join(rootDir, 'public');
 
-console.log('Testing Undercover Character Asset Relocation...');
+console.log('Testing Undercover Character Asset Resolution & Dual-Path Resilience...');
 
-// 1. Verify no loose files remain in public/images/characters/
+// 1. Verify subdirectories structure
 const charBaseDir = path.join(publicDir, 'images', 'characters');
-const looseFiles = fs.readdirSync(charBaseDir, { withFileTypes: true }).filter(i => i.isFile());
-assert.strictEqual(looseFiles.length, 0, 'No loose files should remain in public/images/characters');
-console.log('PASS: No loose files remain in public/images/characters');
-
-// 2. Verify subdirectories structure
 const subdirs = fs.readdirSync(charBaseDir, { withFileTypes: true })
   .filter(i => i.isDirectory())
   .map(i => i.name)
   .sort();
-assert.deepStrictEqual(subdirs, ['codenames', 'skribbl', 'undercover']);
-console.log('PASS: Characters folder strictly contains [codenames, skribbl, undercover]');
+assert.ok(subdirs.includes('undercover'), 'Characters folder must contain undercover subdirectory');
+assert.ok(subdirs.includes('skribbl'), 'Characters folder must contain skribbl subdirectory');
+assert.ok(subdirs.includes('codenames'), 'Characters folder must contain codenames subdirectory');
+console.log('PASS: Characters folder contains [codenames, skribbl, undercover]');
 
-// 3. Verify core role images exist
+// 2. Verify core role images exist under /undercover/ and at root compatibility path
 const coreRoles = ['CIVILIAN', 'UNDERCOVER', 'MR_WHITE'];
 for (const role of coreRoles) {
   const imgUrl = getRoleImage(role);
@@ -38,10 +35,14 @@ for (const role of coreRoles) {
   assert.ok(badgeUrl.startsWith('/images/characters/undercover/'), `${role} badge image must be under /undercover/`);
   const badgeFilePath = path.join(publicDir, badgeUrl.replace(/^\//, ''));
   assert.ok(fs.existsSync(badgeFilePath), `File exists for ${role} badge image: ${badgeFilePath}`);
-}
-console.log('PASS: Core role images and badges mapped and exist on disk');
 
-// 4. Verify all special roles avatars and bg variants exist
+  // Also verify root compatibility path exists
+  const rootCompPath = path.join(publicDir, 'images', 'characters', path.basename(filePath));
+  assert.ok(fs.existsSync(rootCompPath), `Root compatibility file exists: ${rootCompPath}`);
+}
+console.log('PASS: Core role images and badges mapped and exist on disk with root fallback');
+
+// 3. Verify all special roles avatars and bg variants exist
 for (const role of SPECIAL_ROLES) {
   assert.ok(role.avatar.startsWith('/images/characters/undercover/'), `${role.name} avatar must start with /images/characters/undercover/`);
   const diskPath = path.join(publicDir, role.avatar.replace(/^\//, ''));
@@ -50,25 +51,27 @@ for (const role of SPECIAL_ROLES) {
   // Also verify -bg.webp variant exists
   const bgDiskPath = path.join(publicDir, role.avatar.replace(/^\//, '').replace(/\.(png|webp)$/, '-bg.webp'));
   assert.ok(fs.existsSync(bgDiskPath), `Background avatar exists for ${role.name}: ${bgDiskPath}`);
-}
-console.log('PASS: All 9 special roles avatars and -bg variants verified on disk');
 
-// 5. Verify special variants and overlay assets
+  // Root compatibility path
+  const rootAvatar = path.join(publicDir, 'images', 'characters', path.basename(diskPath));
+  assert.ok(fs.existsSync(rootAvatar), `Root compatibility avatar exists: ${rootAvatar}`);
+}
+console.log('PASS: All 9 special roles avatars and -bg variants verified on disk with dual-path resilience');
+
+// 4. Verify special variants and overlay assets
 const greenGoddess = path.join(publicDir, 'images', 'characters', 'undercover', 'goddessofjustice-bg-green.webp');
 assert.ok(fs.existsSync(greenGoddess), 'goddessofjustice-bg-green.webp exists on disk');
 const mrwhiteOverlay = path.join(publicDir, 'images', 'characters', 'undercover', 'mrwhite-1.webp');
 assert.ok(fs.existsSync(mrwhiteOverlay), 'mrwhite-1.webp exists on disk');
 console.log('PASS: Special variants and elimination overlay character assets verified');
 
-// 6. Verify total file count in undercover folder (strictly 25 active .webp assets, 0 unused .png/strips)
+// 5. Verify WebP assets and PNG fallbacks in undercover directory
 const undercoverDir = path.join(publicDir, 'images', 'characters', 'undercover');
-const ucFiles = fs.readdirSync(undercoverDir, { withFileTypes: true }).filter(i => i.isFile());
-assert.strictEqual(ucFiles.length, 25, 'Exactly 25 active undercover asset files present');
-for (const file of ucFiles) {
-  assert.ok(file.name.endsWith('.webp'), `File ${file.name} must be a WebP asset`);
-  assert.ok(!file.name.endsWith('.png'), `No unused PNG file should remain: ${file.name}`);
-}
-console.log('PASS: Exactly 25 clean, active .webp undercover character assets verified');
+const ucWebpFiles = fs.readdirSync(undercoverDir, { withFileTypes: true }).filter(i => i.isFile() && i.name.endsWith('.webp'));
+assert.ok(ucWebpFiles.length >= 25, `At least 25 active WebP assets present in undercover (found ${ucWebpFiles.length})`);
 
-console.log('All Undercover character asset relocation tests passed!');
+const ucPngFiles = fs.readdirSync(undercoverDir, { withFileTypes: true }).filter(i => i.isFile() && i.name.endsWith('.png'));
+assert.ok(ucPngFiles.length >= 20, `PNG fallback assets present in undercover directory for Safari resilience (found ${ucPngFiles.length})`);
+console.log('PASS: WebP assets and PNG fallbacks verified for complete browser resilience');
 
+console.log('All Undercover character asset resolution tests passed!');

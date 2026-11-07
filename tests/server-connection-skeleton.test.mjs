@@ -33,9 +33,9 @@ assert.ok(skeletonCode.includes('sk-server-skeleton__card--undercover'), 'Compon
 assert.ok(skeletonCode.includes('sk-server-skeleton__card--skribbl'), 'Component must render Skribbl card')
 assert.ok(skeletonCode.includes('sk-server-skeleton__card--codenames'), 'Component must render Codenames card')
 assert.ok(skeletonCode.includes('onConnectRedirect'), 'Component must forward to destination on connect')
-assert.ok(skeletonCode.includes('sk-server-skeleton__opt-btn'), 'Component must offer option to stay on home page')
-assert.ok(skeletonCode.includes('sk-server-skeleton__opt-btn--fallback'), 'Component must include fallback for slow connections')
-console.log('PASS: ServerSkeletonScreen component markup, accessibility & interactivity verified')
+assert.strictEqual((skeletonCode.match(/<button/g) || []).length, 0, 'ServerSkeletonScreen must contain ZERO button elements')
+assert.ok(skeletonCode.includes('sk-server-skeleton__card-btn-bone'), 'Component must render shimmer button bone placeholder')
+console.log('PASS: ServerSkeletonScreen component markup & zero-button skeleton verified')
 
 // 3. Verify App.jsx integration
 const appJsPath = path.join(rootDir, 'src', 'app', 'App.jsx')
@@ -58,7 +58,7 @@ assert.ok(cssCode.includes('skServerShimmer'), 'globals.css must define skServer
 assert.ok(cssCode.includes('.sk-skeleton-bone'), 'globals.css must define .sk-skeleton-bone with shimmer')
 assert.ok(cssCode.includes('.sk-server-skeleton__status-pill'), 'globals.css must style status pill')
 assert.ok(cssCode.includes('skPulseDot'), 'globals.css must define skPulseDot animation for status dot')
-assert.ok(cssCode.includes('.sk-server-skeleton__card--skribbl.is-selected'), 'globals.css must style selected card states')
+assert.ok(cssCode.includes('.sk-server-skeleton__card-btn-bone'), 'globals.css must style card button bone')
 assert.ok(cssCode.includes('@media (prefers-reduced-motion: reduce)'), 'globals.css must support prefers-reduced-motion')
 console.log('PASS: globals.css skeleton shimmer and responsive design verified')
 

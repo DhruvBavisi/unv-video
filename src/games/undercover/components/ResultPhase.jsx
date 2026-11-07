@@ -2,6 +2,7 @@ import React, { useRef, useLayoutEffect } from 'react'
 import Button from '../../../shared/components/Button.jsx'
 import gsap from 'gsap'
 import { getRoleImage } from '../roleImages.js'
+import { handleUndercoverImageError } from '../utils/preloadUndercoverAssets.js'
 
 export default function ResultPhase({ state, dispatch, onPlayAgain }) {
   const { winner, hostId, sessionId, players, wordPair } = state
@@ -82,6 +83,9 @@ export default function ResultPhase({ state, dispatch, onPlayAgain }) {
           <img 
             src={getRoleImage(winnerImageRole)} 
             alt="Winner" 
+            onError={handleUndercoverImageError}
+            loading="eager"
+            decoding="async" 
             style={{ 
               width: '100px', 
               height: '100px', 

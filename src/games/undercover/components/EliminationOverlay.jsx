@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState, useRef, useEffect, useCallback } from 'react'
 import { getRoleImage } from '../roleImages.js'
+import { handleUndercoverImageError } from '../utils/preloadUndercoverAssets.js'
 import { emitSubmitMrWhiteGuess, emitMrWhiteLiveGuess } from '../gameState.js'
 import { SPECIAL_ROLES } from '../data/specialRoles.js'
 import { useMobileKeyboardFocus } from '../../../shared/hooks/useMobileKeyboardFocus.js'
@@ -545,7 +546,7 @@ export default function EliminationOverlay({
             <div className="elimination-card-face elimination-card-face--back" style={{ opacity: isFlipped ? 1 : 0, transition: 'opacity 300ms ease', overflow: 'hidden' }}>
               <div className={`elimination-char-card elimination-char-card--${roleKey}`}>
                 <div className="elimination-char-img-wrap" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease' }}>
-                  <img src={characterUrl} alt={displayRole} />
+                  <img src={characterUrl} alt={displayRole} onError={handleUndercoverImageError} loading="eager" decoding="async" />
                 </div>
                 <div className="elimination-role-banner" style={{ opacity: isMorphingOrLater ? 1 : 0, transition: 'opacity 400ms ease' }}>
                   <span className={`elimination-role-banner-text elimination-role-banner-text--${roleKey}`}>
