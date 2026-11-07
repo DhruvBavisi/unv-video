@@ -2,20 +2,20 @@ import React from 'react'
 
 /**
  * CodenamesCrown component
- * Sleek espionage / secret agent gold metallic crown designed specifically for Codenames.
- * Features sharp geometric facets, metallic gold gradients, dark tactical outlines,
- * a central blue operative jewel, and an emblem star crest on the central peak.
+ * Authentic Codenames host golden crown matching the official codenames.game design.
+ * Features a solid golden-yellow silhouette with 3 spiked peaks topped with spherical finials,
+ * resting at a tilted angle atop the player avatar circular frame.
  *
  * @param {Object} props
- * @param {number|string} [props.size=20] - Width of the crown in px or CSS expression
- * @param {number} [props.angle=-18] - Rotation angle in degrees (default -18deg for circular avatars)
+ * @param {number|string} [props.size=18] - Width of the crown in px or CSS expression
+ * @param {number} [props.angle=-38] - Rotation angle in degrees
  * @param {string} [props.className=''] - Additional CSS classes
  * @param {Object} [props.style={}] - Inline style overrides
- * @param {string} [props.title='Room Host'] - Accessible title
+ * @param {string} [props.title='Room Host'] - Accessible tooltip
  */
 export default function CodenamesCrown({
-  size = 20,
-  angle = -18,
+  size = 18,
+  angle = -38,
   className = '',
   style = {},
   title = 'Room Host',
@@ -23,18 +23,18 @@ export default function CodenamesCrown({
 }) {
   const isNumeric = typeof size === 'number'
   const widthVal = isNumeric ? `${size}px` : size
-  // 28:22 aspect ratio
-  const heightVal = isNumeric ? `${Math.round(size * (22 / 28))}px` : `calc(${size} * (22 / 28))`
+  // 576:512 aspect ratio
+  const heightVal = isNumeric ? `${Math.round(size * (512 / 576))}px` : `calc(${size} * (512 / 576))`
 
   return (
     <svg
-      viewBox="0 0 28 22"
+      viewBox="0 0 576 512"
       className={`cn-host-crown ${className}`.trim()}
       style={{
         width: widthVal,
         height: heightVal,
         transform: angle ? `rotate(${angle}deg)` : undefined,
-        transformOrigin: '50% 85%',
+        transformOrigin: '50% 90%',
         display: 'block',
         pointerEvents: 'none',
         userSelect: 'none',
@@ -47,44 +47,10 @@ export default function CodenamesCrown({
       {...rest}
     >
       <title>{title}</title>
-      <defs>
-        <linearGradient id="cnGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#fff275" />
-          <stop offset="40%" stopColor="#f59e0b" />
-          <stop offset="100%" stopColor="#b45309" />
-        </linearGradient>
-        <linearGradient id="cnBandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#f59e0b" />
-          <stop offset="100%" stopColor="#78350f" />
-        </linearGradient>
-      </defs>
-
-      {/* Main Angular Crown Silhouette */}
       <path
-        d="M 2.5 17.5 L 25.5 17.5 L 24 7 L 18 12 L 14 3 L 10 12 L 4 7 Z"
-        fill="url(#cnGoldGrad)"
-        stroke="#0b1320"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
+        fill="#fed700"
+        d="M309 106c11.4-7 19-19.7 19-34c0-22.1-17.9-40-40-40s-40 17.9-40 40c0 14.4 7.6 27 19 34L209.7 220.6c-9.1 18.2-32.7 23.4-48.6 10.7L72 160c5-6.7 8-15 8-24c0-22.1-17.9-40-40-40S0 113.9 0 136s17.9 40 40 40c.2 0 .5 0 .7 0L86.4 427.4c5.5 30.4 32 52.6 63 52.6l277.2 0c30.9 0 57.4-22.1 63-52.6L535.3 176c.2 0 .5 0 .7 0c22.1 0 40-17.9 40-40s-17.9-40-40-40s-40 17.9-40 40c0 9 3 17.3 8 24l-89.1 71.3c-15.9 12.7-39.5 7.5-48.6-10.7L309 106z"
       />
-
-      {/* Geometric Facet Highlights */}
-      <polygon points="14,3 10,12 14,14.5 18,12" fill="#ffffff" opacity="0.25" />
-      <line x1="14" y1="3" x2="14" y2="14.5" stroke="#ffffff" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-
-      {/* Headband Base Band */}
-      <rect x="2.5" y="14.5" width="23" height="3" rx="1" fill="url(#cnBandGrad)" stroke="#0b1320" strokeWidth="1.1" />
-      <line x1="3.5" y1="15" x2="24.5" y2="15" stroke="#ffffff" strokeWidth="0.7" opacity="0.5" />
-
-      {/* Studs & Operative Cyan Jewel */}
-      <circle cx="6" cy="16" r="0.9" fill="#ffffff" opacity="0.9" />
-      <circle cx="14" cy="16" r="1.1" fill="#38bdf8" stroke="#0b1320" strokeWidth="0.5" />
-      <circle cx="22" cy="16" r="0.9" fill="#ffffff" opacity="0.9" />
-
-      {/* Central Peak Crest Diamond */}
-      <polygon points="14,1.8 15.1,3 14,4.2 12.9,3" fill="#ffffff" stroke="#0b1320" strokeWidth="0.5" />
     </svg>
   )
 }
-

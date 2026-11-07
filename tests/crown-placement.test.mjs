@@ -56,12 +56,13 @@ const globalsCss = fs.readFileSync(path.join(rootDir, 'src', 'shared', 'styles',
 assert.ok(globalsCss.includes('.sk-assembled-avatar') && globalsCss.includes('filter: url(#sk-boil-filter)'), 'globals.css must apply filter: url(#sk-boil-filter) to .sk-assembled-avatar')
 console.log('PASS: Exact title vibration animation applied to Skribbl Avatar')
 
-// 7. Verify CodenamesCrown component
+// 7. Verify CodenamesCrown component matches authentic codenames.game crown
 const cnCrownPath = path.join(rootDir, 'src', 'games', 'codenames', 'components', 'CodenamesCrown.jsx')
 assert.ok(fs.existsSync(cnCrownPath), 'CodenamesCrown.jsx must exist')
 const cnCrownCode = fs.readFileSync(cnCrownPath, 'utf-8')
-assert.ok(cnCrownCode.includes('cnGoldGrad'), 'CodenamesCrown must use metallic espionage gold gradient')
-assert.ok(cnCrownCode.includes('viewBox="0 0 28 22"'), 'CodenamesCrown must have viewBox 0 0 28 22')
+assert.ok(cnCrownCode.includes('#fed700'), 'CodenamesCrown must use authentic golden yellow fill')
+assert.ok(cnCrownCode.includes('viewBox="0 0 576 512"'), 'CodenamesCrown must have viewBox 0 0 576 512')
+assert.ok(cnCrownCode.includes('M309 106'), 'CodenamesCrown must use authentic crown path')
 assert.ok(cnCrownCode.includes('cn-host-crown'), 'CodenamesCrown must have cn-host-crown class')
 console.log('PASS: CodenamesCrown component verified')
 

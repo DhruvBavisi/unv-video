@@ -12,18 +12,18 @@
 export const CODENAMES_CROWN_LAYOUT = {
   // 1. Codenames Lobby host avatar crown
   lobby: {
-    top: -10,
-    left: 0,
-    angle: -30,
-    scale: 1.0,
-    size: 20,
+    top: -9,
+    left: -2,
+    angle: -38,
+    scale: 0.7,
+    size: 18,
   },
   // 2. Codenames In-Game Board host avatar crown
   board: {
     top: -9,
-    left: -1,
-    angle: -30,
-    scale: 1.0,
+    left: -3,
+    angle: -36,
+    scale: 0.65,
     size: 16,
   },
 }
@@ -69,6 +69,6 @@ export function getCodenamesCrownSize(mode = 'lobby') {
       // ignore
     }
   }
-  return cfg.size || (mode === 'board' ? 16 : 20)
+  return cfg.size || (mode === 'board' ? 16 : 18)
 }
 

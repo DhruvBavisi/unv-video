@@ -253,8 +253,8 @@
 }
 .cn-avatar-crown {
   position: absolute;
-  top: -5px;
-  left: 2px;
+  top: -9px;
+  left: -2px;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
   z-index: 5;
   pointer-events: none;
@@ -2823,7 +2823,7 @@ html.cn-keyboard-active {
 .cn-lobby-body .cn-avatar-circle-wrap { width: 32px; height: 32px; }
 .cn-lobby-body .cn-avatar-circle { width: 32px; height: 32px; }
 .cn-lobby-body .cn-avatar-name { margin-top: -8px; font-size: 0.62rem; }
-.cn-lobby-body .cn-avatar-crown { top: -5px; left: 1px; }
+.cn-lobby-body .cn-avatar-crown { top: -9px; left: -2px; }
 .cn-lobby-body .cn-settings-panel { margin-top: 0; flex: none; padding: 8px 10px; gap: 6px; }
 .cn-lobby-body .cn-settings-card { padding: 4px 6px; }
 .cn-lobby-body .cn-settings-card-content h4 { font-size: 0.95rem; }
