@@ -23,12 +23,11 @@ export const EYE_LAYOUT = {
   9:  { x: 15,  y: -20, scale: 1.0 },
   10: { x: -10,   y: 5, scale: 1.0 },
   11: { x: 0,  y: 0,  scale: 1.0 },
-  12: { x: 0,  y: 0, scale: 1.0 },
-  13: { x: 5,  y: -10, scale: 1.0 },
-  14: { x: -10,   y: 20, scale: 1.0 },
-  15: { x: -15,   y: 15, scale: 1.0 },
-  16: { x: 0,  y: 25, scale: 1.0 },
-  17: { x: 8,  y: 18, scale: 1.0 },
+  12: { x: 5,  y: -10, scale: 1.0 },
+  13: { x: -10,   y: 20, scale: 1.0 },
+  14: { x: -15,   y: 15, scale: 1.0 },
+  15: { x: 0,  y: 25, scale: 1.0 },
+  16: { x: 8,  y: 18, scale: 1.0 },
 }
 
 export const MOUTH_LAYOUT = {

@@ -10,7 +10,7 @@ import {
   setDispatchRef, MEMBERSHIP,
   emitAddBots, emitRemoveBots,
 } from './gameState.js'
-import { disconnectSocket } from '../../shared/realtime/socket.js'
+import { waitForServerConnection, connectSocket } from '../../shared/realtime/socket.js'
 import {
   getDefaultConfig,
   getMaximumUndercover, getMaximumMrWhite,
@@ -1232,7 +1232,6 @@ export default function OnlineGame({ onExit }) {
     if (inRoom && socketRef.current) {
       await emitLeaveRoom(socketRef.current)
     }
-    disconnectSocket()
     onExit()
   }, [onExit, inRoom])
 
@@ -1282,25 +1281,61 @@ export default function OnlineGame({ onExit }) {
   }, [state.membershipState])
 
   const handleCreateRoom = useCallback(async (name) => {
-    if (!socketRef.current) return
+    let socket = socketRef.current
+    if (!socket) {
+      socket = initSocket(state.sessionId)
+      socketRef.current = socket
+    }
     setLoading(true)
     dispatch({ type: 'SET_ERROR', error: '' })
-    const result = await emitCreateRoom(socketRef.current, state.sessionId, name.trim())
+
+    if (!socket.connected) {
+      const connected = await waitForServerConnection(8000)
+      if (!connected) {
+        setLoading(false)
+        dispatch({
+          type: 'SET_ERROR',
+          error: 'CONNECTION FAILED — Could not reach the server. Please check your connection and try again.'
+        })
+        return
+      }
+    }
+
+    const result = await emitCreateRoom(socket, state.sessionId, name.trim())
     setLoading(false)
     if (result.error) {
       dispatch({ type: 'SET_ERROR', error: result.error })
-    } else {
+    } else if (result.room) {
       dispatch({ type: 'ROOM_CREATED', room: result.room })
     }
   }, [state.sessionId])
 
   const handleJoinRoom = useCallback(async (name, roomId) => {
-    if (!socketRef.current) return
+    let socket = socketRef.current
+    if (!socket) {
+      socket = initSocket(state.sessionId)
+      socketRef.current = socket
+    }
     setJoining(true)
     setLoading(true)
     dispatch({ type: 'SET_ERROR', error: '' })
     dispatch({ type: 'UPDATE_FIELD', field: 'membershipState', value: MEMBERSHIP.JOINING })
-    const result = await emitJoinRoom(socketRef.current, state.sessionId, roomId, name.trim())
+
+    if (!socket.connected) {
+      const connected = await waitForServerConnection(8000)
+      if (!connected) {
+        setLoading(false)
+        setJoining(false)
+        dispatch({ type: 'UPDATE_FIELD', field: 'membershipState', value: MEMBERSHIP.ERROR })
+        dispatch({
+          type: 'SET_ERROR',
+          error: 'CONNECTION FAILED — Could not reach the server. Please check your connection and try again.'
+        })
+        return
+      }
+    }
+
+    const result = await emitJoinRoom(socket, state.sessionId, roomId, name.trim())
     setLoading(false)
     setJoining(false)
     if (result.error) {

@@ -27,7 +27,7 @@ function sanitizeAvatar(a) {
   if (!a || typeof a !== 'object') return null
   return {
     color: typeof a.color === 'number' ? Math.max(0, Math.min(17, Math.floor(a.color))) : 15,
-    eyes: typeof a.eyes === 'number' ? Math.max(1, Math.min(17, Math.floor(a.eyes))) : 1,
+    eyes: typeof a.eyes === 'number' ? Math.max(1, Math.min(16, Math.floor(a.eyes))) : 1,
     mouth: typeof a.mouth === 'number' ? Math.max(1, Math.min(19, Math.floor(a.mouth))) : 1
   }
 }

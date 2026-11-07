@@ -416,17 +416,35 @@ export function setDispatchRef(dispatch) {
 
 export function emitCreateRoom(socket, sessionId, playerName) {
   return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ error: 'SERVER UNAVAILABLE — Connection to server is not ready.' })
+      return
+    }
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        resolve({ error: 'SERVER TIMEOUT — Server took too long to respond. Please try again.' })
+      }
+    }, 12000)
+
     socket.emit('create-room', { sessionId, resumeToken: readIdentity().resumeToken, playerName }, (response) => {
-      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
-      if (response.error) {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      if (response?.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
+      if (response?.error) {
         const errorMessages = {
           INVALID_NAME: 'IDENTITY REQUIRED — enter a valid investigator name.',
           INVALID_NAME_FORMAT: 'IDENTITY REQUIRED — use 2–24 letters, numbers, spaces, apostrophes, or hyphens.',
           ALREADY_IN_ROOM: 'ALREADY IN ROOM — leave the current room first.',
         }
         resolve({ error: errorMessages[response.error] || 'ROOM CREATION FAILED.' })
-      } else {
+      } else if (response?.room) {
         resolve({ room: response.room })
+      } else {
+        resolve({ error: 'ROOM CREATION FAILED — unexpected response.' })
       }
     })
   })
@@ -435,10 +453,26 @@ export function emitCreateRoom(socket, sessionId, playerName) {
 export function emitJoinRoom(socket, sessionId, roomId, playerName) {
   console.log('[ROOM] join requested', { roomId, playerId: sessionId })
   return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ error: 'SERVER UNAVAILABLE — Connection to server is not ready.' })
+      return
+    }
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        resolve({ error: 'SERVER TIMEOUT — Server took too long to respond. Please try again.' })
+      }
+    }, 12000)
+
     socket.emit('join-room', { sessionId, resumeToken: readIdentity().resumeToken, roomId, playerName }, (response) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
       console.log('[ROOM] ROOM_JOINED received', response)
-      if (response.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
-      if (response.error) {
+      if (response?.resumeToken) setResumeToken(response.resumeToken, response.room?.roomId, response.playerName, 'undercover')
+      if (response?.error) {
         const errorMessages = {
           ROOM_NOT_FOUND: 'CASE FILE NOT FOUND — check the room ID.',
           GAME_IN_PROGRESS: 'GAME IN PROGRESS — cannot join at this time.',
@@ -451,8 +485,10 @@ export function emitJoinRoom(socket, sessionId, roomId, playerName) {
           ALREADY_IN_ROOM: 'ALREADY IN ROOM — leave the current room first.',
         }
         resolve({ error: errorMessages[response.error] || 'JOIN FAILED.' })
-      } else {
+      } else if (response?.room) {
         resolve({ room: response.room })
+      } else {
+        resolve({ error: 'JOIN FAILED — unexpected response.' })
       }
     })
   })
@@ -460,7 +496,23 @@ export function emitJoinRoom(socket, sessionId, roomId, playerName) {
 
 export function emitLeaveRoom(socket) {
   return new Promise((resolve) => {
+    if (!socket) {
+      resolve({ success: true })
+      return
+    }
+
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        resolve({ error: 'LEAVE TIMEOUT' })
+      }
+    }, 5000)
+
     socket.emit('leave-room', (response) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
       if (response?.error) {
         resolve({ error: response.error })
       } else {

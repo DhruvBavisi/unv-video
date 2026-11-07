@@ -12,7 +12,7 @@ import CodenamesApp from '../games/codenames/CodenamesApp.jsx'
 import SkribblWinningPreview from '../games/skribbl/components/SkribblWinningPreview.jsx'
 import { readIdentity, ensureIdentity, clearSession } from '../shared/session/identity.js'
 import ServerSkeletonScreen from '../shared/components/ServerSkeletonScreen.jsx'
-import { connectSocket, isServerConnected, subscribeServerConnection, initBackgroundServerConnection } from '../shared/realtime/socket.js'
+import { connectSocket, isServerConnected, subscribeServerConnection, initBackgroundServerConnection, pingServerHealth } from '../shared/realtime/socket.js'
 import { preloadSpecialRoles } from '../games/undercover/utils/preloadUndercoverAssets.js'
 
 class GameErrorBoundary extends Component {
@@ -268,7 +268,18 @@ export default function App() {
     if (target === 'undercover') {
       preloadSpecialRoles()
     }
-    if (!isServerConnected()) {
+    // Proactively ping health and ensure socket connection is triggered
+    pingServerHealth()
+    const { sessionId } = ensureIdentity()
+    const sock = connectSocket(sessionId)
+    if (sock && !sock.connected) {
+      sock.connect()
+    }
+
+    const connectedNow = isServerConnected()
+    setIsConnected(connectedNow)
+
+    if (!connectedNow) {
       setPendingDestination(target === 'transition' ? 'mode-select' : target)
       setHasResolvedInitialConnection(false)
     } else {
@@ -280,12 +291,13 @@ export default function App() {
   if (!hasResolvedInitialConnection && initialView !== 'skribbl-winning-preview') {
     return (
       <ServerSkeletonScreen
-        initialView={initialView}
+        initialView={pendingDestination || initialView}
         targetDestination={pendingDestination}
         onSelectDestination={setPendingDestination}
         isConnected={isConnected}
         onConnectRedirect={(destination) => {
           setHasResolvedInitialConnection(true)
+          setPendingDestination(null)
           setGameView(destination)
         }}
       />

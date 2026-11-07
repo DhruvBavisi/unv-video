@@ -21,12 +21,12 @@ const diceStat = fs.statSync(path.join(skribblDir, 'dice.webp'))
 assert.ok(diceStat.size > 20, 'dice.webp must have valid image size')
 console.log('PASS: Core webp assets exist (body, body-fill, logo, background, dice)')
 
-// 2. Verify all 17 eyes exist
-for (let i = 1; i <= 17; i++) {
+// 2. Verify all 16 eyes exist
+for (let i = 1; i <= 16; i++) {
   const eyePath = path.join(skribblDir, 'eyes', `eye-${i}.webp`)
   assert.ok(fs.existsSync(eyePath), `eye-${i}.webp must exist on disk`)
 }
-console.log('PASS: All 17 eyes WebP files exist on disk')
+console.log('PASS: All 16 eyes WebP files exist on disk')
 
 // 3. Verify all 19 mouths exist
 for (let j = 1; j <= 19; j++) {
@@ -37,16 +37,16 @@ console.log('PASS: All 19 mouths WebP files exist on disk')
 
 // 4. Verify constants & color palette
 assert.strictEqual(TOTAL_COLORS, 18, 'Must have 18 colors')
-assert.strictEqual(TOTAL_EYES, 17, 'Must have 17 eyes')
+assert.strictEqual(TOTAL_EYES, 16, 'Must have 16 eyes')
 assert.strictEqual(TOTAL_MOUTHS, 19, 'Must have 19 mouths')
 assert.strictEqual(SKRIBBL_COLORS.length, 18, 'Color array length must match 18')
-console.log('PASS: Constants match asset library exactly (18 colors, 17 eyes, 19 mouths)')
+console.log('PASS: Constants match asset library exactly (18 colors, 16 eyes, 19 mouths)')
 
 // 5. Test Randomize function bounds across 50 iterations
 for (let k = 0; k < 50; k++) {
   const rand = getRandomAvatar()
   assert.ok(rand.color >= 0 && rand.color < TOTAL_COLORS, `Color ${rand.color} within [0, 17]`)
-  assert.ok(rand.eyes >= 1 && rand.eyes <= TOTAL_EYES, `Eyes ${rand.eyes} within [1, 17]`)
+  assert.ok(rand.eyes >= 1 && rand.eyes <= TOTAL_EYES, `Eyes ${rand.eyes} within [1, 16]`)
   assert.ok(rand.mouth >= 1 && rand.mouth <= TOTAL_MOUTHS, `Mouth ${rand.mouth} within [1, 19]`)
 }
 console.log('PASS: getRandomAvatar() produces valid ranges over 50 iterations')
@@ -60,7 +60,7 @@ for (let i = 1; i <= TOTAL_EYES; i++) {
   const transform = getEyeTransform(i)
   assert.ok(transform.includes('translateX') && transform.includes('translateY') && transform.includes('scale'), `Eye ${i} transform valid`)
 }
-console.log('PASS: EYE_LAYOUT covers all 17 eyes with calibrated manual transforms')
+console.log('PASS: EYE_LAYOUT covers all 16 eyes with calibrated manual transforms')
 
 for (let j = 1; j <= TOTAL_MOUTHS; j++) {
   assert.ok(MOUTH_LAYOUT[j], `MOUTH_LAYOUT must define transform for mouth ${j}`)

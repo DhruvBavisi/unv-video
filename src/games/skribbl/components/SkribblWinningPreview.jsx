@@ -23,7 +23,7 @@ export function generateCustomPlayers(count) {
     playAgain: i % 2 === 0,
     avatar: {
       color: (i * 2 + 1) % 18,
-      eyes: (i % 17) + 1,
+      eyes: (i % 16) + 1,
       mouth: (i % 19) + 1,
     }
   }))

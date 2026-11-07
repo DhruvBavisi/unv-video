@@ -36,17 +36,17 @@ export default function ServerSkeletonScreen({
   }, [isConnected, targetDestination, initialView, onConnectRedirect])
 
   const getStatusText = () => {
+    const destName = targetDestination === 'skribbl' ? 'Skribbl.io' : targetDestination === 'codenames' ? 'Codenames' : targetDestination === 'undercover' ? 'Undercover' : null
     if (isConnected) {
-      if (targetDestination && targetDestination !== initialView) {
-        const name = targetDestination === 'skribbl' ? 'Skribbl.io' : targetDestination === 'codenames' ? 'Codenames' : 'Undercover'
-        return `Connected! Launching ${name}...`
+      if (destName) {
+        return `Connected! Launching ${destName}...`
       }
       return 'Connected! Entering game...'
     }
     if (connectionTime >= 6) {
-      return 'Connecting to server... almost ready'
+      return destName ? `Connecting to ${destName} server... almost ready` : 'Connecting to server... almost ready'
     }
-    return 'Connecting to game server...'
+    return destName ? `Connecting to ${destName} server...` : 'Connecting to game server...'
   }
 
   return (
@@ -75,7 +75,9 @@ export default function ServerSkeletonScreen({
         <section className="sk-server-skeleton__hero">
           <div className="sk-skeleton-bone sk-server-skeleton__heading-bone" />
           <p className="sk-server-skeleton__subtitle">
-            Connecting to game server and establishing live session...
+            {targetDestination === 'undercover'
+              ? 'Connecting to Undercover game server and establishing live session...'
+              : 'Connecting to game server and establishing live session...'}
           </p>
         </section>
 

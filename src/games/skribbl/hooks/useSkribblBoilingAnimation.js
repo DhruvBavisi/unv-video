@@ -50,7 +50,7 @@ export const AVATAR_FRAMES = [
   [
     { eyes: 16, mouth: 14 },
     { eyes: 5,  mouth: 14 },
-    { eyes: 17, mouth: 17 },
+    { eyes: 16, mouth: 17 },
     { eyes: 16, mouth: 15 },
     { eyes: 4,  mouth: 14 }
   ],

@@ -6,10 +6,12 @@ let listenersAttached = false
 const connectionListeners = new Set()
 
 export function getServerUrl() {
-  const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.SOCKET_URL
+  const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {}
+  const procEnv = typeof process !== 'undefined' && process.env ? process.env : {}
+  const configuredSocketUrl = metaEnv.VITE_SOCKET_URL || metaEnv.SOCKET_URL || procEnv.VITE_SOCKET_URL || procEnv.SOCKET_URL
   return (
     configuredSocketUrl ||
-    (import.meta.env.PROD ? 'https://undercover-server.onrender.com' : window.location.origin)
+    (metaEnv.PROD ? 'https://undercover-server.onrender.com' : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'))
   ).trim()
 }
 
@@ -58,9 +60,47 @@ export function subscribeServerConnection(callback) {
   }
 }
 
+/**
+ * Returns a Promise that resolves when the server connection is established,
+ * or resolves false if the timeout is reached.
+ */
+export function waitForServerConnection(timeoutMs = 10000) {
+  if (isServerConnected()) {
+    return Promise.resolve(true)
+  }
+
+  pingServerHealth()
+  const sock = connectSocket()
+  if (sock && !sock.connected) {
+    sock.connect()
+  }
+
+  return new Promise((resolve) => {
+    let settled = false
+    let cleanup = null
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true
+        cleanup?.()
+        resolve(isServerConnected())
+      }
+    }, timeoutMs)
+
+    cleanup = subscribeServerConnection((connected) => {
+      if (connected && !settled) {
+        settled = true
+        clearTimeout(timer)
+        cleanup?.()
+        resolve(true)
+      }
+    })
+  })
+}
+
 export function connectSocket(sessionId) {
   if (socket) {
-    if (!socket.connected && !socket.active) {
+    if (!socket.connected) {
       socket.connect()
     }
     return socket

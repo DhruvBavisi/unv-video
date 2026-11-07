@@ -1,13 +1,22 @@
 import React, { useEffect } from 'react'
 import { usePageBackground } from '../hooks/usePageBackground.js'
 import { preloadSpecialRoles } from '../../games/undercover/utils/preloadUndercoverAssets.js'
+import { pingServerHealth, connectSocket } from '../realtime/socket.js'
+import { ensureIdentity } from '../session/identity.js'
 
 export default function ModeSelect({ onSelectUndercover, onSelectSkribbl, onSelectCodenames, onBack }) {
   usePageBackground('#070914')
 
-  // Proactively preload Undercover special role images in the background
+  // Proactively preload Undercover special role images and ensure server is connecting in background
   useEffect(() => {
     preloadSpecialRoles()
+    pingServerHealth()
+    try {
+      const { sessionId } = ensureIdentity()
+      connectSocket(sessionId)
+    } catch {
+      // Non-blocking warming
+    }
   }, [])
 
   return (

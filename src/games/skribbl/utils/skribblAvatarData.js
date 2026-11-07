@@ -19,7 +19,7 @@ export const SKRIBBL_COLORS = [
   '#9e9e9e', // 17: Gray
 ]
 
-export const TOTAL_EYES = 17
+export const TOTAL_EYES = 16
 export const TOTAL_MOUTHS = 19
 export const TOTAL_COLORS = SKRIBBL_COLORS.length
 
