@@ -65,15 +65,15 @@ assert.ok(modeSelectCode.includes('pingServerHealth()'), 'ModeSelect must invoke
 assert.ok(modeSelectCode.includes('connectSocket('), 'ModeSelect must invoke connectSocket in useEffect')
 console.log('PASS: ModeSelect warms server connection on mount')
 
-// 5. Verify App.jsx handleNavigateOrWait connects server and guards Undercover entry
+// 5. Verify App.jsx handleNavigate connects server and preloads assets
 const appPath = path.join(rootDir, 'src', 'app', 'App.jsx')
 const appCode = fs.readFileSync(appPath, 'utf-8')
 
 assert.ok(appCode.includes('pingServerHealth'), 'App.jsx must import pingServerHealth')
-assert.ok(appCode.includes('handleNavigateOrWait'), 'App.jsx must define handleNavigateOrWait')
-assert.ok(appCode.includes('setIsConnected(connectedNow)'), 'App.jsx must synchronize connection state before navigation')
-assert.ok(appCode.includes('setPendingDestination(null)'), 'App.jsx must reset pendingDestination on successful connection redirect')
-console.log('PASS: App.jsx connection guarding before entering Undercover verified')
+assert.ok(appCode.includes('handleNavigate'), 'App.jsx must define handleNavigate')
+assert.ok(appCode.includes('preloadSpecialRoles()'), 'App.jsx must preload special roles before entering Undercover')
+assert.ok(appCode.includes('connectSocket(sessionId)'), 'App.jsx must ensure socket is connecting')
+console.log('PASS: App.jsx server warming and asset preloading verified')
 
 // 6. Verify OnlineGame.jsx handleCreateRoom & handleJoinRoom use waitForServerConnection and no disconnectSocket on exit
 const onlineGamePath = path.join(rootDir, 'src', 'games', 'undercover', 'OnlineGame.jsx')
@@ -84,12 +84,10 @@ assert.ok(!onlineGameCode.includes('disconnectSocket()'), 'OnlineGame must not c
 assert.ok(onlineGameCode.includes('if (!socket.connected)'), 'OnlineGame handleCreateRoom must verify socket connection before emit')
 console.log('PASS: OnlineGame connection verification and exit socket preservation verified')
 
-// 7. Verify ServerSkeletonScreen displays helpful destination info when launching Undercover
-const skeletonPath = path.join(rootDir, 'src', 'shared', 'components', 'ServerSkeletonScreen.jsx')
-const skeletonCode = fs.readFileSync(skeletonPath, 'utf-8')
-
-assert.ok(skeletonCode.includes('Connecting to Undercover game server'), 'ServerSkeletonScreen must indicate Undercover server status')
-console.log('PASS: ServerSkeletonScreen Undercover messaging verified')
+// 7. Verify direct Undercover navigation without skeleton loading screen interception
+assert.ok(!appCode.includes('ServerSkeletonScreen'), 'App.jsx must not import or render ServerSkeletonScreen')
+assert.ok(!appCode.includes('hasResolvedInitialConnection'), 'App.jsx must not block initial connection with skeleton')
+console.log('PASS: Direct Undercover navigation without skeleton loading screen verified')
 
 console.log('All Undercover Server Connection Flow & Resilience tests passed successfully!')
 

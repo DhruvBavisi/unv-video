@@ -159,10 +159,10 @@ assert.ok(appCode.includes('usePageBackground(activePageBg)'), 'SkribblApp must 
 
 console.log('PASS: iPhone PWA Safe Area and Blue Doodle Background verified across all surfaces')
 
-// 12. Verify Transparent Safe Top, Red Leave Button, Minimal Network Bars, & Two-Tone Skeleton
+// 12. Verify Transparent Safe Top, Red Leave Button, Minimal Network Bars, & Skeleton Removal
 const indexHtml = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf-8')
 const netStatusCode = fs.readFileSync(path.join(rootDir, 'src', 'games', 'skribbl', 'components', 'SkribblNetworkStatus.jsx'), 'utf-8')
-const skeletonCode = fs.readFileSync(path.join(rootDir, 'src', 'shared', 'components', 'ServerSkeletonScreen.jsx'), 'utf-8')
+const skeletonPath = path.join(rootDir, 'src', 'shared', 'components', 'ServerSkeletonScreen.jsx')
 
 // Transparent safe top meta tag
 assert.ok(indexHtml.includes('<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />') || indexHtml.includes('apple-mobile-web-app-status-bar-style'), 'index.html must configure apple status bar style for edge-to-edge transparent safe top')
@@ -178,10 +178,9 @@ assert.ok(cssCode.includes('.sk-network-bars--connected .sk-net-bar'), 'globals.
 assert.ok(cssCode.includes('.sk-network-bars--connecting .sk-net-bar'), 'globals.css must color connecting bars amber')
 assert.ok(cssCode.includes('.sk-network-bars--disconnected .sk-net-bar-1'), 'globals.css must color disconnected bars red')
 
-// Two-Tone Skeleton
-assert.ok(!skeletonCode.includes('sk-server-skeleton__glow'), 'ServerSkeletonScreen must not render colored glows')
-assert.ok(!skeletonCode.includes('sk-server-skeleton__action-btn--skribbl'), 'ServerSkeletonScreen must not use multi-color button variants')
-assert.ok(!cssCode.includes('.sk-server-skeleton__card--undercover.is-selected'), 'globals.css must not have multi-color card highlights')
+// Verify skeleton loading is completely removed
+assert.ok(!fs.existsSync(skeletonPath), 'ServerSkeletonScreen.jsx must be removed from disk')
+assert.ok(!cssCode.includes('.sk-server-skeleton'), 'globals.css must not contain .sk-server-skeleton')
 
-console.log('PASS: Transparent Safe Top, Red Leave Button, Network Bars Icon, and Two-Tone Skeleton verified')
+console.log('PASS: Transparent Safe Top, Red Leave Button, Network Bars Icon, and Skeleton Removal verified')
 console.log('All Skribbl Avatar, Home & Lobby tests passed successfully!')

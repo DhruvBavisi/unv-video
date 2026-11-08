@@ -11,8 +11,7 @@ import SkribblApp from '../games/skribbl/SkribblApp.jsx'
 import CodenamesApp from '../games/codenames/CodenamesApp.jsx'
 import SkribblWinningPreview from '../games/skribbl/components/SkribblWinningPreview.jsx'
 import { readIdentity, ensureIdentity, clearSession } from '../shared/session/identity.js'
-import ServerSkeletonScreen from '../shared/components/ServerSkeletonScreen.jsx'
-import { connectSocket, isServerConnected, subscribeServerConnection, initBackgroundServerConnection, pingServerHealth } from '../shared/realtime/socket.js'
+import { connectSocket, initBackgroundServerConnection, pingServerHealth } from '../shared/realtime/socket.js'
 import { preloadSpecialRoles } from '../games/undercover/utils/preloadUndercoverAssets.js'
 
 class GameErrorBoundary extends Component {
@@ -234,25 +233,12 @@ function getInitialGameView() {
 export default function App() {
   const [initialView] = useState(() => getInitialGameView())
   const [gameView, setGameView] = useState(initialView)
-  const [isConnected, setIsConnected] = useState(() => isServerConnected())
-  const [hasResolvedInitialConnection, setHasResolvedInitialConnection] = useState(() => {
-    const init = getInitialGameView()
-    // Dev preview bypasses server check
-    return init === 'skribbl-winning-preview' || isServerConnected()
-  })
-  const [pendingDestination, setPendingDestination] = useState(null)
 
   // Start background connection to the server immediately on mount & warm Undercover assets
   useEffect(() => {
     const { sessionId } = ensureIdentity()
     initBackgroundServerConnection(sessionId)
     preloadSpecialRoles()
-
-    const unsubscribe = subscribeServerConnection((connected) => {
-      setIsConnected(connected)
-    })
-
-    return () => unsubscribe()
   }, [])
 
   useEffect(() => {
@@ -263,8 +249,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  // Intercept navigation to check if server is currently connecting
-  const handleNavigateOrWait = (target) => {
+  const handleNavigate = (target) => {
     if (target === 'undercover') {
       preloadSpecialRoles()
     }
@@ -275,33 +260,7 @@ export default function App() {
     if (sock && !sock.connected) {
       sock.connect()
     }
-
-    const connectedNow = isServerConnected()
-    setIsConnected(connectedNow)
-
-    if (!connectedNow) {
-      setPendingDestination(target === 'transition' ? 'mode-select' : target)
-      setHasResolvedInitialConnection(false)
-    } else {
-      setGameView(target)
-    }
-  }
-
-  // Display high-polish skeleton loading screen whenever the server is connecting behind
-  if (!hasResolvedInitialConnection && initialView !== 'skribbl-winning-preview') {
-    return (
-      <ServerSkeletonScreen
-        initialView={pendingDestination || initialView}
-        targetDestination={pendingDestination}
-        onSelectDestination={setPendingDestination}
-        isConnected={isConnected}
-        onConnectRedirect={(destination) => {
-          setHasResolvedInitialConnection(true)
-          setPendingDestination(null)
-          setGameView(destination)
-        }}
-      />
-    )
+    setGameView(target)
   }
 
   if (gameView === 'skribbl-winning-preview') {
@@ -334,9 +293,9 @@ export default function App() {
     return (
       <GameErrorBoundary onReset={() => setGameView('landing')}>
         <ModeSelect 
-          onSelectUndercover={() => handleNavigateOrWait('undercover')}
-          onSelectSkribbl={() => handleNavigateOrWait('skribbl')}
-          onSelectCodenames={() => handleNavigateOrWait('codenames')}
+          onSelectUndercover={() => handleNavigate('undercover')}
+          onSelectSkribbl={() => handleNavigate('skribbl')}
+          onSelectCodenames={() => handleNavigate('codenames')}
           onBack={() => setGameView('landing')}
         />
       </GameErrorBoundary>
@@ -369,13 +328,13 @@ export default function App() {
 
   return (
     <>
-      <Navbar onPlay={() => handleNavigateOrWait('transition')} />
+      <Navbar onPlay={() => handleNavigate('transition')} />
       <main>
-        <Hero onPlay={() => handleNavigateOrWait('transition')} />
+        <Hero onPlay={() => handleNavigate('transition')} />
         <Transition text="The truth is never simple" />
         <CinematicSequence />
         <Investigation />
-        <FinalCTA onPlay={() => handleNavigateOrWait('transition')} />
+        <FinalCTA onPlay={() => handleNavigate('transition')} />
       </main>
     </>
   )
