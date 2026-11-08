@@ -33,6 +33,8 @@ export function isOriginAllowed(origin, originList) {
       hostname === "127.0.0.1" ||
       hostname === "::1" ||
       hostname.endsWith(".local") ||
+      hostname.endsWith(".vercel.app") ||
+      hostname === "investigation-room.vercel.app" ||
       /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
       /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
       /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)

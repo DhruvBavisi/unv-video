@@ -1290,7 +1290,7 @@ export default function OnlineGame({ onExit }) {
     dispatch({ type: 'SET_ERROR', error: '' })
 
     if (!socket.connected) {
-      const connected = await waitForServerConnection(8000)
+      const connected = await waitForServerConnection(15000)
       if (!connected) {
         setLoading(false)
         dispatch({
@@ -1322,7 +1322,7 @@ export default function OnlineGame({ onExit }) {
     dispatch({ type: 'UPDATE_FIELD', field: 'membershipState', value: MEMBERSHIP.JOINING })
 
     if (!socket.connected) {
-      const connected = await waitForServerConnection(8000)
+      const connected = await waitForServerConnection(15000)
       if (!connected) {
         setLoading(false)
         setJoining(false)

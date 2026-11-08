@@ -89,6 +89,20 @@ assert.ok(!appCode.includes('ServerSkeletonScreen'), 'App.jsx must not import or
 assert.ok(!appCode.includes('hasResolvedInitialConnection'), 'App.jsx must not block initial connection with skeleton')
 console.log('PASS: Direct Undercover navigation without skeleton loading screen verified')
 
+// 8. Verify production server URL resolution and warming
+const { getServerUrl } = await import('../src/shared/realtime/socket.js')
+assert.strictEqual(typeof getServerUrl, 'function', 'getServerUrl must be exported')
+assert.ok(socketCode.includes('word-party'), 'socket.js must filter out legacy word-party servers')
+assert.ok(socketCode.includes('https://undercover-server.onrender.com'), 'socket.js must use undercover-server.onrender.com in production')
+assert.ok(socketCode.includes('startServerWarming'), 'socket.js must export and implement startServerWarming')
+
+const viteConfigCode = fs.readFileSync(path.join(rootDir, 'vite.config.js'), 'utf-8')
+assert.ok(viteConfigCode.includes("envPrefix: ['VITE_']"), 'vite.config.js must only expose VITE_ variables')
+
+const utilsCode = fs.readFileSync(path.join(rootDir, 'server', 'shared', 'utils.js'), 'utf-8')
+assert.ok(utilsCode.includes('.vercel.app'), 'server utils must allow vercel.app CORS origins')
+console.log('PASS: Production server URL resolution, warming, and Vercel CORS verified')
+
 console.log('All Undercover Server Connection Flow & Resilience tests passed successfully!')
 
 const { disconnectSocket } = await import('../src/shared/realtime/socket.js')
